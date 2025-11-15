@@ -33,9 +33,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
         isVisible={selected}
         color="#3b82f6"
         handleStyle={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '1px',
+          width: '10px',
+          height: '10px',
+          borderRadius: '4px',
           backgroundColor: '#3b82f6',
           border: '1px solid white',
         }}
@@ -51,7 +51,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       <div
         className={`relative rounded-xl transition-all w-full h-full ${
           selected
-            ? 'ring-2 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+            ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
             : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
         }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}

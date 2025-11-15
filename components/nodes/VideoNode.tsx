@@ -14,6 +14,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
@@ -89,15 +91,96 @@ function VideoNode({ data, selected, id }: NodeProps) {
     triggerVideoGeneration?.(id);
   }, [id, triggerVideoGeneration, updateElement]);
 
-  // 处理下载视频
-  const handleDownload = useCallback(() => {
-    if (videoData.src) {
+  // 处理下载视频 - 使用 Blob 实现直接下载
+  const [blobSize, setBlobSize] = useState(0);
+
+  const handleDownload = useCallback(async () => {
+    if (!videoData.src) {
+      console.error('没有可下载的视频源');
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setBlobSize(0);
+
+    try {
+      console.log('🚀 开始下载视频:', videoData.src);
+
+      // 模拟进度更新
+      const progressInterval = setInterval(() => {
+        setDownloadProgress(prev => Math.min(prev + 10, 90));
+      }, 100);
+
+      // 获取视频文件
+      const response = await fetch(videoData.src);
+      if (!response.ok) {
+        throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+      }
+
+      // 获取文件大小用于计算进度
+      const contentLength = response.headers.get('content-length');
+      const totalSize = contentLength ? parseInt(contentLength) : 0;
+
+      // 创建可读流来跟踪进度
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('浏览器不支持流式下载');
+      }
+
+      const chunks: Uint8Array[] = [];
+      let receivedLength = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (value) {
+          chunks.push(value);
+          receivedLength += value.length;
+
+          // 更新进度
+          if (totalSize > 0) {
+            const progress = Math.round((receivedLength / totalSize) * 100);
+            setDownloadProgress(progress);
+          }
+        }
+      }
+
+      // 合并所有数据
+      const blob = new Blob(chunks, { type: 'video/mp4' });
+      console.log('✅ Blob 创建成功，大小:', blob.size, 'bytes');
+      setBlobSize(blob.size);
+
+      clearInterval(progressInterval);
+      setDownloadProgress(100);
+
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = videoData.src;
+      link.href = url;
       link.download = `morpheus-video-${id}.mp4`;
+
+      // 触发下载
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        setIsDownloading(false);
+        setDownloadProgress(0);
+        setBlobSize(0);
+        console.log('✅ 视频下载完成');
+      }, 500);
+
+    } catch (error) {
+      console.error('❌ 视频下载失败:', error);
+      setIsDownloading(false);
+      setDownloadProgress(0);
+      setBlobSize(0);
+      alert('视频下载失败：' + error.message);
     }
   }, [videoData.src, id]);
 
@@ -138,9 +221,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
         isVisible={selected}
         color="#3b82f6"
         handleStyle={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '1px',
+          width: '10px',
+          height: '10px',
+          borderRadius: '4px',
           backgroundColor: '#3b82f6',
           border: '1px solid white',
         }}
@@ -156,8 +239,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
       <div
         className={`relative rounded-xl transition-all w-full h-full ${
           selected
-            ? 'ring-2 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
-            : 'border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+            ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+            : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
         }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
@@ -261,7 +344,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         </Handle>
 
         <div
-          className={`absolute inset-0 rounded-lg overflow-hidden ${
+          className={`absolute inset-0 rounded-xl overflow-hidden ${
             videoData.status === 'ready' && !videoError ? 'bg-transparent' : 'bg-black'
           }`}
         >
@@ -313,12 +396,34 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   console.log('✅ 视频加载完成');
                 }}
               />
-              {!videoError && (
+
+              {/* 下载进度提示 */}
+              {isDownloading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-10">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <Download className="w-4 h-4 text-blue-400 animate-bounce" />
+                      <span className="text-white text-sm font-medium">下载中...</span>
+                    </div>
+                    <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-400 transition-all duration-300"
+                        style={{ width: `${downloadProgress}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      {downloadProgress}% - {blobSize > 0 ? `${Math.round(blobSize / 1024 / 1024)}MB` : '准备中...'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!videoError && !isDownloading && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div 
+                  <div
                     className={`
                       w-16 h-16 rounded-full flex items-center justify-center
-                      bg-black/50 backdrop-blur-sm 
+                      bg-black/50 backdrop-blur-sm
                       transition-all duration-200
                       ${isPlaying ? 'opacity-0' : 'opacity-100'}
                     `}
