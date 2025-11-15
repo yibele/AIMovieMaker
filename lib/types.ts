@@ -20,6 +20,7 @@ export interface ImageElement extends CanvasElement {
   src: string; // 图片 URL
   alt?: string;
   caption?: string; // 上传图片时保存的 Caption 描述 // 行级注释说明字段用途
+  mediaId?: string; // Flow 返回的 mediaId，图生图时用作 imageInputs.name // 行级注释说明字段用途
   mediaGenerationId?: string; // Flow 返回的 mediaGenerationId，用于后续编辑 // 行级注释说明字段用途
   uploadState?: 'local' | 'syncing' | 'synced' | 'error'; // 上传到远端的同步状态 // 行级注释说明字段用途
   uploadMessage?: string; // 同步状态的提示信息（如错误原因） // 行级注释说明字段用途

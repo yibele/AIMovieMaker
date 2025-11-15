@@ -9,6 +9,7 @@ export interface MaterialItem {
   name: string; // 素材名称
   thumbnail?: string; // 缩略图 URL
   src: string; // 原始文件 URL
+  mediaId?: string; // Flow 返回的 mediaId，图生图时用作 imageInputs.name // 行级注释说明字段用途
   mediaGenerationId: string; // Flow 返回的 mediaGenerationId
   metadata?: {
     // 图片元数据
@@ -30,6 +31,7 @@ export interface MaterialsState {
   materials: MaterialItem[];
   selectedMaterials: string[]; // 选中的素材 ID
   isLoading: boolean;
+  loadingMessage?: string;
   searchQuery: string;
   activeTab: MaterialType; // 当前激活的标签页
   sortBy: 'createdAt' | 'name' | 'type'; // 排序方式
@@ -40,6 +42,7 @@ export interface MaterialsState {
 export interface MaterialsActions {
   // 基础操作
   addMaterial: (material: Omit<MaterialItem, 'id' | 'createdAt'>) => void;
+  setMaterialsForProject: (projectId: string, materials: MaterialItem[]) => void;
   removeMaterial: (id: string) => void;
   updateMaterial: (id: string, updates: Partial<MaterialItem>) => void;
 
@@ -53,6 +56,10 @@ export interface MaterialsActions {
   setActiveTab: (type: MaterialType) => void;
   setSortBy: (sortBy: MaterialsState['sortBy']) => void;
   setSortOrder: (order: MaterialsState['sortOrder']) => void;
+
+  // 状态控制
+  setLoading: (loading: boolean) => void;
+  setLoadingMessage: (message?: string) => void;
 
   // 从项目导入素材
   importFromProject: (projectId: string) => Promise<void>;

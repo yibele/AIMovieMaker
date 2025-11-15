@@ -34,6 +34,7 @@ import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage } from '@/lib/api-mock';
+import { loadMaterialsFromProject } from '@/lib/project-materials';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -75,6 +76,15 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const resetConnectionMenu = useCallback(() => {
     setConnectionMenu(createConnectionMenuState());
   }, []);
+
+  useEffect(() => {
+    if (!projectId) {
+      return;
+    }
+    loadMaterialsFromProject(projectId).catch((error) => {
+      console.error('同步项目素材失败:', error);
+    });
+  }, [projectId]);
 
   // 将 store 中的元素转换为 React Flow 节点
   // @ts-ignore - React Flow 类型推断问题

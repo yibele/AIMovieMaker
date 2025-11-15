@@ -15,6 +15,7 @@ export const useMaterialsStore = create<MaterialsStore>()(
       materials: [],
       selectedMaterials: [],
       isLoading: false,
+      loadingMessage: undefined,
       searchQuery: '',
       activeTab: 'image',
       sortBy: 'createdAt',
@@ -30,6 +31,25 @@ export const useMaterialsStore = create<MaterialsStore>()(
         set((state) => ({
           materials: [...state.materials, material],
         }));
+      },
+
+      // 按项目替换素材
+      setMaterialsForProject: (projectId, newMaterials) => {
+        set((state) => {
+          const preserved = state.materials.filter(
+            (material) => !material.projectId || material.projectId !== projectId
+          );
+
+          const dedupMap = new Map<string, MaterialItem>();
+          newMaterials.forEach((material) => {
+            const key = material.mediaGenerationId || material.id;
+            dedupMap.set(key, material);
+          });
+
+          return {
+            materials: [...preserved, ...Array.from(dedupMap.values())],
+          };
+        });
       },
 
       // 删除素材
@@ -103,6 +123,17 @@ export const useMaterialsStore = create<MaterialsStore>()(
         }
       },
 
+      setLoading: (loading) => {
+        set((state) => ({
+          isLoading: loading,
+          loadingMessage: loading ? state.loadingMessage : undefined,
+        }));
+      },
+
+      setLoadingMessage: (message) => {
+        set({ loadingMessage: message });
+      },
+
       // 添加素材到画布
       addToCanvas: async (materialId, position = { x: 100, y: 100 }) => {
         const material = get().materials.find((m) => m.id === materialId);
@@ -138,6 +169,7 @@ export const useMaterialsStore = create<MaterialsStore>()(
             src: material.src,
             alt: material.name,
             caption: material.metadata?.caption,
+            mediaId: material.mediaId, // Flow 图生图时用作 imageInputs.name // 行级注释说明字段用途
             mediaGenerationId: material.mediaGenerationId,
             uploadState: 'synced',
             generatedFrom: {
@@ -151,17 +183,29 @@ export const useMaterialsStore = create<MaterialsStore>()(
           const calculateVideoSize = () => {
             const aspectRatio = material.metadata?.aspectRatio;
 
+            // 调试信息
+            console.log('视频素材信息:', {
+              name: material.name,
+              metadata: material.metadata,
+              aspectRatio: aspectRatio,
+            });
+
             // 根据宽高比设置合适的尺寸
             switch (aspectRatio) {
               case '16:9':
-                return { width: 480, height: 270 }; // 横屏视频
+                console.log('使用 16:9 比例');
+                return { width: 480, height: 270 }; // 横屏视频 (16:9)
               case '9:16':
-                return { width: 270, height: 480 }; // 竖屏视频
+                console.log('使用 9:16 比例');
+                return { width: 270, height: 480 }; // 竖屏视频 (9:16)
               case '1:1':
+                console.log('使用 1:1 比例');
                 return { width: 320, height: 320 }; // 方形视频
               case '4:3':
+                console.log('使用 4:3 比例');
                 return { width: 400, height: 300 }; // 传统比例
               default:
+                console.log('使用默认 16:9 比例，因为 aspectRatio 为:', aspectRatio);
                 // 如果没有宽高比信息，使用默认的 16:9
                 return { width: 480, height: 270 };
             }
@@ -180,6 +224,7 @@ export const useMaterialsStore = create<MaterialsStore>()(
             promptText: material.metadata?.prompt,
             readyForGeneration: false, // 从素材库添加的视频无需生成
           };
+          console.log('创建视频节点，尺寸:', calculateVideoSize());
           canvasStore.addElement(videoElement);
         }
       },
@@ -193,43 +238,9 @@ export const useMaterialsStore = create<MaterialsStore>()(
         activeTab: state.activeTab,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
+        searchQuery: state.searchQuery,
       }),
     }
   )
 );
 
-// 获取过滤后的素材列表
-export const useFilteredMaterials = () => {
-  const materials = useMaterialsStore((state) => state.materials);
-  const searchQuery = useMaterialsStore((state) => state.searchQuery);
-  const activeTab = useMaterialsStore((state) => state.activeTab);
-  const sortBy = useMaterialsStore((state) => state.sortBy);
-  const sortOrder = useMaterialsStore((state) => state.sortOrder);
-
-  return materials
-    // 按类型过滤
-    .filter((m) => m.type === activeTab)
-    // 按搜索词过滤
-    .filter((m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    // 排序
-    .sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'type':
-          comparison = a.type.localeCompare(b.type);
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-      }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-};

@@ -303,6 +303,7 @@ export async function registerUploadedImage(
 export async function runImageRecipe(
   instruction: string,
   referenceImages: Array<{
+    mediaId?: string; // 优先使用 mediaId // 行级注释说明参数用途
     mediaGenerationId?: string;
     caption?: string;
     mediaCategory?: string;
@@ -335,13 +336,13 @@ export async function runImageRecipe(
   }
 
   const validReferences = referenceImages
-    .filter((ref) => ref.mediaGenerationId && ref.mediaGenerationId.trim())
+    .filter((ref) => (ref.mediaId && ref.mediaId.trim()) || (ref.mediaGenerationId && ref.mediaGenerationId.trim()))
     .map((ref) => ({
-      mediaGenerationId: ref.mediaGenerationId as string,
+      mediaId: ref.mediaId || ref.mediaGenerationId, // 优先使用 mediaId，Flow 要求传这个 // 行级注释说明用途
     }));
 
   if (validReferences.length < 2) {
-    throw new Error('至少需要两张包含 mediaGenerationId 的图片才能进行多图编辑'); // 行级注释说明参数要求
+    throw new Error('至少需要两张包含 mediaId 或 mediaGenerationId 的图片才能进行多图编辑'); // 行级注释说明参数要求
   }
 
   let sessionId = apiConfig.sessionId;
@@ -396,7 +397,7 @@ export async function imageToImage(
   sourceImageUrl: string,
   aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
   caption: string = '',
-  originalMediaGenerationId?: string,
+  originalMediaId?: string, // 改名：现在接收 mediaId（优先）或 mediaGenerationId // 行级注释说明参数用途
   count?: number // 生成数量 (1-4)
 ): Promise<{
   imageUrl: string;
@@ -422,8 +423,8 @@ export async function imageToImage(
   if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
     throw new Error('图生图需要配置 Flow Project ID，请在右上角设置中配置');
   }
-  if (!originalMediaGenerationId || !originalMediaGenerationId.trim()) {
-    throw new Error('图生图需要提供原始 mediaGenerationId');
+  if (!originalMediaId || !originalMediaId.trim()) {
+    throw new Error('图生图需要提供原始图片的 mediaId 或 mediaGenerationId');
   }
 
   let sessionId = apiConfig.sessionId;
@@ -441,7 +442,7 @@ export async function imageToImage(
     projectId: apiConfig.projectId,
     sessionId,
     proxy: apiConfig.proxy,
-    references: [{ mediaGenerationId: originalMediaGenerationId }],
+    references: [{ mediaId: originalMediaId }], // 传 mediaId 给 Flow API // 行级注释说明用途
     count: count ?? apiConfig.generationCount ?? 1, // 使用传入的 count 或配置的 generationCount
   });
   const editContextUpdates: Partial<typeof apiConfig> = {};

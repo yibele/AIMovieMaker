@@ -81,11 +81,11 @@ export async function POST(request: NextRequest) {
         ? references
             .filter(
               (ref: any) =>
-                typeof ref?.mediaGenerationId === 'string' &&
-                ref.mediaGenerationId.trim().length > 0
+                (typeof ref?.mediaId === 'string' && ref.mediaId.trim().length > 0) ||
+                (typeof ref?.mediaGenerationId === 'string' && ref.mediaGenerationId.trim().length > 0)
             )
             .map((ref: any) => ({
-              name: ref.mediaGenerationId,
+              name: ref.mediaId || ref.mediaGenerationId, // 优先使用 mediaId，图生图时 Flow 要求传这个字段 // 行级注释说明字段用途
               imageInputType: 'IMAGE_INPUT_TYPE_REFERENCE',
             }))
         : [];

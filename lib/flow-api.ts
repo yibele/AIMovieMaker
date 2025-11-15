@@ -279,7 +279,7 @@ export async function generateImageWithFlow(params: {
   sessionId: string;
   proxy?: string;
   seed?: number;
-  references?: Array<{ mediaGenerationId: string }>;
+  references?: Array<{ mediaId?: string; mediaGenerationId?: string }>; // 支持传 mediaId 或 mediaGenerationId // 行级注释说明参数用途
   count?: number; // 生成数量 (1-4)
 }): Promise<{
   imageUrl: string;

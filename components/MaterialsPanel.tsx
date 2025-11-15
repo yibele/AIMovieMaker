@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List } from 'lucide-react';
-import { useMaterialsStore, useFilteredMaterials } from '@/lib/materials-store';
+import { useState, useCallback, useMemo } from 'react';
+import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw } from 'lucide-react';
+import { useMaterialsStore } from '@/lib/materials-store';
+import { useCanvasStore } from '@/lib/store';
+import { loadMaterialsFromProject } from '@/lib/project-materials';
 import { MaterialItem, MaterialType } from '@/lib/types-materials';
 import { MaterialsIcon } from './icons/MaterialsIcon';
 
@@ -17,6 +19,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     materials,
     selectedMaterials,
     isLoading,
+    loadingMessage,
     searchQuery,
     activeTab,
     sortBy,
@@ -31,14 +34,67 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     removeMaterial,
     addToCanvas,
   } = useMaterialsStore();
+  const currentProjectId = useCanvasStore((state) => state.apiConfig.projectId);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  const filteredMaterials = useFilteredMaterials();
+  // 使用 useMemo 进行过滤和排序，避免无限循环
+  const filteredMaterials = useMemo(() => {
+    return materials
+      .filter((m) => {
+        if (!currentProjectId) return true;
+        if (!m.projectId) return true;
+        return m.projectId === currentProjectId;
+      })
+      // 按类型过滤
+      .filter((m) => m.type === activeTab)
+      // 按搜索词过滤
+      .filter((m) =>
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      // 排序
+      .sort((a, b) => {
+        let comparison = 0;
+
+        switch (sortBy) {
+          case 'name':
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case 'type':
+            comparison = a.type.localeCompare(b.type);
+            break;
+          case 'createdAt':
+            comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            break;
+        }
+
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+  }, [materials, currentProjectId, searchQuery, activeTab, sortBy, sortOrder]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // 处理搜索
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, [setSearchQuery]);
+
+  const handleSyncMaterials = useCallback(async () => {
+    if (!currentProjectId) {
+      setSyncError('请先在 API 设置中选择项目 ID');
+      return;
+    }
+    setSyncError(null);
+    setIsSyncing(true);
+    try {
+      await loadMaterialsFromProject(currentProjectId);
+    } catch (error) {
+      console.error('同步素材失败:', error);
+      setSyncError(error instanceof Error ? error.message : '同步素材失败，请稍后再试');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [currentProjectId]);
 
   // 处理素材点击（添加到画布）
   const handleMaterialClick = useCallback(
@@ -222,8 +278,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         </div>
 
         {/* 工具栏 */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200/50">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200/50 flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* 视图切换 */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
@@ -257,27 +313,58 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             </select>
           </div>
 
-          {/* 批量操作 */}
-          {selectedMaterials.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
-                已选 {selectedMaterials.length} 项
-              </span>
-              <button
-                onClick={handleBatchDelete}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={clearSelection}
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                清除
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSyncMaterials}
+              disabled={!currentProjectId || isLoading || isSyncing}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all ${
+                !currentProjectId || isLoading || isSyncing
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+              title={currentProjectId ? '同步当前项目素材' : '请先选择项目 ID'}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  isLoading || isSyncing ? 'animate-spin text-gray-500' : 'text-gray-600'
+                }`}
+              />
+              {isLoading || isSyncing ? '同步中...' : '同步素材'}
+            </button>
+
+            {/* 批量操作 */}
+            {selectedMaterials.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  已选 {selectedMaterials.length} 项
+                </span>
+                <button
+                  onClick={handleBatchDelete}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={clearSelection}
+                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  清除
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {(loadingMessage || syncError) && (
+          <div className="px-4 py-2 text-xs">
+            {loadingMessage && (
+              <p className="text-gray-500">{loadingMessage}</p>
+            )}
+            {syncError && (
+              <p className="text-red-500 mt-1">{syncError}</p>
+            )}
+          </div>
+        )}
 
         {/* 素材列表 */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -285,7 +372,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-500">加载中...</p>
+                <p className="text-sm text-gray-500">{loadingMessage || '加载中...'}</p>
               </div>
             </div>
           ) : filteredMaterials.length === 0 ? (

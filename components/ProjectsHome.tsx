@@ -9,6 +9,7 @@ import {
   Trash2,
   Palette,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCanvasStore } from '@/lib/store';
 import SettingsPanel from '@/components/SettingsPanel';
 
@@ -246,6 +247,7 @@ const formatDisplayTime = (value: string) => {
 };
 
 export default function ProjectsHome() {
+  const router = useRouter();
   const apiConfig = useCanvasStore((state) => state.apiConfig); // 读取 API 配置
   const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen); // 设置面板控制
 
@@ -409,7 +411,7 @@ export default function ProjectsHome() {
   }, [fetchProjects, isHydrated]);
 
   const handleOpenProject = (projectId: string) => {
-    console.log('打开项目:', projectId); // TODO: 路由跳转到画布
+    router.push(`/canvas/project/${projectId}`);
   };
 
   const ensureApiConfig = useCallback(() => {
@@ -541,7 +543,7 @@ export default function ProjectsHome() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => window.location.href = '/canvas'}
+                onClick={() => router.push('/canvas')}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-medium text-white shadow hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
               >
                 <Palette className="h-4 w-4" />

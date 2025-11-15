@@ -229,7 +229,7 @@ export default function AIInputPanel() {
             selectedImage.src,
             aspectRatio,
             '',
-            selectedImage.mediaGenerationId,
+            selectedImage.mediaId || selectedImage.mediaGenerationId, // 优先使用 mediaId，Flow 图生图要求传这个 // 行级注释说明用途
             generationCount
           );
           

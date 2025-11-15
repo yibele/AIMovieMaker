@@ -119,6 +119,11 @@ export async function GET(request: NextRequest) {
     const normalizedWorkflows = workflows.map((workflow: any) => {
       const workflowStep = workflow.workflowSteps?.[0];
       const mediaGeneration = workflowStep?.mediaGenerations?.[0];
+      const mediaGenerationId =
+        mediaGeneration?.mediaGenerationId?.mediaKey ||
+        mediaGeneration?.mediaGenerationId?.mediaGenerationId ||
+        mediaGeneration?.mediaId ||
+        workflow.workflowId;
 
       if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
         // 视频数据格式
@@ -127,6 +132,8 @@ export async function GET(request: NextRequest) {
           title: mediaGeneration?.mediaExtraData?.mediaTitle,
           createTime: workflowStep?.workflowStepLog?.stepCreationTime,
           mediaType: 'VIDEO',
+          mediaGenerationId,
+          mediaId: mediaGeneration?.mediaId,
           videoData: {
             fifeUrl: mediaGeneration?.mediaData?.videoData?.fifeUri,
             thumbnailUrl: mediaGeneration?.mediaData?.videoData?.servingBaseUri,
@@ -143,6 +150,8 @@ export async function GET(request: NextRequest) {
           title: mediaGeneration?.mediaData?.mediaTitle,
           createTime: workflowStep?.workflowStepLog?.stepCreationTime,
           mediaType: 'IMAGE',
+          mediaGenerationId,
+          mediaId: mediaGeneration?.mediaId,
           imageData: {
             fifeUrl: mediaGeneration?.mediaData?.imageData?.fifeUri,
             prompt: workflowStep?.workflowStepLog?.requestData?.promptInputs?.[0]?.textInput,
