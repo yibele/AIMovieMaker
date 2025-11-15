@@ -163,9 +163,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
         <NodeToolbar
           isVisible={selected}
           position={Position.Top}
-          align="end"
-          offset={12}
-          className="flex items-center gap-1 bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200 p-1"
+          align="center"
+          offset={15}
+          className="flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2"
           onMouseDown={(e) => {
             e.stopPropagation();
           }}
@@ -177,10 +177,11 @@ function VideoNode({ data, selected, id }: NodeProps) {
               handleRegenerate();
             }}
             disabled={videoData.status === 'generating' || videoData.status === 'queued'}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={videoData.status === 'ready' ? '重新生成' : '生成/重新生成'}
           >
             <RotateCcw className="w-3 h-3" />
+            <span>重新生成</span>
           </button>
 
           {/* 下载视频 - 只在有视频源时可用 */}
@@ -190,10 +191,11 @@ function VideoNode({ data, selected, id }: NodeProps) {
               handleDownload();
             }}
             disabled={!videoData.src}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="下载视频"
           >
             <Download className="w-3 h-3" />
+            <span>下载</span>
           </button>
 
           {/* 超清放大 - 只在有视频源时可用 */}
@@ -203,10 +205,11 @@ function VideoNode({ data, selected, id }: NodeProps) {
               handleUpscale();
             }}
             disabled={!videoData.src}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="超清放大"
           >
             <Sparkles className="w-3 h-3" />
+            <span>超清放大</span>
           </button>
 
           {/* 删除 - 始终可用 */}
@@ -215,10 +218,11 @@ function VideoNode({ data, selected, id }: NodeProps) {
               e.stopPropagation();
               handleDelete();
             }}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="删除"
           >
             <Trash2 className="w-3 h-3" />
+            <span>删除</span>
           </button>
         </NodeToolbar>
 
