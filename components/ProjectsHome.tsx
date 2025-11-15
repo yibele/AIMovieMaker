@@ -614,8 +614,9 @@ export default function ProjectsHome() {
             <div className="relative h-full flex flex-col items-start justify-center px-8">
               <div className="max-w-3xl">
                 {/* 标题 */}
-                <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight tracking-[0.05em] uppercase drop-shadow-2xl">
-                  Creative Studio
+                <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 leading-tight tracking-[0.03em] drop-shadow-2xl">
+                  <span className="capitalize">Morpheus</span>{' '}
+                  <span className="text-3xl md:text-4xl font-medium tracking-[0.06em]">Studio</span>
                 </h1>
 
                 {/* 副标题 */}
