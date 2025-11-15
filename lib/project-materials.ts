@@ -172,7 +172,7 @@ async function loadImagesFromProject(
   }));
 
   // 过滤掉无效的素材
-  const validImages = imageMaterials.filter(img => img.src);
+  const validImages = imageMaterials.filter((img: MaterialItem) => img.src);
 
   if (validImages.length > 0) {
     setMessage?.(`已加载 ${validImages.length} 个图片素材`);
@@ -244,7 +244,7 @@ async function loadVideosFromProject(
   });
 
   // 过滤掉无效的素材
-  const validVideos = videoMaterials.filter(vid => vid.src);
+  const validVideos = videoMaterials.filter((vid: MaterialItem) => vid.src);
 
   if (validVideos.length > 0) {
     setMessage?.(`已加载 ${validVideos.length} 个视频素材`);

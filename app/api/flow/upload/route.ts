@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         rawImageBytes: sanitizedBase64,
         mimeType,
         isUserUploaded: true,
-        aspectRatio: normalizeAspectRatio(aspectRatio),
+        aspectRatio: normalizeImageAspectRatio(aspectRatio),
       },
       clientContext: {
         sessionId: trimmedSessionId,
