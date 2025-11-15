@@ -36,6 +36,7 @@ interface CachedProjectsData {
   projects: ProjectCard[];
   timestamp: number;
   cursor?: string;
+  thumbnailCache?: Record<string, string>; // 缓存缩略图 URL
 }
 
 const PROJECT_PAGE_SIZE = 20; // 默认分页大小
@@ -77,6 +78,15 @@ const getCachedProjects = (): CachedProjectsData | null => {
       return null;
     }
 
+    // 如果有缩略图缓存，更新全局缓存
+    if (data.thumbnailCache) {
+      Object.entries(data.thumbnailCache).forEach(([key, url]) => {
+        if (!mediaUrlCache.has(key)) {
+          mediaUrlCache.set(key, url);
+        }
+      });
+    }
+
     return data;
   } catch (error) {
     console.error('Failed to load cached projects:', error);
@@ -89,10 +99,19 @@ const setCachedProjects = (projects: ProjectCard[], cursor?: string): void => {
   if (typeof window === 'undefined') return;
 
   try {
+    // 收集当前的缩略图缓存
+    const thumbnailCache: Record<string, string> = {};
+    projects.forEach(project => {
+      if (project.thumbnailMediaKey && project.thumbnailUrl) {
+        thumbnailCache[project.thumbnailMediaKey] = project.thumbnailUrl;
+      }
+    });
+
     const data: CachedProjectsData = {
       projects,
       timestamp: Date.now(),
-      cursor
+      cursor,
+      thumbnailCache
     };
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
   } catch (error) {
@@ -220,7 +239,6 @@ export default function ProjectsHome() {
   const [cursor, setCursor] = useState<string | null>(null); // 下一页游标
   const [isLoading, setIsLoading] = useState(false); // 列表加载态
   const [isCreating, setIsCreating] = useState(false); // 创建按钮加载态
-  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null); // 当前删除的项目
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // 错误提示
   const [isHydrated, setIsHydrated] = useState(false); // 客户端渲染完成
   const [isRefreshing, setIsRefreshing] = useState(false); // 后台刷新状态
@@ -315,20 +333,36 @@ export default function ProjectsHome() {
     const loadThumbnails = async () => {
       if (!apiConfig.bearerToken || projects.length === 0) return;
 
-      // 遍历所有项目，为有 thumbnailMediaKey 但没有 thumbnailUrl 的项目加载缩略图
-      const updatedProjects = await Promise.all(
-        projects.map(async (project) => {
-          if (project.thumbnailMediaKey && !project.thumbnailUrl) {
+      // 找出需要加载缩略图的项目
+      const projectsNeedingThumbnails = projects.filter(
+        project => project.thumbnailMediaKey && !project.thumbnailUrl && !mediaUrlCache.has(`${project.thumbnailMediaKey}_failed`)
+      );
+
+      if (projectsNeedingThumbnails.length === 0) return;
+
+      // 批量加载缩略图（限制并发数）
+      const CONCURRENT_LIMIT = 3;
+      const updatedProjects = [...projects];
+
+      for (let i = 0; i < projectsNeedingThumbnails.length; i += CONCURRENT_LIMIT) {
+        const batch = projectsNeedingThumbnails.slice(i, i + CONCURRENT_LIMIT);
+
+        await Promise.all(
+          batch.map(async (project) => {
             const thumbnailUrl = await buildThumbnailUrl(
-              project.thumbnailMediaKey,
+              project.thumbnailMediaKey!,
               apiConfig.bearerToken,
               apiConfig.proxy
             );
-            return { ...project, thumbnailUrl };
-          }
-          return project;
-        })
-      );
+
+            // 更新项目数组中的对应项
+            const index = updatedProjects.findIndex(p => p.id === project.id);
+            if (index !== -1 && thumbnailUrl) {
+              updatedProjects[index] = { ...updatedProjects[index], thumbnailUrl };
+            }
+          })
+        );
+      }
 
       // 检查是否有更新
       const hasChanges = updatedProjects.some(
@@ -337,6 +371,8 @@ export default function ProjectsHome() {
 
       if (hasChanges) {
         setProjects(updatedProjects);
+        // 更新缓存
+        setCachedProjects(updatedProjects);
       }
     };
 
@@ -349,7 +385,6 @@ export default function ProjectsHome() {
     }
 
     // 组件挂载时，如果有缓存则后台刷新，否则正常加载
-    const cachedData = getCachedProjects();
     fetchProjects(); // 总是调用 fetchProjects，它会自动判断是否需要后台刷新
   }, [fetchProjects, isHydrated]);
 
@@ -421,9 +456,17 @@ export default function ProjectsHome() {
         return; // 用户取消
       }
 
-      setDeletingProjectId(projectId); // 标记正在删除的项目
-      setErrorMessage(null); // 清理错误
+      // 乐观更新：立即从列表中移除
+      const originalProjects = projects;
+      const updatedProjects = projects.filter((project) => project.id !== projectId);
 
+      // 立即更新 UI
+      setProjects(updatedProjects);
+
+      // 立即更新缓存
+      setCachedProjects(updatedProjects);
+
+      // 后台发送删除请求
       try {
         const payload: Record<string, string> = {
           cookie: apiConfig.cookie,
@@ -442,25 +485,18 @@ export default function ProjectsHome() {
 
         const data = await response.json(); // 解析结果
 
+        // 即使删除失败，也不恢复 UI（已删除的项目不应该再显示）
         if (!response.ok || !data?.success) {
-          throw new Error(data?.error || data?.message || '删除项目失败'); // 抛出错误
+          console.error('删除请求失败:', data?.error || data?.message || '删除项目失败');
+          // 可以选择显示一个非阻塞的错误提示
+          // 但不恢复 UI，因为用户已经确认删除
         }
-
-        setProjects((prev) => {
-          const updated = prev.filter((project) => project.id !== projectId);
-          // 更新缓存
-          setCachedProjects(updated);
-          return updated;
-        }); // 从列表中移除
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : '删除项目失败'
-        ); // 展示错误
-      } finally {
-        setDeletingProjectId(null); // 重置删除状态
+        console.error('删除请求出错:', error);
+        // 同样不恢复 UI，但记录错误
       }
     },
-    [apiConfig.cookie, apiConfig.proxy, ensureApiConfig]
+    [projects, apiConfig.cookie, apiConfig.proxy, ensureApiConfig]
   );
 
   const skeletons = useMemo(() => Array.from({ length: 6 }), []); // 骨架屏占位
@@ -616,15 +652,8 @@ export default function ProjectsHome() {
                           event.stopPropagation();
                           handleDeleteProject(project.id, project.title);
                         }}
-                        disabled={deletingProjectId === project.id}
                       >
-                        <Trash2
-                          className={`h-4 w-4 ${
-                            deletingProjectId === project.id
-                              ? 'animate-pulse'
-                              : ''
-                          }`}
-                        />
+                        <Trash2 className="h-4 w-4 hover:scale-110 transition-transform" />
                       </button>
                     </div>
 
