@@ -52,7 +52,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         className={`relative rounded-xl transition-all w-full h-full ${
           selected
             ? 'ring-2 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
-            : 'border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+            : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
         }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
@@ -67,10 +67,10 @@ function ImageNode({ data, selected, id }: NodeProps) {
           />
         )}
 
-        <div className="absolute inset-0 rounded-[20px] overflow-hidden bg-slate-900/5">
+        <div className="absolute inset-0 rounded-xl overflow-hidden">
           {isProcessing ? (
             <div className="flex h-full w-full items-center justify-center bg-white">
-              <div className="loading-glow w-[85%] h-[85%] rounded-[18px]" data-variant="compact" />
+              <div className="loading-glow w-[85%] h-[85%] rounded-xl" data-variant="compact" />
             </div>
           ) : showBaseImage ? (
             <img
