@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     };
 
     const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+      resolveProxyAgent(proxy || undefined);
 
     if (agent) {
       axiosConfig.httpsAgent = agent;

@@ -270,12 +270,11 @@ export default function ProjectsHome() {
 
   const cookieConfigured = Boolean(apiConfig.cookie?.trim());
   const hasCookie = isHydrated && cookieConfigured; // 仅在客户端判断 Cookie
-  const hasBearerToken = Boolean(apiConfig.bearerToken?.trim()); // 检查是否有 Bearer Token
+  // const hasBearerToken = Boolean(apiConfig.bearerToken?.trim()); // TODO: 未来可能需要，暂时未使用
 
   const fetchProjects = useCallback(async (forceRefresh = false) => {
     if (!hasCookie) {
       setProjects([]); // 清空项目列表
-      setCursor(null); // 清空游标
       return;
     }
 

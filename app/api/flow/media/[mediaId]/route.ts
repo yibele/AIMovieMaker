@@ -68,7 +68,7 @@ export async function GET(
     };
 
     // 配置代理（如果提供）
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } = resolveProxyAgent(proxy);
+    const { agent, proxyUrl: resolvedProxyUrl, proxyType } = resolveProxyAgent(proxy || undefined);
     
     if (agent) {
       axiosConfig.httpsAgent = agent; // 为 HTTPS 请求设置代理 agent
