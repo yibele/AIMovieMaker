@@ -31,7 +31,16 @@ interface ProjectCard {
   thumbnailMediaKey?: string; // 保存原始 mediaKey，用于后续获取 URL
 }
 
+// 缓存数据结构
+interface CachedProjectsData {
+  projects: ProjectCard[];
+  timestamp: number;
+  cursor?: string;
+}
+
 const PROJECT_PAGE_SIZE = 20; // 默认分页大小
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 缓存有效期：5分钟
+const CACHE_KEY = 'flow_projects_cache'; // localStorage 键名
 
 // 生成符合 Flow 命名习惯的项目标题
 const formatProjectTitle = () => {
@@ -50,6 +59,46 @@ const formatProjectTitle = () => {
 
 // 媒体 URL 缓存
 const mediaUrlCache = new Map<string, string>();
+
+// 缓存相关辅助函数
+const getCachedProjects = (): CachedProjectsData | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    const data = JSON.parse(cached) as CachedProjectsData;
+    const now = Date.now();
+
+    // 检查缓存是否过期
+    if (now - data.timestamp > CACHE_EXPIRY_TIME) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to load cached projects:', error);
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+};
+
+const setCachedProjects = (projects: ProjectCard[], cursor?: string): void => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const data: CachedProjectsData = {
+      projects,
+      timestamp: Date.now(),
+      cursor
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('Failed to cache projects:', error);
+  }
+};
 
 // 获取媒体详情并返回缩略图 URL
 const fetchThumbnailUrl = async (
@@ -174,24 +223,40 @@ export default function ProjectsHome() {
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null); // 当前删除的项目
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // 错误提示
   const [isHydrated, setIsHydrated] = useState(false); // 客户端渲染完成
+  const [isRefreshing, setIsRefreshing] = useState(false); // 后台刷新状态
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false); // 显示更新通知
 
   useEffect(() => {
     setIsHydrated(true); // 仅在客户端设置为 true
+
+    // 立即加载缓存数据
+    const cachedData = getCachedProjects();
+    if (cachedData && cachedData.projects.length > 0) {
+      setProjects(cachedData.projects);
+      setCursor(cachedData.cursor || null);
+    }
   }, []);
 
   const cookieConfigured = Boolean(apiConfig.cookie?.trim());
   const hasCookie = isHydrated && cookieConfigured; // 仅在客户端判断 Cookie
   const hasBearerToken = Boolean(apiConfig.bearerToken?.trim()); // 检查是否有 Bearer Token
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (forceRefresh = false) => {
     if (!hasCookie) {
       setProjects([]); // 清空项目列表
       setCursor(null); // 清空游标
       return;
     }
 
-    setIsLoading(true); // 进入加载状态
-    setErrorMessage(null); // 清理错误提示
+    // 如果不是强制刷新，且有缓存，则进行后台刷新
+    const cachedData = getCachedProjects();
+    if (!forceRefresh && cachedData && cachedData.projects.length > 0) {
+      setIsRefreshing(true); // 设置后台刷新状态
+      setErrorMessage(null);
+    } else {
+      setIsLoading(true); // 进入加载状态
+      setErrorMessage(null); // 清理错误提示
+    }
 
     try {
       const params = new URLSearchParams({
@@ -215,16 +280,33 @@ export default function ProjectsHome() {
       const normalizedProjects = (data?.projects || []).map(
         mapFlowProjectToCard
       ); // 转换数据
-      setProjects(normalizedProjects); // 更新项目列表
+
+      // 更新项目列表
+      setProjects(normalizedProjects);
       setCursor(data?.cursor ?? null); // 保存下一页游标
+
+      // 缓存新数据
+      setCachedProjects(normalizedProjects, data?.cursor);
+
+      // 如果是后台刷新，显示更新通知
+      if (!forceRefresh && cachedData && cachedData.projects.length > 0) {
+        setShowUpdateNotification(true);
+        setTimeout(() => setShowUpdateNotification(false), 3000); // 3秒后自动隐藏
+      }
     } catch (error) {
-      setProjects([]); // 出错时清空列表
-      setCursor(null); // 清空游标
-      setErrorMessage(
-        error instanceof Error ? error.message : '无法获取项目列表'
-      ); // 显示错误提示
+      // 如果是后台刷新失败，不显示错误，保持缓存数据
+      if (!forceRefresh && cachedData && cachedData.projects.length > 0) {
+        console.error('Background refresh failed:', error);
+      } else {
+        setProjects([]); // 出错时清空列表
+        setCursor(null); // 清空游标
+        setErrorMessage(
+          error instanceof Error ? error.message : '无法获取项目列表'
+        ); // 显示错误提示
+      }
     } finally {
       setIsLoading(false); // 退出加载态
+      setIsRefreshing(false); // 退出后台刷新态
     }
   }, [apiConfig.cookie, apiConfig.proxy, hasCookie]);
 
@@ -265,7 +347,10 @@ export default function ProjectsHome() {
     if (!isHydrated) {
       return; // 避免 SSR 阶段触发
     }
-    fetchProjects(); // 组件挂载及配置变化时拉取数据
+
+    // 组件挂载时，如果有缓存则后台刷新，否则正常加载
+    const cachedData = getCachedProjects();
+    fetchProjects(); // 总是调用 fetchProjects，它会自动判断是否需要后台刷新
   }, [fetchProjects, isHydrated]);
 
   const handleOpenProject = (projectId: string) => {
@@ -315,7 +400,7 @@ export default function ProjectsHome() {
         throw new Error(data?.error || data?.message || '新建项目失败'); // 统一错误
       }
 
-      await fetchProjects(); // 创建成功后刷新列表
+      await fetchProjects(true); // 创建成功后强制刷新列表
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : '新建项目失败'
@@ -361,9 +446,12 @@ export default function ProjectsHome() {
           throw new Error(data?.error || data?.message || '删除项目失败'); // 抛出错误
         }
 
-        setProjects((prev) =>
-          prev.filter((project) => project.id !== projectId)
-        ); // 从列表中移除
+        setProjects((prev) => {
+          const updated = prev.filter((project) => project.id !== projectId);
+          // 更新缓存
+          setCachedProjects(updated);
+          return updated;
+        }); // 从列表中移除
       } catch (error) {
         setErrorMessage(
           error instanceof Error ? error.message : '删除项目失败'
@@ -405,14 +493,14 @@ export default function ProjectsHome() {
                 API 设置
               </button>
               <button
-                onClick={fetchProjects}
+                onClick={() => fetchProjects(true)} // 强制刷新
                 disabled={!hasCookie || isLoading}
                 className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                  className={`h-4 w-4 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`}
                 />
-                {isLoading ? '刷新中...' : '刷新列表'}
+                {isLoading ? '刷新中...' : isRefreshing ? '更新中...' : '刷新列表'}
               </button>
             </div>
           </div>
@@ -577,6 +665,18 @@ export default function ProjectsHome() {
         {/* 底部间距 */}
         <div className="h-32" />
       </div>
+
+      {/* 更新通知 */}
+      {showUpdateNotification && (
+        <div className="fixed top-4 right-4 z-50 transition-all duration-300 ease-out animate-pulse">
+          <div className="rounded-xl bg-green-500 px-4 py-3 text-white shadow-lg">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              <span className="text-sm font-medium">项目列表已更新</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 底部中间悬浮的新建项目按钮 - 大卡片式毛玻璃 */}
       <div className="fixed bottom-12 left-1/2 z-50 -translate-x-1/2">
