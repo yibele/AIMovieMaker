@@ -29,6 +29,7 @@ import TextNode from './nodes/TextNode';
 import VideoNode from './nodes/VideoNode';
 import FloatingToolbar from './FloatingToolbar';
 import CanvasNavigation from './CanvasNavigation';
+import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
@@ -951,6 +952,13 @@ function CanvasContent() {
     <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50">
       {/* 顶部导航 */}
       <CanvasNavigation />
+
+      {/* 左侧工具栏 - 节点创建 */}
+      <Toolbar />
+
+      {/* 右侧工具栏 - 功能按钮 */}
+      <RightToolbar />
+
       <ReactFlow
         className="custom-theme"
         nodes={reactFlowNodes}
