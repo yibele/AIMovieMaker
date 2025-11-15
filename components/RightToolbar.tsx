@@ -16,7 +16,7 @@ export default function RightToolbar() {
         {/* 素材库 - 最重要的功能 */}
         <button
           onClick={() => setIsMaterialsPanelOpen(true)}
-          className="p-3 rounded-lg transition-all bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600 group"
+          className="p-3 rounded-lg transition-all hover:bg-gray-100 text-gray-700 group border-2 border-gray-300"
           title="素材库"
         >
           <MaterialsIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
