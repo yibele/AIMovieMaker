@@ -211,10 +211,18 @@ const mapFlowProjectToCard = (project: FlowProject, existingProjects?: ProjectCa
   // 查找是否已有该项目（保留现有的缩略图）
   const existingProject = existingProjects?.find(p => p.id === project.projectId);
 
+  // 检查是否有缓存的缩略图
+  let thumbnailUrl = existingProject?.thumbnailUrl;
+
+  // 如果没有缩略图，但 mediaKey 在缓存中，从缓存恢复
+  if (!thumbnailUrl && project.thumbnailMediaKey && mediaUrlCache.has(project.thumbnailMediaKey)) {
+    thumbnailUrl = mediaUrlCache.get(project.thumbnailMediaKey);
+  }
+
   return {
     id: project.projectId,
     title: project.projectTitle || '未命名项目',
-    thumbnailUrl: existingProject?.thumbnailUrl, // 保留现有的缩略图 URL
+    thumbnailUrl, // 可能是 undefined（没有缩略图或未加载）
     thumbnailMediaKey: project.thumbnailMediaKey, // 保存 mediaKey
     createdAt: project.creationTime || new Date().toISOString(),
     sceneCount: project.scenes?.length ?? 0,
@@ -334,23 +342,27 @@ export default function ProjectsHome() {
       setIsLoading(false); // 退出加载态
       setIsRefreshing(false); // 退出后台刷新态
     }
-  }, [apiConfig.cookie, apiConfig.proxy, hasCookie, projects]);
+  }, [apiConfig.cookie, apiConfig.proxy, hasCookie]);
 
   // 异步加载缩略图
   useEffect(() => {
     const loadThumbnails = async () => {
       if (!apiConfig.bearerToken || projects.length === 0) return;
 
-      // 找出需要加载缩略图的项目
+      // 找出需要加载缩略图的项目（有 mediaKey 但没有 URL，且没有失败记录）
       const projectsNeedingThumbnails = projects.filter(
-        project => project.thumbnailMediaKey && !project.thumbnailUrl && !mediaUrlCache.has(`${project.thumbnailMediaKey}_failed`)
+        project =>
+          project.thumbnailMediaKey &&
+          !project.thumbnailUrl &&
+          !mediaUrlCache.has(`${project.thumbnailMediaKey}_failed`) &&
+          !mediaUrlCache.has(project.thumbnailMediaKey) // 也没有成功的缓存
       );
 
       if (projectsNeedingThumbnails.length === 0) return;
 
       // 批量加载缩略图（限制并发数）
       const CONCURRENT_LIMIT = 3;
-      const updatedProjects = [...projects];
+      const updates: { projectId: string; thumbnailUrl?: string }[] = [];
 
       for (let i = 0; i < projectsNeedingThumbnails.length; i += CONCURRENT_LIMIT) {
         const batch = projectsNeedingThumbnails.slice(i, i + CONCURRENT_LIMIT);
@@ -363,29 +375,29 @@ export default function ProjectsHome() {
               apiConfig.proxy
             );
 
-            // 更新项目数组中的对应项
-            const index = updatedProjects.findIndex(p => p.id === project.id);
-            if (index !== -1 && thumbnailUrl) {
-              updatedProjects[index] = { ...updatedProjects[index], thumbnailUrl };
+            if (thumbnailUrl) {
+              updates.push({ projectId: project.id, thumbnailUrl });
             }
           })
         );
       }
 
-      // 检查是否有更新
-      const hasChanges = updatedProjects.some(
-        (project, index) => project.thumbnailUrl !== projects[index].thumbnailUrl
-      );
-
-      if (hasChanges) {
-        setProjects(updatedProjects);
-        // 更新缓存
-        setCachedProjects(updatedProjects);
+      // 批量更新项目
+      if (updates.length > 0) {
+        setProjects(prev => {
+          const updated = prev.map(project => {
+            const update = updates.find(u => u.projectId === project.id);
+            return update ? { ...project, thumbnailUrl: update.thumbnailUrl } : project;
+          });
+          // 更新缓存
+          setCachedProjects(updated);
+          return updated;
+        });
       }
     };
 
     loadThumbnails();
-  }, [projects.map(p => p.id).join(','), apiConfig.bearerToken]);
+  }, [projects.length, apiConfig.bearerToken]); // 改为依赖数组，避免死循环
 
   useEffect(() => {
     if (!isHydrated) {
