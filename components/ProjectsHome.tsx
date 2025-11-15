@@ -207,14 +207,19 @@ const buildThumbnailUrl = async (
 };
 
 // 将 Flow 原始数据映射为卡片数据
-const mapFlowProjectToCard = (project: FlowProject): ProjectCard => ({
-  id: project.projectId,
-  title: project.projectTitle || '未命名项目',
-  thumbnailUrl: undefined, // 初始化为 undefined，稍后异步获取
-  thumbnailMediaKey: project.thumbnailMediaKey, // 保存 mediaKey
-  createdAt: project.creationTime || new Date().toISOString(),
-  sceneCount: project.scenes?.length ?? 0,
-});
+const mapFlowProjectToCard = (project: FlowProject, existingProjects?: ProjectCard[]): ProjectCard => {
+  // 查找是否已有该项目（保留现有的缩略图）
+  const existingProject = existingProjects?.find(p => p.id === project.projectId);
+
+  return {
+    id: project.projectId,
+    title: project.projectTitle || '未命名项目',
+    thumbnailUrl: existingProject?.thumbnailUrl, // 保留现有的缩略图 URL
+    thumbnailMediaKey: project.thumbnailMediaKey, // 保存 mediaKey
+    createdAt: project.creationTime || new Date().toISOString(),
+    sceneCount: project.scenes?.length ?? 0,
+  };
+};
 
 // 统一的时间展示格式
 const formatDisplayTime = (value: string) => {
@@ -295,9 +300,12 @@ export default function ProjectsHome() {
         throw new Error(data?.error || '获取项目列表失败'); // 抛出接口错误
       }
 
+      // 保留现有缩略图
+      const currentProjects = projects.length > 0 ? projects : (cachedData?.projects || []);
+
       const normalizedProjects = (data?.projects || []).map(
-        mapFlowProjectToCard
-      ); // 转换数据
+        (project: FlowProject) => mapFlowProjectToCard(project, currentProjects)
+      ); // 转换数据，保留现有缩略图
 
       // 更新项目列表
       setProjects(normalizedProjects);
@@ -326,7 +334,7 @@ export default function ProjectsHome() {
       setIsLoading(false); // 退出加载态
       setIsRefreshing(false); // 退出后台刷新态
     }
-  }, [apiConfig.cookie, apiConfig.proxy, hasCookie]);
+  }, [apiConfig.cookie, apiConfig.proxy, hasCookie, projects]);
 
   // 异步加载缩略图
   useEffect(() => {
@@ -457,7 +465,6 @@ export default function ProjectsHome() {
       }
 
       // 乐观更新：立即从列表中移除
-      const originalProjects = projects;
       const updatedProjects = projects.filter((project) => project.id !== projectId);
 
       // 立即更新 UI
