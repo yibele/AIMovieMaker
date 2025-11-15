@@ -28,6 +28,7 @@ interface ProjectCard {
   thumbnailUrl?: string;
   createdAt: string;
   sceneCount: number;
+  thumbnailMediaKey?: string; // 保存原始 mediaKey，用于后续获取 URL
 }
 
 const PROJECT_PAGE_SIZE = 20; // 默认分页大小
@@ -47,20 +48,104 @@ const formatProjectTitle = () => {
   return `${dateLabel} - ${timeLabel}`; // 合并标题
 };
 
-// 只接受完整 URL 的缩略图地址
-const safeThumbnailUrl = (value?: string | null) => {
-  if (!value) return undefined; // 没有缩略图
-  if (value.startsWith('http')) return value; // 仅允许 http/https
-  return undefined; // 其他格式暂不支持
+// 媒体 URL 缓存
+const mediaUrlCache = new Map<string, string>();
+
+// 获取媒体详情并返回缩略图 URL
+const fetchThumbnailUrl = async (
+  mediaKey: string,
+  bearerToken: string,
+  proxy?: string
+): Promise<string | undefined> => {
+  // 检查缓存
+  if (mediaUrlCache.has(mediaKey)) {
+    return mediaUrlCache.get(mediaKey);
+  }
+
+  // 检查缓存失败的记录（避免重复请求失败的媒体）
+  if (mediaUrlCache.has(`${mediaKey}_failed`)) {
+    return undefined;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      key: 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY', // 从你的 headers 中获取的 API key
+      clientContext: 'PINHOLE',
+      returnUriOnly: 'true'
+    });
+
+    if (proxy) {
+      params.set('proxy', proxy);
+    }
+
+    // 添加超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时
+
+    const response = await fetch(
+      `/api/flow/media/${encodeURIComponent(mediaKey)}?${params.toString()}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`
+        },
+        signal: controller.signal
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.error('Failed to fetch media details:', response.status);
+      // 缓存失败的记录，避免重复请求
+      mediaUrlCache.set(`${mediaKey}_failed`, 'true');
+      return undefined;
+    }
+
+    const data = await response.json();
+
+    // 获取 servingBaseUri 作为缩略图 URL
+    const thumbnailUrl = data?.servingBaseUri || data?.video?.servingBaseUri || data?.image?.servingBaseUri;
+
+    if (thumbnailUrl) {
+      // 缓存结果
+      mediaUrlCache.set(mediaKey, thumbnailUrl);
+      return thumbnailUrl;
+    }
+
+    // 如果没有获取到 URL，也标记为失败
+    mediaUrlCache.set(`${mediaKey}_failed`, 'true');
+    return undefined;
+  } catch (error) {
+    console.error('Error fetching thumbnail URL:', error);
+    // 缓存失败的记录
+    mediaUrlCache.set(`${mediaKey}_failed`, 'true');
+    return undefined;
+  }
+};
+
+// 构建缩略图 URL - 异步版本
+const buildThumbnailUrl = async (
+  mediaKey?: string | null,
+  bearerToken?: string,
+  proxy?: string
+): Promise<string | undefined> => {
+  if (!mediaKey || !bearerToken) return undefined;
+
+  // 如果已经是完整 URL，直接返回
+  if (mediaKey.startsWith('http')) return mediaKey;
+
+  // 调用 fetchThumbnailUrl 获取实际 URL
+  return await fetchThumbnailUrl(mediaKey, bearerToken, proxy);
 };
 
 // 将 Flow 原始数据映射为卡片数据
 const mapFlowProjectToCard = (project: FlowProject): ProjectCard => ({
   id: project.projectId,
   title: project.projectTitle || '未命名项目',
-  thumbnailUrl: safeThumbnailUrl(project.thumbnailMediaKey),
+  thumbnailUrl: undefined, // 初始化为 undefined，稍后异步获取
+  thumbnailMediaKey: project.thumbnailMediaKey, // 保存 mediaKey
   createdAt: project.creationTime || new Date().toISOString(),
-  sceneCount: project.sceneCount ?? project.scenes?.length ?? 0,
+  sceneCount: project.scenes?.length ?? 0,
 });
 
 // 统一的时间展示格式
@@ -96,6 +181,7 @@ export default function ProjectsHome() {
 
   const cookieConfigured = Boolean(apiConfig.cookie?.trim());
   const hasCookie = isHydrated && cookieConfigured; // 仅在客户端判断 Cookie
+  const hasBearerToken = Boolean(apiConfig.bearerToken?.trim()); // 检查是否有 Bearer Token
 
   const fetchProjects = useCallback(async () => {
     if (!hasCookie) {
@@ -141,6 +227,39 @@ export default function ProjectsHome() {
       setIsLoading(false); // 退出加载态
     }
   }, [apiConfig.cookie, apiConfig.proxy, hasCookie]);
+
+  // 异步加载缩略图
+  useEffect(() => {
+    const loadThumbnails = async () => {
+      if (!apiConfig.bearerToken || projects.length === 0) return;
+
+      // 遍历所有项目，为有 thumbnailMediaKey 但没有 thumbnailUrl 的项目加载缩略图
+      const updatedProjects = await Promise.all(
+        projects.map(async (project) => {
+          if (project.thumbnailMediaKey && !project.thumbnailUrl) {
+            const thumbnailUrl = await buildThumbnailUrl(
+              project.thumbnailMediaKey,
+              apiConfig.bearerToken,
+              apiConfig.proxy
+            );
+            return { ...project, thumbnailUrl };
+          }
+          return project;
+        })
+      );
+
+      // 检查是否有更新
+      const hasChanges = updatedProjects.some(
+        (project, index) => project.thumbnailUrl !== projects[index].thumbnailUrl
+      );
+
+      if (hasChanges) {
+        setProjects(updatedProjects);
+      }
+    };
+
+    loadThumbnails();
+  }, [projects.map(p => p.id).join(','), apiConfig.bearerToken]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -262,13 +381,13 @@ export default function ProjectsHome() {
   const shouldShowConfigAlert = isHydrated && !cookieConfigured; // 是否展示配置提示
 
   return (
-    <div className="w-full h-full overflow-auto relative">
+    <div className="w-screen h-screen overflow-auto relative">
       <SettingsPanel />
       {/* 简单的浅灰色背景 */}
-      <div className="min-h-full bg-gray-100">
+      <div className="min-h-screen bg-gray-100">
         {/* 顶部操作条 */}
         <div className="w-full bg-gray-100">
-          <div className="max-w-7xl mx-auto px-8 pt-10 pb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="w-full px-8 pt-10 pb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
                 Projects
@@ -300,7 +419,7 @@ export default function ProjectsHome() {
 
           {/* 配置提示 */}
           {shouldShowConfigAlert && (
-            <div className="max-w-7xl mx-auto px-8 pb-4">
+            <div className="w-full px-8 pb-4">
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-amber-900 shadow-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -308,6 +427,11 @@ export default function ProjectsHome() {
                     <p className="text-sm text-amber-800/90">
                       请先填写 Cookie、Bearer Token 以及代理（可选），然后保存配置。
                     </p>
+                    {!apiConfig.bearerToken && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        注意：Bearer Token 是加载项目缩略图所必需的
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
@@ -323,7 +447,7 @@ export default function ProjectsHome() {
         </div>
         {/* 巨大的 Banner - 视频背景 */}
         <div className="px-8">
-          <div className="relative w-full max-w-7xl mx-auto h-[420px] overflow-hidden rounded-[24px]">
+          <div className="relative w-full h-[420px] overflow-hidden rounded-[24px]">
             {/* 背景视频 - 循环播放 */}
             <video
               autoPlay
@@ -359,7 +483,7 @@ export default function ProjectsHome() {
         </div>
 
         {/* 项目列表区域 */}
-        <div className="w-full mx-auto max-w-7xl px-8 py-12">
+        <div className="w-full px-8 py-12">
           {/* 项目网格 */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {isLoading && projects.length === 0
@@ -422,9 +546,6 @@ export default function ProjectsHome() {
                         <h3 className="truncate text-sm font-semibold text-gray-900">
                           {project.title}
                         </h3>
-                        <span className="text-xs text-gray-400">
-                          {project.sceneCount} 场景
-                        </span>
                       </div>
                       <p className="text-xs text-gray-500">
                         {formatDisplayTime(project.createdAt)}

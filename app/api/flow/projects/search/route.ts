@@ -29,13 +29,17 @@ export async function GET(request: NextRequest) {
     }
 
     // 构建查询参数
-    const queryParams = {
+    const queryParams: any = {
       json: {
         pageSize,
         toolName: 'PINHOLE',
-        cursor,
       },
     };
+
+    // 只有当 cursor 存在时才添加到请求中
+    if (cursor) {
+      queryParams.json.cursor = cursor;
+    }
 
     const queryString = encodeURIComponent(JSON.stringify(queryParams));
 

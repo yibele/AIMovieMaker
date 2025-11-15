@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Media API</title>
+</head>
+<body>
+  <h1>Test Media API</h1>
+  <button onclick="testMediaAPI()">Test Media API</button>
+  <div id="result"></div>
+
+  <script>
+    async function testMediaAPI() {
+      const mediaId = 'CAUSJDAyYWM4NjhiLTkyNWYtNDBjMS05MTg3LWE2ODhiZDAzYTg0ZBokNjlmYzBhN2YtNTRhMC00ODEwLWI4NmQtZGY0NGQ1ZDBjOWEwIgNDQUUqJDVjNDJlMWZmLWE0YzUtNDIyZC04ZGUyLWM4NTljN2JkZTJmMw';
+      const bearerToken = '[YOUR_BEARER_TOKEN]'; // 替换为实际的 Bearer Token
+
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>Loading...</p>';
+
+      try {
+        const params = new URLSearchParams({
+          key: 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY',
+          clientContext: 'PINHOLE',
+          returnUriOnly: 'true'
+        });
+
+        const response = await fetch(
+          `http://localhost:3000/api/flow/media/${encodeURIComponent(mediaId)}?${params.toString()}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${bearerToken}`
+            }
+          }
+        );
+
+        const data = await response.json();
+        resultDiv.innerHTML = `
+          <h2>Response:</h2>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <h2>Error:</h2>
+          <p>${error.message}</p>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
