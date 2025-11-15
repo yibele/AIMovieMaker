@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Settings,
   Trash2,
+  Palette,
 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import SettingsPanel from '@/components/SettingsPanel';
@@ -539,6 +540,13 @@ export default function ProjectsHome() {
               </h2>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.location.href = '/canvas'}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-medium text-white shadow hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
+              >
+                <Palette className="h-4 w-4" />
+                进入画布
+              </button>
               <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
