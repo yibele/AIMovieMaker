@@ -1,0 +1,296 @@
+'use client';
+
+import { memo, useState, useRef, useCallback, useMemo } from 'react';
+import { Handle, Position, type NodeProps, NodeResizer, useReactFlow } from '@xyflow/react';
+import { Play, Pause, Image as ImageIcon, Type } from 'lucide-react'; // 行级注释：引入图标以在连接点中提示用途
+import type { VideoElement } from '@/lib/types';
+import { useCanvasStore } from '@/lib/store';
+
+// 视频节点组件 - 极简设计 + 可缩放
+function VideoNode({ data, selected, id }: NodeProps) {
+  // 将 data 转换为 VideoElement 类型
+  const videoData = data as unknown as VideoElement;
+  
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const updateElement = useCanvasStore((state) => state.updateElement);
+  const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
+  const { getNode } = useReactFlow();
+
+  const generationStatusText = useMemo(() => {
+    const hasPrompt = Boolean(videoData.promptText?.trim());
+    const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
+    if (hasPrompt && !hasFrame) {
+      return '等待首/尾帧';
+    }
+    if (!hasPrompt && hasFrame) {
+      return '等待提示词';
+    }
+    return '等待首尾帧与提示词';
+  }, [videoData.promptText, videoData.startImageId, videoData.endImageId]);
+
+  const canGenerate =
+    Boolean(videoData.readyForGeneration) &&
+    videoData.status !== 'generating' &&
+    videoData.status !== 'queued';
+  const generateButtonLabel =
+    videoData.status === 'ready' || videoData.status === 'error' ? '重新生成' : '生成视频';
+
+  // 处理视频点击 - 播放/暂停
+  const handleVideoClick = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        console.log('🎬 尝试播放视频:', videoData.src);
+        videoRef.current.play().then(() => {
+          console.log('✅ 视频播放成功');
+          setIsPlaying(true);
+        }).catch((err) => {
+          console.error('❌ 视频播放失败:', err);
+          setVideoError(true);
+        });
+      }
+    }
+  };
+
+  // NodeResizer 回调
+  const handleResizeStart = useCallback(() => {
+    // 缩放开始时可以添加逻辑
+  }, []);
+
+  const handleResize = useCallback(() => {
+    // 实时缩放时可以添加逻辑
+  }, []);
+
+  const handleResizeEnd = useCallback((event: any, params: any) => {
+    const newSize = {
+      width: params.width,
+      height: params.height,
+    };
+    
+    // 获取节点的最新位置
+    const node = getNode(id);
+    if (node && node.position) {
+      updateElement(id, {
+        size: newSize,
+        position: node.position,
+      } as Partial<VideoElement>);
+    } else {
+      updateElement(id, { size: newSize } as Partial<VideoElement>);
+    }
+  }, [id, updateElement, getNode]);
+
+  const handleGenerateClick = useCallback(() => {
+    if (!canGenerate) {
+      return;
+    }
+    setIsPlaying(false);
+    setVideoError(false);
+    updateElement(id, {
+      status: 'queued',
+      progress: 0,
+      src: '',
+      thumbnail: '',
+      duration: 0,
+    } as Partial<VideoElement>);
+    triggerVideoGeneration?.(id);
+  }, [canGenerate, id, triggerVideoGeneration, updateElement]);
+
+  const renderLoadingOverlay = useCallback(
+    () => (
+      <div className="absolute inset-0 flex items-center justify-center p-2">
+        <div className="loading-glow w-full h-full rounded-2xl" />
+      </div>
+    ),
+    []
+  );
+
+  return (
+    <>
+      {/* NodeResizer - 极简风格 */}
+      <NodeResizer
+        minWidth={200}
+        minHeight={150}
+        maxWidth={800}
+        maxHeight={600}
+        keepAspectRatio={true}
+        isVisible={selected}
+        color="#3b82f6"
+        handleStyle={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '1px',
+          backgroundColor: '#3b82f6',
+          border: '1px solid white',
+        }}
+        lineStyle={{
+          borderWidth: '1px',
+          borderColor: '#3b82f6',
+        }}
+        onResizeStart={handleResizeStart}
+        onResize={handleResize}
+        onResizeEnd={handleResizeEnd}
+      />
+
+      <div
+        className={`relative rounded-xl transition-all w-full h-full ${
+          selected
+            ? 'ring-2 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+            : 'border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+        }`}
+        style={{ overflow: 'visible', backgroundColor: '#fff' }}
+      >
+        {videoData.readyForGeneration && (
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+            <button
+              onClick={handleGenerateClick}
+              disabled={!canGenerate}
+              className={`px-4 py-1.5 backdrop-blur-xl rounded-xl shadow-2xl border text-xs font-medium transition-all ${
+                canGenerate
+                  ? 'bg-blue-600 text-white hover:bg-blue-500'
+                  : 'bg-gray-700 text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              {generateButtonLabel}
+            </button>
+          </div>
+        )}
+
+        {/* 输入连接点 - 首帧 / 提示词 / 尾帧（左侧竖排） */}
+        <Handle
+          id="start-image"
+          type="target"
+          position={Position.Left}
+          className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-300 !border-2 !border-white !rounded-full shadow-sm"
+          style={{ left: '-6px', top: '44%' ,zIndex:'30'}}
+          isConnectable={true}
+          title="首帧图片" // 行级注释：提供鼠标悬浮提示
+        >
+           <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+        </Handle>
+        <Handle
+          id="prompt-text"
+          type="target"
+          position={Position.Left}
+          className="!flex !items-center !justify-center !w-6 !h-6 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+          style={{ left: '-6px', top: '50%' ,zIndex:'30'}}
+          isConnectable={true}
+          title="提示词文本" // 行级注释：提示该连接点接受文字
+        >
+          <Type className="w-3 h-3 text-white" strokeWidth={2.5} />{/* 行级注释：使用文字图标替代手写 T */}
+        </Handle>
+        <Handle
+          id="end-image"
+          type="target"
+          position={Position.Left}
+          className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-700 !border-2 !border-white !rounded-full shadow-sm"
+          style={{ left: '-6px', top: '56%' ,zIndex:'30'}}
+          isConnectable={true}
+          title="尾帧图片" // 行级注释：说明该连接点用于尾帧
+        >
+          <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />{/* 行级注释：复用图片图标表示尾帧 */}
+        </Handle>
+
+        <div
+          className={`absolute inset-0 rounded-lg overflow-hidden ${
+            videoData.status === 'ready' && !videoError ? 'bg-transparent' : 'bg-black'
+          }`}
+        >
+          {/* 待配置状态 */}
+          {videoData.status === 'pending' && !videoData.readyForGeneration && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black">
+              <div className="text-gray-400 text-xs tracking-wide">{generationStatusText}</div>
+            </div>
+          )}
+
+          {videoData.status === 'pending' && videoData.readyForGeneration && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+              <div className="text-gray-300 text-xs tracking-wide">准备就绪，点击上方生成</div>
+            </div>
+          )}
+
+          {(videoData.status === 'queued' || videoData.status === 'generating') && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="loading-glow w-[85%] h-[85%] rounded-[24px]" data-variant="compact" />
+            </div>
+          )}
+
+          {/* 已完成 - 显示封面，点击播放视频 */}
+          {videoData.status === 'ready' && (
+            <div 
+              className="w-full h-full cursor-pointer relative bg-black"
+              onClick={handleVideoClick}
+            >
+              {!isPlaying && videoData.thumbnail && (
+                <img
+                  src={videoData.thumbnail}
+                  alt="视频封面"
+                  className="absolute inset-0 w-full h-full object-contain"
+                />
+              )}
+              <video
+                ref={videoRef}
+                src={videoData.src}
+                className={`w-full h-full object-contain ${isPlaying ? 'block' : 'hidden'}`}
+                loop
+                playsInline
+                onEnded={() => setIsPlaying(false)}
+                onError={(e) => {
+                  console.error('❌ 视频加载失败:', e);
+                  console.error('视频 URL:', videoData.src);
+                  setVideoError(true);
+                }}
+                onLoadedData={() => {
+                  console.log('✅ 视频加载完成');
+                }}
+              />
+              {!videoError && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div 
+                    className={`
+                      w-16 h-16 rounded-full flex items-center justify-center
+                      bg-black/50 backdrop-blur-sm border border-gray-600
+                      transition-all duration-200
+                      ${isPlaying ? 'opacity-0' : 'opacity-100'}
+                    `}
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-8 h-8 text-white" />
+                    ) : (
+                      <Play className="w-8 h-8 text-white ml-0.5" />
+                    )}
+                  </div>
+                </div>
+              )}
+              {videoError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <div className="text-gray-500 text-xs">视频加载失败</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {videoData.status === 'error' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="text-gray-500 text-xs">生成失败</div>
+            </div>
+          )}
+
+          {/* 输出连接点（右侧） */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+            style={{ right: '-6px', top: '50%' }}
+            isConnectable={true}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default memo(VideoNode);
