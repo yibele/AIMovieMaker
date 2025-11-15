@@ -42,8 +42,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
   // 处理素材点击（添加到画布）
   const handleMaterialClick = useCallback(
-    (material: MaterialItem) => {
-      addToCanvas(material.id);
+    async (material: MaterialItem) => {
+      await addToCanvas(material.id);
       selectMaterial(material.id);
     },
     [addToCanvas, selectMaterial]

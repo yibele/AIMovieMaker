@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { MaterialItem, MaterialType, MaterialsState, MaterialsActions } from './types-materials';
 import { CanvasElement, ImageElement, VideoElement } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { loadImageSize, calculateDisplaySize } from './image-utils';
 
 // 素材库 store
 interface MaterialsStore extends MaterialsState, MaterialsActions {}
@@ -103,39 +104,81 @@ export const useMaterialsStore = create<MaterialsStore>()(
       },
 
       // 添加素材到画布
-      addToCanvas: (materialId, position = { x: 100, y: 100 }) => {
+      addToCanvas: async (materialId, position = { x: 100, y: 100 }) => {
         const material = get().materials.find((m) => m.id === materialId);
         if (!material) return;
 
         const canvasStore = require('./store').useCanvasStore.getState();
 
         if (material.type === 'image') {
+          let size = { width: 320, height: 320 }; // 默认 1:1 比例
+
+          // 如果有原始尺寸信息，使用它
+          if (material.metadata?.width && material.metadata?.height) {
+            size = calculateDisplaySize(
+              material.metadata.width,
+              material.metadata.height
+            );
+          } else {
+            // 否则加载图片获取实际尺寸
+            try {
+              const imageSize = await loadImageSize(material.src);
+              size = calculateDisplaySize(imageSize.width, imageSize.height);
+            } catch (error) {
+              console.error('Failed to load image size:', error);
+              // 使用默认尺寸
+            }
+          }
+
           const imageElement: ImageElement = {
             id: uuidv4(),
             type: 'image',
             position,
-            size: material.metadata?.width && material.metadata?.height
-              ? { width: material.metadata.width, height: material.metadata.height }
-              : { width: 300, height: 300 },
+            size,
             src: material.src,
             alt: material.name,
             caption: material.metadata?.caption,
             mediaGenerationId: material.mediaGenerationId,
             uploadState: 'synced',
+            generatedFrom: {
+              type: 'input',
+              prompt: material.metadata?.prompt,
+            },
           };
           canvasStore.addElement(imageElement);
         } else if (material.type === 'video') {
+          // 计算视频尺寸，保持比例
+          const calculateVideoSize = () => {
+            const aspectRatio = material.metadata?.aspectRatio;
+
+            // 根据宽高比设置合适的尺寸
+            switch (aspectRatio) {
+              case '16:9':
+                return { width: 480, height: 270 }; // 横屏视频
+              case '9:16':
+                return { width: 270, height: 480 }; // 竖屏视频
+              case '1:1':
+                return { width: 320, height: 320 }; // 方形视频
+              case '4:3':
+                return { width: 400, height: 300 }; // 传统比例
+              default:
+                // 如果没有宽高比信息，使用默认的 16:9
+                return { width: 480, height: 270 };
+            }
+          };
+
           const videoElement: VideoElement = {
             id: uuidv4(),
             type: 'video',
             position,
-            size: { width: 400, height: 300 },
+            size: calculateVideoSize(),
             src: material.src,
             thumbnail: material.thumbnail || material.src,
-            duration: material.metadata?.duration || 0,
+            duration: material.metadata?.duration || 5,
             mediaGenerationId: material.mediaGenerationId,
             status: 'ready',
             promptText: material.metadata?.prompt,
+            readyForGeneration: false, // 从素材库添加的视频无需生成
           };
           canvasStore.addElement(videoElement);
         }

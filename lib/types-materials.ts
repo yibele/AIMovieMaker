@@ -58,5 +58,5 @@ export interface MaterialsActions {
   importFromProject: (projectId: string) => Promise<void>;
 
   // 添加到画布
-  addToCanvas: (materialId: string, position?: { x: number; y: number }) => void;
+  addToCanvas: (materialId: string, position?: { x: number; y: number }) => Promise<void>;
 }

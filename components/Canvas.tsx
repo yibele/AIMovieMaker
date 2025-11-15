@@ -53,7 +53,7 @@ type ConnectionMenuState = {
   activeSubmenu: 'image' | 'video' | null;
 };
 
-function CanvasContent() {
+function CanvasContent({ projectId }: { projectId?: string }) {
   const elements = useCanvasStore((state) => state.elements);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addElement = useCanvasStore((state) => state.addElement);
@@ -93,7 +93,17 @@ function CanvasContent() {
     }));
   }, [elements]);
 
-  const [reactFlowNodes, setNodes, onNodesChange] = useNodesState([]);
+  const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
+    id: el.id,
+    type: el.type,
+    position: el.position,
+    data: el as any,
+    draggable: true,
+    style: el.size ? {
+      width: el.size.width,
+      height: el.size.height,
+    } : undefined,
+  })));
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const reactFlowInstance = useReactFlow();
@@ -949,7 +959,7 @@ function CanvasContent() {
   );
 
   return (
-    <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50">
+    <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50 relative">
       {/* 顶部导航 */}
       <CanvasNavigation />
 
@@ -960,7 +970,7 @@ function CanvasContent() {
       <RightToolbar />
 
       <ReactFlow
-        className="custom-theme"
+        className="custom-theme absolute inset-0"
         nodes={reactFlowNodes}
         edges={edges}
         onNodesChange={handleNodesChange}
@@ -986,6 +996,7 @@ function CanvasContent() {
         elementsSelectable={true}
         connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 1 }}
         connectionLineType={ConnectionLineType.Bezier}
+        proOptions={{ hideAttribution: true }}
       >
         {/* 控制器 */}
         <Controls
@@ -993,7 +1004,7 @@ function CanvasContent() {
           position="bottom-right"
           className="!bottom-24"
         />
-        
+
         {/* 背景网格 */}
         {uiState.showGrid && (
           <Background
@@ -1004,13 +1015,10 @@ function CanvasContent() {
             bgColor="#f0f0f0"
           />
         )}
-        
+
         {/* 悬浮工具栏 - 放在 React Flow 内部 */}
         <FloatingToolbar />
-        
-        {/* 左侧工具栏 - 放在 React Flow 内部以使用 useReactFlow */}
-        <Toolbar />
-        
+
         {/* AI 输入面板 - 放在 React Flow 内部以使用 useReactFlow */}
         <AIInputPanel />
       </ReactFlow>
@@ -1112,10 +1120,10 @@ function CanvasContent() {
   );
 }
 
-export default function Canvas() {
+export default function Canvas({ projectId }: { projectId?: string }) {
   return (
     <ReactFlowProvider>
-      <CanvasContent />
+      <CanvasContent projectId={projectId} />
     </ReactFlowProvider>
   );
 }
