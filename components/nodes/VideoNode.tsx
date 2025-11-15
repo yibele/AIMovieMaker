@@ -1,8 +1,8 @@
 'use client';
 
 import { memo, useState, useRef, useCallback, useMemo } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
-import { Play, Pause, Image as ImageIcon, Type } from 'lucide-react';
+import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar } from '@xyflow/react';
+import { Play, Pause, Image as ImageIcon, Type, Download, Sparkles, Trash2, RotateCcw } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { useNodeResize } from '@/lib/node-resize-helpers';
@@ -74,6 +74,48 @@ function VideoNode({ data, selected, id }: NodeProps) {
     triggerVideoGeneration?.(id);
   }, [canGenerate, id, triggerVideoGeneration, updateElement]);
 
+  // 处理重新生成
+  const handleRegenerate = useCallback(() => {
+    setIsPlaying(false);
+    setVideoError(false);
+    updateElement(id, {
+      status: 'queued',
+      progress: 0,
+      src: '',
+      thumbnail: '',
+      duration: 0,
+    } as Partial<VideoElement>);
+    triggerVideoGeneration?.(id);
+  }, [id, triggerVideoGeneration, updateElement]);
+
+  // 处理下载视频
+  const handleDownload = useCallback(() => {
+    if (videoData.src) {
+      const link = document.createElement('a');
+      link.href = videoData.src;
+      link.download = `morpheus-video-${id}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }, [videoData.src, id]);
+
+  // 处理超清放大
+  const handleUpscale = useCallback(() => {
+    if (videoData.src && videoData.mediaGenerationId) {
+      // TODO: 实现超清放大功能
+      console.log('开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
+      alert('超清放大功能开发中...');
+    }
+  }, [videoData.src, videoData.mediaGenerationId]);
+
+  // 处理删除
+  const handleDelete = useCallback(() => {
+    // TODO: 实现删除功能
+    console.log('删除视频节点:', id);
+    alert('删除功能开发中...');
+  }, [id]);
+
   const renderLoadingOverlay = useCallback(
     () => (
       <div className="absolute inset-0 flex items-center justify-center p-2">
@@ -118,7 +160,70 @@ function VideoNode({ data, selected, id }: NodeProps) {
         }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
-        {videoData.readyForGeneration && (
+        <NodeToolbar
+          isVisible={selected}
+          position={Position.Top}
+          align="end"
+          offset={12}
+          className="flex items-center gap-1 bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200 p-1"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {/* 重新生成 - 只在 ready 或 error 状态时可用 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRegenerate();
+            }}
+            disabled={videoData.status === 'generating' || videoData.status === 'queued'}
+            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={videoData.status === 'ready' ? '重新生成' : '生成/重新生成'}
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
+
+          {/* 下载视频 - 只在有视频源时可用 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload();
+            }}
+            disabled={!videoData.src}
+            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="下载视频"
+          >
+            <Download className="w-3 h-3" />
+          </button>
+
+          {/* 超清放大 - 只在有视频源时可用 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleUpscale();
+            }}
+            disabled={!videoData.src}
+            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="超清放大"
+          >
+            <Sparkles className="w-3 h-3" />
+          </button>
+
+          {/* 删除 - 始终可用 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="删除"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </NodeToolbar>
+
+        {/* 生成按钮 - 只在准备就绪时显示 */}
+        {videoData.readyForGeneration && !selected && (
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
             <button
               onClick={handleGenerateClick}
@@ -195,7 +300,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
           {/* 已完成 - 显示封面，点击播放视频 */}
           {videoData.status === 'ready' && (
-            <div 
+            <div
               className="w-full h-full cursor-pointer relative bg-black"
               onClick={handleVideoClick}
             >

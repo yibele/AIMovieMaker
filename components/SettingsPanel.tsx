@@ -122,21 +122,6 @@ export default function SettingsPanel() {
                 </p>
               </div>
 
-              {/* Project ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Flow Project ID
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  placeholder="02ac868b-925f-40c1-9187-a688bd03a84d"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-              </div>
-
               {/* Workflow & Session */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                 <div className="flex items-center justify-between mb-3">

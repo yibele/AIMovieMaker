@@ -544,20 +544,20 @@ export default function ProjectsHome() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+                title="设置"
               >
                 <Settings className="h-4 w-4" />
-                API 设置
               </button>
               <button
                 onClick={() => fetchProjects(true)} // 强制刷新
                 disabled={!hasCookie || isLoading}
-                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-900 text-white shadow hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                title="刷新"
               >
                 <RefreshCw
                   className={`h-4 w-4 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`}
                 />
-                {isLoading ? '刷新中...' : isRefreshing ? '更新中...' : '刷新列表'}
               </button>
             </div>
           </div>
@@ -607,6 +607,7 @@ export default function ProjectsHome() {
               />
             </video>
 
+            
             {/* 渐变遮罩层 - 让文字更清晰 */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-[24px]" />
 
