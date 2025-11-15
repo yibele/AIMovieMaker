@@ -328,3 +328,21 @@ body {
     rgba(255, 255, 255, 0) 100%
   );
 }
+
+/* 行级注释：图片工具栏弹入动画 */
+@keyframes toolbar-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.image-toolbar-pop {
+  animation: toolbar-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: top center;
+  animation-fill-mode: both;
+}

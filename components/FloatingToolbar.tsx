@@ -5,6 +5,7 @@ import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
 import { editImage } from '@/lib/api-mock';
+import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
 
 export default function FloatingToolbar() {
   const { getNode } = useReactFlow();
@@ -124,45 +125,20 @@ export default function FloatingToolbar() {
     
     return (
       <div
-        className="absolute z-50 bg-gray-900/95 backdrop-blur-sm text-white rounded-xl shadow-2xl px-3 py-2.5 flex items-center gap-1.5 pointer-events-auto"
+        key={selectedImage.id}
+        className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto"
         style={{
           left: `${screenX + (imgWidth * zoom) / 2}px`,
-          top: `${screenY - 60}px`,
+          top: `${screenY - 58}px`,
           transform: 'translateX(-50%)',
         }}
         onMouseDown={handleMouseDown}
       >
-        <button
-          onClick={handleRegenerate}
-          className="px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-        >
-          <RefreshCw className="w-4 h-4" />
-          再次生成
-        </button>
-        
-        <button
-          onClick={handleSimilar}
-          className="px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-        >
-          <Copy className="w-4 h-4" />
-          类似图片
-        </button>
-        
-        <div className="w-px h-6 bg-gray-700 mx-1" />
-        
-        <button
-          onClick={handleDownload}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-        >
-          <Download className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={handleDelete}
-          className="p-2 hover:bg-red-600/80 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <ToolbarButton icon={<RefreshCw className="w-4 h-4" />} label="再次生成" onClick={() => handleRegenerate()} />
+        <ToolbarButton icon={<Copy className="w-4 h-4" />} label="类似图片" onClick={() => handleSimilar()} />
+        <ToolbarDivider />
+        <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
+        <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
       </div>
     );
   }
@@ -171,28 +147,16 @@ export default function FloatingToolbar() {
   return (
     <Panel position="top-center" className="!m-0 !p-0">
       <div 
-        className="bg-gray-900/95 backdrop-blur-sm text-white rounded-xl shadow-2xl px-3 py-2.5 flex items-center gap-1.5"
+        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2"
         onMouseDown={handleMouseDown}
       >
-        <span className="px-3 py-2 text-sm text-gray-300 font-medium">
+        <span className="px-2 py-1 text-xs font-medium text-gray-500">
           已选中 {imageElements.length} 张图片
         </span>
-        
-        <div className="w-px h-6 bg-gray-700 mx-1" />
-        
-        <button
-          onClick={handleDownload}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-        >
-          <Download className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={handleDelete}
-          className="p-2 hover:bg-red-600/80 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+
+        <ToolbarDivider />
+        <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
+        <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
       </div>
     </Panel>
   );

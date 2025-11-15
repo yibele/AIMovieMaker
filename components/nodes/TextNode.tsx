@@ -186,11 +186,11 @@ function TextNode({ data, id }: NodeProps) {
       
       onDoubleClick={handleDoubleClick}
     >
-        {/* 编辑工具栏 - 编辑时显示，移除字体大小按钮 */}
+        {/* 编辑工具栏 - 样式与视频节点保持一致 */}
         {isEditing && (
           <div 
             ref={toolbarRef}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-lg shadow-xl px-2 py-2 flex items-center gap-1 z-50"
+            className="absolute -top-14 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl border border-gray-200 shadow-2xl px-3 py-2 z-50"
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -203,8 +203,8 @@ function TextNode({ data, id }: NodeProps) {
                 e.stopPropagation();
               }}
               onClick={toggleBold}
-              className={`p-1.5 rounded transition-colors ${
-                fontWeight === 'bold' ? 'bg-blue-600' : 'hover:bg-gray-700'
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                fontWeight === 'bold' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
               }`}
               title="粗体"
               tabIndex={-1}
@@ -219,8 +219,8 @@ function TextNode({ data, id }: NodeProps) {
                 e.stopPropagation();
               }}
               onClick={toggleItalic}
-              className={`p-1.5 rounded transition-colors ${
-                fontStyle === 'italic' ? 'bg-blue-600' : 'hover:bg-gray-700'
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                fontStyle === 'italic' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
               }`}
               title="斜体"
               tabIndex={-1}
@@ -235,8 +235,8 @@ function TextNode({ data, id }: NodeProps) {
                 e.stopPropagation();
               }}
               onClick={toggleUnderline}
-              className={`p-1.5 rounded transition-colors ${
-                textDecoration === 'underline' ? 'bg-blue-600' : 'hover:bg-gray-700'
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                textDecoration === 'underline' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
               }`}
               title="下划线"
               tabIndex={-1}

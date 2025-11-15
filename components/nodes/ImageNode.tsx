@@ -23,7 +23,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
   
   return (
     <>
-      {/* NodeResizer - 只在选中时显示，四个角有方块 */}
+      {/* NodeResizer - 统一风格 */}
       <NodeResizer
         minWidth={100}
         minHeight={75}
@@ -33,12 +33,11 @@ function ImageNode({ data, selected, id }: NodeProps) {
         isVisible={selected}
         color="#3b82f6"
         handleStyle={{
-          width: '14px',
-          height: '14px',
-          borderRadius: '4px',
+          width: '8px',
+          height: '8px',
+          borderRadius: '1px',
           backgroundColor: '#3b82f6',
           border: '1px solid white',
-          boxShadow: '0 0 0 1px #3b82f6',
         }}
         lineStyle={{
           borderWidth: '1px',
@@ -48,56 +47,68 @@ function ImageNode({ data, selected, id }: NodeProps) {
         onResize={handleResize}
         onResizeEnd={handleResizeEnd}
       />
-      
-      {/* 输入连接点（左侧） - 条件显示 */}
-      {/* 只有从文本节点生成或图生图时才显示，从输入框直接生成不显示 */}
-      {shouldShowInputHandle && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full"
-          style={{ left: '-6px' }}
-          isConnectable={true}
-        />
-      )}
-      
-        {isProcessing ? (
-          <div className="absolute inset-0 loading-glow rounded-[20px]" data-variant="compact" />
-        ) : showBaseImage ? (
-          <img
-            src={imageData.src}
-            style={{ borderRadius: '20px' }}
-            alt={imageData.alt || '生成的图片'}
-            className="w-full h-full object-cover pointer-events-none select-none"
-            draggable={false}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+
+      <div
+        className={`relative rounded-xl transition-all w-full h-full ${
+          selected
+            ? 'ring-2 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+            : 'border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+        }`}
+        style={{ overflow: 'visible', backgroundColor: '#fff' }}
+      >
+        {/* 输入连接点（左侧） - 条件显示 */}
+        {shouldShowInputHandle && (
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="!flex !items-center !justify-center !w-4 !h-4 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+            style={{ left: '-6px', top: '50%' }}
+            isConnectable={true}
           />
-        ) : null}
-        {isError && (
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg bg-red-50/80 backdrop-blur-sm text-red-500"
-            style={{ borderRadius: '20px' }}
-          >
-            <span className="text-xs font-medium">同步失败</span>
-            {imageData.uploadMessage && (
-              <span className="text-[10px] leading-tight px-6 text-center opacity-75">
-                {imageData.uploadMessage}
-              </span>
-            )}
-          </div>
         )}
 
-      
-      {/* 输出连接点（右侧） - 用于连接到视频节点 */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full"
-        style={{ right: '-6px' }}
-        isConnectable={true}
-      />
+        <div className="absolute inset-0 rounded-[20px] overflow-hidden bg-slate-900/5">
+          {isProcessing ? (
+            <div className="flex h-full w-full items-center justify-center bg-white">
+              <div className="loading-glow w-[85%] h-[85%] rounded-[18px]" data-variant="compact" />
+            </div>
+          ) : showBaseImage ? (
+            <img
+              src={imageData.src}
+              alt={imageData.alt || '生成的图片'}
+              className="h-full w-full object-cover pointer-events-none select-none"
+              draggable={false}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center text-xs font-medium text-gray-500">
+              等待图片内容
+            </div>
+          )}
+
+          {isError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-50/80 backdrop-blur-sm text-red-500">
+              <span className="text-xs font-medium">同步失败</span>
+              {imageData.uploadMessage && (
+                <span className="text-[10px] leading-tight px-6 text-center opacity-75">
+                  {imageData.uploadMessage}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 输出连接点（右侧） - 用于连接到视频节点 */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!flex !items-center !justify-center !w-3.5 !h-3.5 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+          style={{ right: '-6px', top: '50%' }}
+          isConnectable={true}
+        />
+      </div>
     </>
   );
 }
