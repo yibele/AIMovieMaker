@@ -87,6 +87,13 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     if (!projectId) {
       return;
     }
+    // 设置 projectId 到 store 的 apiConfig 中
+    useCanvasStore.setState((state) => ({
+      apiConfig: {
+        ...state.apiConfig,
+        projectId,
+      },
+    }));
     loadMaterialsFromProject(projectId).catch((error) => {
       console.error('同步项目素材失败:', error);
     });

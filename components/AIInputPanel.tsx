@@ -1,16 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Settings2 } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { useCanvasStore } from '@/lib/store';
 
 // 行级注释：AIInputPanel 现在只负责 UI 和用户输入，业务逻辑由外部处理
 export default function AIInputPanel() {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
-  const [showSettings, setShowSettings] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
   
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
@@ -54,24 +51,6 @@ export default function AIInputPanel() {
     }
   };
 
-  // 行级注释：点击外部关闭设置面板
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        showSettings &&
-        settingsRef.current &&
-        !settingsRef.current.contains(event.target as Node)
-      ) {
-        setShowSettings(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSettings]);
-
   const showSelectedThumbnails = selectedImages.length > 0;
   const hasProcessingSelection = selectedImages.some(
     (img) => img.uploadState === 'syncing' || !img.mediaGenerationId
@@ -79,78 +58,62 @@ export default function AIInputPanel() {
 
   return (
     <div ref={panelRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4">
-      {/* 图片设置下拉面板 */}
-      <div className="flex items-center justify-center gap-3 mb-2 relative">
-        <div className="relative" ref={settingsRef}>
+      {/* 图片设置选项 */}
+      <div className="flex items-center justify-center gap-3 mb-2 flex-wrap">
+        {/* 比例选择器 */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+          <span className="text-xs text-gray-500">比例</span>
           <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50"
+            onClick={() => setAspectRatio('16:9')}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+              aspectRatio === '16:9'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
           >
-            <Settings2 className="w-4 h-4" />
-            图片设置
+            横图
           </button>
-          
-          {showSettings && (
-            <div className="absolute bottom-full left-0 mb-2 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 p-4 min-w-[280px]">
-              {/* 比例选择器 */}
-              <div className="mb-4">
-                <div className="text-xs font-medium text-gray-500 mb-2">比例</div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setAspectRatio('16:9')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      aspectRatio === '16:9'
-                        ? 'bg-purple-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    横图
-                  </button>
-                  <button
-                    onClick={() => setAspectRatio('9:16')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      aspectRatio === '9:16'
-                        ? 'bg-purple-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    竖图
-                  </button>
-                  <button
-                    onClick={() => setAspectRatio('1:1')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      aspectRatio === '1:1'
-                        ? 'bg-purple-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    方图
-                  </button>
-                </div>
-              </div>
-              
-              {/* 生成数量选择器 */}
-              <div>
-                <div className="text-xs font-medium text-gray-500 mb-2">生成数量</div>
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 4].map((count) => (
-                    <button
-                      key={count}
-                      onClick={() => setApiConfig({ generationCount: count })}
-                      className={`py-2 rounded-lg text-sm font-medium transition-all ${
-                        generationCount === count
-                          ? 'bg-purple-500 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                      title={`生成 ${count} 张`}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => setAspectRatio('9:16')}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+              aspectRatio === '9:16'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            竖图
+          </button>
+          <button
+            onClick={() => setAspectRatio('1:1')}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+              aspectRatio === '1:1'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            方图
+          </button>
+        </div>
+
+        {/* 生成数量选择器 */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+          <span className="text-xs text-gray-500">数量</span>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4].map((count) => (
+              <button
+                key={count}
+                onClick={() => setApiConfig({ generationCount: count })}
+                className={`w-8 h-6 rounded-lg text-sm font-medium transition-all ${
+                  generationCount === count
+                    ? 'bg-purple-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title={`生成 ${count} 张`}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       
@@ -204,6 +167,10 @@ export default function AIInputPanel() {
               placeholder={getPlaceholder()}
               className="w-full px-4 py-3 border border-gray-300/30 rounded-2xl outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50 transition-all bg-white/40 backdrop-blur-sm"
             />
+            {/* 回车提示 - 浮在输入框上面 */}
+            <kbd className="absolute top-1/2 -translate-y-1/2 right-3 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-lg shadow-sm z-10">
+              Enter
+            </kbd>
           </div>
         </div>
         
