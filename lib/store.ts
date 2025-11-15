@@ -1,12 +1,17 @@
 import { create } from 'zustand';
-import { 
-  CanvasElement, 
-  ImageElement, 
-  TextElement, 
-  PromptHistory, 
+import {
+  CanvasElement,
+  ImageElement,
+  TextElement,
+  PromptHistory,
   BatchGenerationContext,
-  UIState 
+  UIState
 } from './types';
+import {
+  MaterialItem,
+  MaterialsState,
+  MaterialType
+} from './types-materials';
 
 // API 配置接口
 interface ApiConfig {

@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { MousePointer2, Type, Upload, Video } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { TextElement, ImageElement, VideoElement } from '@/lib/types';
 import { registerUploadedImage } from '@/lib/api-mock';
+import MaterialsPanel from './MaterialsPanel';
+import { MaterialsIcon } from './icons/MaterialsIcon';
 
 export default function Toolbar() {
+  const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
   const activeTool = useCanvasStore((state) => state.uiState.activeTool);
   const setUIState = useCanvasStore((state) => state.setUIState);
   const addElement = useCanvasStore((state) => state.addElement);
@@ -39,6 +43,12 @@ export default function Toolbar() {
       icon: Video,
       label: '视频节点',
       action: () => handleAddVideo(),
+    },
+    {
+      id: 'materials' as const,
+      icon: MaterialsIcon,
+      label: '素材库',
+      action: () => setIsMaterialsPanelOpen(true),
     },
   ];
 
@@ -205,27 +215,35 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
-      {tools.map((tool) => {
-        const Icon = tool.icon;
-        const isActive = activeTool === tool.id;
-        
-        return (
-          <button
-            key={tool.id}
-            onClick={tool.action}
-            className={`p-3 rounded-lg transition-all ${
-              isActive
-                ? 'bg-blue-100 text-blue-600'
-                : 'hover:bg-gray-100 text-gray-700'
-            }`}
-            title={tool.label}
-          >
-            <Icon className="w-5 h-5" />
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
+        {tools.map((tool) => {
+          const Icon = tool.icon;
+          const isActive = activeTool === tool.id;
+
+          return (
+            <button
+              key={tool.id}
+              onClick={tool.action}
+              className={`p-3 rounded-lg transition-all ${
+                isActive
+                  ? 'bg-blue-100 text-blue-600'
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}
+              title={tool.label}
+            >
+              <Icon className="w-5 h-5" />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 素材库面板 */}
+      <MaterialsPanel
+        isOpen={isMaterialsPanelOpen}
+        onClose={() => setIsMaterialsPanelOpen(false)}
+      />
+    </>
   );
 }
 
