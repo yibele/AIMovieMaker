@@ -32,7 +32,12 @@ POST https://aisandbox-pa.googleapis.com/v1:uploadUserImage
 POST https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoText
 ```
 
-**Flow 图生视频**：
+**Flow 图生视频（仅首帧）**：
+```
+POST https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage
+```
+
+**Flow 图生视频（首尾帧）**：
 ```
 POST https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage
 ```
@@ -81,6 +86,7 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
 - `batchGenerateImages` - Flow 图片生成（文生图/图生图）
 - `uploadUserImage` - Flow 图片上传
 - `batchAsyncGenerateVideoText` - Flow 文生视频
+- `batchAsyncGenerateVideoStartImage` - Flow 图生视频（仅首帧）
 - `batchAsyncGenerateVideoStartAndEndImage` - Flow 图生视频（首尾帧）
 - `batchCheckAsyncVideoGenerationStatus` - Flow 视频状态查询
 
@@ -275,6 +281,39 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
 | textInput.prompt | 视频提示词 |
 | metadata.sceneId | 场景ID用于跟踪 |
 
+### Flow 图生视频参数（仅首帧）
+```json
+{
+    "clientContext": {
+        "sessionId": "会话ID",
+        "projectId": "项目ID",
+        "tool": "PINHOLE",
+        "userPaygateTier": "PAYGATE_TIER_ONE"
+    },
+    "requests": [
+        {
+            "aspectRatio": "VIDEO_ASPECT_RATIO_PORTRAIT",
+            "seed": 123456,
+            "textInput": {
+                "prompt": "描述性文字提示"
+            },
+            "videoModelKey": "veo_3_1_i2v_s_fast_portrait",
+            "startImage": {
+                "mediaId": "首帧图片ID"
+            },
+            "metadata": {
+                "sceneId": "场景ID"
+            }
+        }
+    ]
+}
+```
+
+| 参数 | 说明 |
+|------|------|
+| videoModelKey | 图生视频模型：`veo_3_1_i2v_s_fast`（横屏）或 `veo_3_1_i2v_s_fast_portrait`（竖屏） |
+| startImage.mediaId | 首帧图片ID |
+
 ### Flow 图生视频参数（首尾帧）
 ```json
 {
@@ -291,7 +330,7 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
             "textInput": {
                 "prompt": "描述性文字提示"
             },
-            "videoModelKey": "veo_3_1_i2v_s_fast_portrait_fl",
+            "videoModelKey": "veo_3_1_i2v_s_fast_portrait",
             "startImage": {
                 "mediaId": "首帧图片ID"
             },
@@ -308,7 +347,7 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
 
 | 参数 | 说明 |
 |------|------|
-| videoModelKey | 图生视频模型，比文生视频模型更精确 |
+| videoModelKey | 图生视频模型：`veo_3_1_i2v_s_fast`（横屏）或 `veo_3_1_i2v_s_fast_portrait`（竖屏） |
 | startImage.mediaId | 首帧图片ID |
 | endImage.mediaId | 尾帧图片ID |
 
@@ -695,6 +734,56 @@ const generateFlowVideoFromText = async (projectId, prompt, accessToken, session
 };
 ```
 
+### Flow 图生视频（仅首帧）
+```javascript
+const generateFlowVideoFromStartImage = async (projectId, prompt, startMediaId, accessToken, sessionId, aspectRatio = '9:16') => {
+  const response = await fetch(
+    'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        'Authorization': `Bearer ${accessToken}`,
+        'Origin': 'https://labs.google',
+        'Referer': 'https://labs.google/',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      },
+      body: JSON.stringify({
+        clientContext: {
+          sessionId: sessionId,
+          projectId: projectId,
+          tool: 'PINHOLE',
+          userPaygateTier: 'PAYGATE_TIER_ONE'
+        },
+        requests: [{
+          aspectRatio: aspectRatio === '16:9' ? 'VIDEO_ASPECT_RATIO_LANDSCAPE' :
+                       aspectRatio === '9:16' ? 'VIDEO_ASPECT_RATIO_PORTRAIT' : 'VIDEO_ASPECT_RATIO_SQUARE',
+          seed: Math.floor(Math.random() * 100000),
+          textInput: { prompt },
+          videoModelKey: aspectRatio === '16:9' ? 'veo_3_1_i2v_s_fast' : 'veo_3_1_i2v_s_fast_portrait',
+          startImage: {
+            mediaId: startMediaId
+          },
+          metadata: {
+            sceneId: crypto.randomUUID()
+          }
+        }]
+      })
+    }
+  );
+
+  const data = await response.json();
+  const operation = data.operations[0];
+
+  return {
+    operationName: operation.operation.name,
+    sceneId: operation.sceneId,
+    status: operation.status,
+    remainingCredits: data.remainingCredits
+  };
+};
+```
+
 ### Flow 图生视频（首尾帧）
 ```javascript
 const generateFlowVideoFromImages = async (projectId, prompt, startMediaId, endMediaId, accessToken, sessionId, aspectRatio = '9:16') => {
@@ -721,8 +810,7 @@ const generateFlowVideoFromImages = async (projectId, prompt, startMediaId, endM
                        aspectRatio === '9:16' ? 'VIDEO_ASPECT_RATIO_PORTRAIT' : 'VIDEO_ASPECT_RATIO_SQUARE',
           seed: Math.floor(Math.random() * 100000),
           textInput: { prompt },
-          videoModelKey: aspectRatio === '16:9' ? 'veo_3_1_i2v_s_fast' :
-                       aspectRatio === '9:16' ? 'veo_3_1_i2v_s_fast_portrait_fl' : 'veo_3_1_i2v_s_fast_portrait_fl',
+          videoModelKey: aspectRatio === '16:9' ? 'veo_3_1_i2v_s_fast' : 'veo_3_1_i2v_s_fast_portrait',
           startImage: {
             mediaId: startMediaId
           },

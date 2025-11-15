@@ -1,55 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { resolveProxyAgent } from '@/lib/proxy-agent';
-
-const flowAspectRatioMap: Record<string, string> = {
-  '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
-  '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT',
-  '1:1': 'IMAGE_ASPECT_RATIO_SQUARE',
-};
-
-function normalizeAspectRatio(aspectRatio?: string): string {
-  if (!aspectRatio) {
-    return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
-  }
-  const normalized = flowAspectRatioMap[aspectRatio];
-  if (normalized) {
-    return normalized;
-  }
-  if (
-    aspectRatio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ||
-    aspectRatio === 'IMAGE_ASPECT_RATIO_PORTRAIT' ||
-    aspectRatio === 'IMAGE_ASPECT_RATIO_SQUARE'
-  ) {
-    return aspectRatio;
-  }
-  return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
-}
+import {
+  normalizeImageAspectRatio,
+  handleApiError,
+  validateRequiredParams,
+} from '@/lib/api-route-helpers';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { imageBase64, bearerToken, sessionId, proxy, aspectRatio } = body;
 
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
-    }
-
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      return NextResponse.json(
-        { error: '缺少图片数据' },
-        { status: 400 }
-      );
-    }
-
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Session ID' },
-        { status: 400 }
-      );
+    // 行级注释：验证必需参数
+    const validation = validateRequiredParams(
+      { bearerToken, imageBase64, sessionId },
+      ['bearerToken', 'imageBase64', 'sessionId']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
     let base64Data = imageBase64.trim();

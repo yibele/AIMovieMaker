@@ -1,16 +1,12 @@
 'use client';
 
-import { memo, useCallback } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer, useReactFlow } from '@xyflow/react';
+import { memo } from 'react';
+import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
 import type { ImageElement } from '@/lib/types';
-import { useCanvasStore } from '@/lib/store';
+import { useNodeResize } from '@/lib/node-resize-helpers';
 
-// 图片节点组件
+// 行级注释：图片节点组件
 function ImageNode({ data, selected, id }: NodeProps) {
-  const updateElement = useCanvasStore((state) => state.updateElement);
-  const { getNode } = useReactFlow();
-  
-  // 将 data 转换为 ImageElement 类型
   const imageData = data as unknown as ImageElement;
   const uploadState = imageData.uploadState ?? 'synced';
   const isSyncing = uploadState === 'syncing';
@@ -19,48 +15,11 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const showBaseImage = Boolean(imageData.src);
   const isProcessing = !isError && (isSyncing || !hasMediaId || !showBaseImage);
   
-  // 判断是否应该显示输入连接点
-  // 只有从文本节点生成或图生图时才显示输入点
-  // 从输入框直接生成的图片不显示输入点
+  // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
   
-  // 缩放开始回调
-  const handleResizeStart = useCallback((event: any, params: any) => {
-    console.log('🎨 开始调整图片尺寸:', params);
-  }, []);
-  
-  // 缩放中回调 - NodeResizer 会自动实时更新节点尺寸
-  const handleResize = useCallback((event: any, params: any) => {
-    // NodeResizer 会自动更新节点的 width 和 height
-    // 这里不需要做任何事情，尺寸会实时更新
-  }, []);
-  
-  // 缩放结束回调 - 保存最终尺寸和位置到 store
-  const handleResizeEnd = useCallback((event: any, params: any) => {
-    const newSize = {
-      width: params.width,
-      height: params.height,
-    };
-    
-    // 获取节点的最新位置（缩放其他角时位置会变化）
-    const node = getNode(id);
-    if (node && node.position) {
-      console.log('✅ 图片尺寸和位置调整完成:', { 
-        size: newSize, 
-        position: node.position 
-      });
-      
-      // 同时保存尺寸和位置
-      updateElement(id, { 
-        size: newSize,
-        position: node.position,
-      } as Partial<ImageElement>);
-    } else {
-      // 如果无法获取位置，只保存尺寸
-      console.log('✅ 图片尺寸调整完成:', newSize);
-      updateElement(id, { size: newSize } as Partial<ImageElement>);
-    }
-  }, [id, updateElement, getNode]);
+  // 行级注释：使用共享的 resize 逻辑
+  const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
   
   return (
     <>

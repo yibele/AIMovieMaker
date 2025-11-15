@@ -1,14 +1,14 @@
 'use client';
 
 import { memo, useState, useRef, useCallback, useMemo } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer, useReactFlow } from '@xyflow/react';
-import { Play, Pause, Image as ImageIcon, Type } from 'lucide-react'; // 行级注释：引入图标以在连接点中提示用途
+import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
+import { Play, Pause, Image as ImageIcon, Type } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
+import { useNodeResize } from '@/lib/node-resize-helpers';
 
-// 视频节点组件 - 极简设计 + 可缩放
+// 行级注释：视频节点组件
 function VideoNode({ data, selected, id }: NodeProps) {
-  // 将 data 转换为 VideoElement 类型
   const videoData = data as unknown as VideoElement;
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -16,7 +16,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
-  const { getNode } = useReactFlow();
 
   const generationStatusText = useMemo(() => {
     const hasPrompt = Boolean(videoData.promptText?.trim());
@@ -56,32 +55,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   };
 
-  // NodeResizer 回调
-  const handleResizeStart = useCallback(() => {
-    // 缩放开始时可以添加逻辑
-  }, []);
-
-  const handleResize = useCallback(() => {
-    // 实时缩放时可以添加逻辑
-  }, []);
-
-  const handleResizeEnd = useCallback((event: any, params: any) => {
-    const newSize = {
-      width: params.width,
-      height: params.height,
-    };
-    
-    // 获取节点的最新位置
-    const node = getNode(id);
-    if (node && node.position) {
-      updateElement(id, {
-        size: newSize,
-        position: node.position,
-      } as Partial<VideoElement>);
-    } else {
-      updateElement(id, { size: newSize } as Partial<VideoElement>);
-    }
-  }, [id, updateElement, getNode]);
+  // 行级注释：使用共享的 resize 逻辑
+  const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
 
   const handleGenerateClick = useCallback(() => {
     if (!canGenerate) {
@@ -252,7 +227,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   <div 
                     className={`
                       w-16 h-16 rounded-full flex items-center justify-center
-                      bg-black/50 backdrop-blur-sm border border-gray-600
+                      bg-black/50 backdrop-blur-sm 
                       transition-all duration-200
                       ${isPlaying ? 'opacity-0' : 'opacity-100'}
                     `}

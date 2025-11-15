@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { resolveProxyAgent } from '@/lib/proxy-agent';
-
-const aspectRatioMap: Record<string, string> = {
-  '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
-  '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT',
-  '1:1': 'IMAGE_ASPECT_RATIO_SQUARE',
-};
-
-function normalizeAspectRatio(aspectRatio: string): string {
-  if (!aspectRatio) {
-    return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
-  }
-  const normalized = aspectRatioMap[aspectRatio];
-  if (normalized) {
-    return normalized;
-  }
-  if (
-    aspectRatio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ||
-    aspectRatio === 'IMAGE_ASPECT_RATIO_PORTRAIT' ||
-    aspectRatio === 'IMAGE_ASPECT_RATIO_SQUARE'
-  ) {
-    return aspectRatio;
-  }
-  return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
-}
+import {
+  normalizeImageAspectRatio,
+  handleApiError,
+  validateRequiredParams,
+} from '@/lib/api-route-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,35 +22,16 @@ export async function POST(request: NextRequest) {
       count, // 生成数量 (1-4)
     } = body;
 
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
+    // 行级注释：验证必需参数
+    const validation = validateRequiredParams(
+      { bearerToken, projectId, sessionId, prompt },
+      ['bearerToken', 'projectId', 'sessionId', 'prompt']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
-    if (!projectId || typeof projectId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Project ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Session ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!prompt || typeof prompt !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Prompt 指令' },
-        { status: 400 }
-      );
-    }
-
-    const normalizedAspect = normalizeAspectRatio(aspectRatio);
+    const normalizedAspect = normalizeImageAspectRatio(aspectRatio);
     const trimmedProjectId = projectId.trim();
     const trimmedSessionId = sessionId.trim();
     
@@ -241,25 +203,7 @@ export async function POST(request: NextRequest) {
       sessionId: trimmedSessionId,
     });
   } catch (error: any) {
-    console.error('❌ Flow 生成图片代理错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error('API 错误响应数据:', JSON.stringify(error.response.data, null, 2));
-      console.error('API 错误响应头:', error.response.headers);
-      
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 生成图片代理');
   }
 }
 

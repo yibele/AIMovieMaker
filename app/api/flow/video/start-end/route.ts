@@ -10,8 +10,8 @@ const videoAspectRatioMap: Record<string, string> = {
 
 const i2vModelMap: Record<string, string> = {
   VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast', // 行级注释：横屏模型
-  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：竖屏模型
-  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：方形场景回退使用竖屏模型
+  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait', // 行级注释：竖屏模型（修正：移除 _fl 后缀）
+  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait', // 行级注释：方形场景使用竖屏模型
 };
 
 function normalizeAspectRatio(aspectRatio?: string): string {
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const normalizedAspect = normalizeAspectRatio(aspectRatio);
     const modelKey =
       i2vModelMap[normalizedAspect] ??
-      'veo_3_1_i2v_s_fast_portrait_fl'; // 行级注释：未知比例回退竖屏模型
+      'veo_3_1_i2v_s_fast_portrait'; // 行级注释：未知比例回退竖屏模型（修正：移除 _fl 后缀）
 
     const trimmedProjectId = projectId.trim();
     const trimmedSessionId = sessionId.trim();
@@ -97,15 +97,35 @@ export async function POST(request: NextRequest) {
     const trimmedStartMediaId = startMediaId.trim();
     const trimmedEndMediaId =
       typeof endMediaId === 'string' ? endMediaId.trim() : '';
-    const finalEndMediaId =
-      trimmedEndMediaId && trimmedEndMediaId.length > 0
-        ? trimmedEndMediaId
-        : trimmedStartMediaId;
+    const hasEndImage = trimmedEndMediaId && trimmedEndMediaId.length > 0; // 行级注释：检查是否真的有尾帧
     const resolvedSceneId = resolveSceneId(sceneId);
     const requestSeed =
       typeof seed === 'number'
         ? seed
         : Math.floor(Math.random() * 100_000);
+
+    // 行级注释：根据是否有尾帧构建不同的 request 对象
+    const requestObject: any = {
+      aspectRatio: normalizedAspect,
+      seed: requestSeed,
+      textInput: {
+        prompt: requestPrompt,
+      },
+      videoModelKey: modelKey,
+      startImage: {
+        mediaId: trimmedStartMediaId,
+      },
+      metadata: {
+        sceneId: resolvedSceneId,
+      },
+    };
+
+    // 行级注释：只有当有尾帧时才添加 endImage 字段
+    if (hasEndImage) {
+      requestObject.endImage = {
+        mediaId: trimmedEndMediaId,
+      };
+    }
 
     const payload = {
       clientContext: {
@@ -114,25 +134,7 @@ export async function POST(request: NextRequest) {
         tool: 'PINHOLE',
         userPaygateTier: 'PAYGATE_TIER_ONE',
       },
-      requests: [
-        {
-          aspectRatio: normalizedAspect,
-          seed: requestSeed,
-          textInput: {
-            prompt: requestPrompt,
-          },
-          videoModelKey: modelKey,
-          startImage: {
-            mediaId: trimmedStartMediaId,
-          },
-          endImage: {
-            mediaId: finalEndMediaId,
-          },
-          metadata: {
-            sceneId: resolvedSceneId,
-          },
-        },
-      ],
+      requests: [requestObject],
     };
 
     console.log('🎬 调用 Flow 图生视频接口', {
@@ -146,9 +148,16 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 Flow 图生视频 Payload:', JSON.stringify(payload, null, 2));
 
+    // 行级注释：根据是否有尾帧选择不同的端点
+    const apiEndpoint = hasEndImage
+      ? 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage'
+      : 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage';
+
+    console.log('🎯 使用端点:', hasEndImage ? '首尾帧' : '仅首帧', apiEndpoint);
+
     const axiosConfig: any = {
       method: 'POST',
-      url: 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage',
+      url: apiEndpoint,
       headers: {
         'Content-Type': 'text/plain;charset=UTF-8',
         Authorization: `Bearer ${bearerToken}`,

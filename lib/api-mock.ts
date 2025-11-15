@@ -178,7 +178,7 @@ async function generateVideoStartEndWithFlow(params: {
   projectId: string;
   sessionId: string;
   startMediaId: string;
-  endMediaId: string;
+  endMediaId?: string; // 行级注释：尾帧是可选的
   proxy?: string;
   seed?: number;
   sceneId?: string;
@@ -211,7 +211,7 @@ async function generateVideoStartEndWithFlow(params: {
       projectId,
       sessionId,
       startMediaId,
-      endMediaId,
+      endMediaId, // 行级注释：可能是 undefined，后端会处理
       proxy,
       seed,
       sceneId,
@@ -1091,7 +1091,8 @@ export async function generateVideoFromImages(
     throw new Error('尾帧图片缺少 Flow mediaId，请先使用 Flow 生成或上传同步');
   }
 
-  const resolvedEndMediaId = endMediaId || startMediaId;
+  // 行级注释：不要用首帧替代尾帧！没有就是没有
+  const resolvedEndMediaId = endMediaId || undefined;
 
   let sessionId = apiConfig.sessionId;
   if (!sessionId || !sessionId.trim()) {
@@ -1108,7 +1109,8 @@ export async function generateVideoFromImages(
 
   console.log('🎬 调用 Flow 图生视频:', {
     startImageId,
-    endImageId: endImageId || startImageId,
+    endImageId: endImageId || '无尾帧', // 行级注释：如实显示是否有尾帧
+    hasEndImage: !!endMediaId,
     aspectRatio,
     sceneId,
   });
@@ -1121,7 +1123,7 @@ export async function generateVideoFromImages(
     sessionId,
     proxy: apiConfig.proxy,
     startMediaId,
-    endMediaId: resolvedEndMediaId,
+    endMediaId: resolvedEndMediaId, // 行级注释：可能是 undefined，后端会处理
     sceneId,
   });
 
