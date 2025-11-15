@@ -1,8 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import Header from '@/components/Header';
-import SettingsPanel from '@/components/SettingsPanel';
+import ProjectsHome from '@/components/ProjectsHome';
 
 // 动态导入 Canvas 组件（避免 SSR 问题）
 // AIInputPanel 和 Toolbar 已移到 Canvas 内部，以便使用 useReactFlow hook
@@ -16,18 +15,12 @@ const Canvas = dynamic(() => import('@/components/Canvas'), {
 });
 
 export default function Home() {
+  // 暂时直接显示项目首页
+  // 后续会根据路由来决定显示首页还是画布
   return (
-    <main className="w-screen h-screen overflow-hidden relative bg-gray-50">
-      {/* 顶部标题栏 */}
-      <Header />
-      
-      {/* 画布区域（包含 Toolbar 和 AIInputPanel） */}
-      <div className="w-full h-full pt-16">
-        <Canvas />
-      </div>
-      
-      {/* 右上角设置按钮 */}
-      <SettingsPanel />
+    <main className="w-screen h-screen overflow-hidden relative">
+      {/* 项目首页 */}
+      <ProjectsHome />
     </main>
   );
 }
