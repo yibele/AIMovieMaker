@@ -543,13 +543,6 @@ export default function ProjectsHome() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/canvas')}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-medium text-white shadow hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
-              >
-                <Palette className="h-4 w-4" />
-                进入画布
-              </button>
-              <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
               >
@@ -621,13 +614,17 @@ export default function ProjectsHome() {
             <div className="relative h-full flex flex-col items-start justify-center px-8">
               <div className="max-w-3xl">
                 {/* 标题 */}
-                <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight tracking-tight drop-shadow-2xl">
-                  AI Movie Maker
+                <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight tracking-[0.05em] uppercase drop-shadow-2xl">
+                  Creative Studio
                 </h1>
 
                 {/* 副标题 */}
-                <p className="text-xl md:text-2xl text-white/95 leading-relaxed font-medium drop-shadow-lg">
-                  使用 AI 技术创作惊艳的视频内容，让创意无限延伸
+                <p className="text-xl md:text-2xl text-white/95 leading-relaxed font-medium drop-shadow-lg mb-1">
+                  创意无限可能，视觉触手可及
+                </p>
+                {/* 英文广告语 */}
+                <p className="text-sm md:text-base text-white/75 leading-relaxed tracking-[0.1em] font-light drop-shadow-md">
+                  Where Creativity Meets Visual Excellence
                 </p>
               </div>
             </div>
