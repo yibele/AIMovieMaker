@@ -81,14 +81,7 @@ export async function POST(request: NextRequest) {
 
     if (!startMediaId || typeof startMediaId !== 'string') {
       return NextResponse.json(
-        { error: '缺少首帧 mediaGenerationId' },
-        { status: 400 }
-      );
-    }
-
-    if (!endMediaId || typeof endMediaId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少尾帧 mediaGenerationId' },
+        { error: '缺少首帧 mediaId' },
         { status: 400 }
       );
     }
@@ -102,7 +95,12 @@ export async function POST(request: NextRequest) {
     const trimmedSessionId = sessionId.trim();
     const requestPrompt = typeof prompt === 'string' ? prompt : '';
     const trimmedStartMediaId = startMediaId.trim();
-    const trimmedEndMediaId = endMediaId.trim();
+    const trimmedEndMediaId =
+      typeof endMediaId === 'string' ? endMediaId.trim() : '';
+    const finalEndMediaId =
+      trimmedEndMediaId && trimmedEndMediaId.length > 0
+        ? trimmedEndMediaId
+        : trimmedStartMediaId;
     const resolvedSceneId = resolveSceneId(sceneId);
     const requestSeed =
       typeof seed === 'number'
@@ -128,7 +126,7 @@ export async function POST(request: NextRequest) {
             mediaId: trimmedStartMediaId,
           },
           endImage: {
-            mediaId: trimmedEndMediaId,
+            mediaId: finalEndMediaId,
           },
           metadata: {
             sceneId: resolvedSceneId,

@@ -35,6 +35,12 @@ import Toolbar from './Toolbar';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
+import {
+  getPositionAboveInput,
+  generateFromInput,
+  imageToImageFromInput,
+  multiImageRecipeFromInput,
+} from '@/lib/input-panel-generator';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -142,10 +148,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       }
 
       const promptText = videoElement.promptText?.trim();
-      const effectiveStartId = videoElement.startImageId ?? videoElement.endImageId;
-      const effectiveEndId = videoElement.endImageId ?? videoElement.startImageId;
+      const startImageId = videoElement.startImageId;
+      const endImageId = videoElement.endImageId;
 
-      const ready = Boolean(promptText && effectiveStartId && effectiveEndId);
+      const hasAtLeastOneImage = Boolean(startImageId || endImageId);
+      const ready = Boolean(promptText && hasAtLeastOneImage);
 
       if (!ready) {
         updateElement(videoId, {
@@ -154,9 +161,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         } as Partial<VideoElement>);
         return;
       }
-
-      const startImageId = effectiveStartId!;
-      const endImageId = effectiveEndId!;
 
       activeGenerationRef.current.add(videoId);
 
@@ -192,13 +196,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       }, 300);
 
       try {
-        const result = await generateVideoFromImages(startImageId, endImageId, promptText);
+        const actualStartId = startImageId || endImageId!;
+        const actualEndId = startImageId && endImageId ? endImageId : undefined;
+
+        const result = await generateVideoFromImages(actualStartId, actualEndId, promptText);
 
         clearInterval(progressInterval);
 
         const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
-        combinedSourceIds.add(startImageId);
-        combinedSourceIds.add(endImageId);
+        if (startImageId) combinedSourceIds.add(startImageId);
+        if (endImageId) combinedSourceIds.add(endImageId);
 
         updateElement(videoId, {
           status: 'ready',
@@ -264,6 +271,78 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       useCanvasStore.setState({ triggerVideoGeneration: undefined });
     };
   }, [maybeStartVideo]);
+
+  // 行级注释：注册从输入框生成图片的回调
+  const handleGenerateFromInput = useCallback(
+    async (
+      prompt: string,
+      aspectRatio: '16:9' | '9:16' | '1:1',
+      count: number,
+      panelRef: HTMLDivElement | null
+    ) => {
+      const { elements: storeElements, selection, addPromptHistory } = useCanvasStore.getState();
+      const position = getPositionAboveInput(panelRef, reactFlowInstance.screenToFlowPosition);
+
+      // 行级注释：获取选中的图片
+      const selectedImages = storeElements
+        .filter((el) => selection.includes(el.id) && el.type === 'image')
+        .map((el) => el as ImageElement);
+
+      try {
+        if (selectedImages.length === 0) {
+          // 行级注释：文生图
+          await generateFromInput(
+            prompt,
+            aspectRatio,
+            count,
+            position,
+            addElement,
+            updateElement,
+            useCanvasStore.getState().deleteElement,
+            addPromptHistory
+          );
+        } else if (selectedImages.length === 1) {
+          // 行级注释：图生图
+          await imageToImageFromInput(
+            prompt,
+            aspectRatio,
+            count,
+            selectedImages[0],
+            addElement,
+            updateElement,
+            useCanvasStore.getState().deleteElement,
+            addPromptHistory,
+            setEdges
+          );
+        } else {
+          // 行级注释：多图融合
+          await multiImageRecipeFromInput(
+            prompt,
+            aspectRatio,
+            count,
+            selectedImages,
+            addElement,
+            updateElement,
+            useCanvasStore.getState().deleteElement,
+            addPromptHistory,
+            setEdges
+          );
+        }
+      } catch (error: any) {
+        console.error('生成失败:', error);
+      }
+    },
+    [addElement, updateElement, setEdges, reactFlowInstance]
+  );
+
+  useEffect(() => {
+    useCanvasStore.setState({
+      onGenerateFromInput: handleGenerateFromInput,
+    });
+    return () => {
+      useCanvasStore.setState({ onGenerateFromInput: undefined });
+    };
+  }, [handleGenerateFromInput]);
 
   const createVideoNodeFromImage = useCallback(
     (
@@ -682,6 +761,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         updateElement(newImageId, {
           src: result.imageUrl,
           promptId: result.promptId,
+          mediaId: result.mediaId, // 行级注释：保存 Flow mediaId 以便后续图生视频引用
           mediaGenerationId: result.mediaGenerationId, // 保存 Flow 返回的 mediaGenerationId，便于后续图生图 // 行级注释说明用途
         } as Partial<ImageElement>);
         

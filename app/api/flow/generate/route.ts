@@ -208,9 +208,16 @@ export async function POST(request: NextRequest) {
 
         const mimeType = generatedImage?.mimeType || 'image/png';
         const workflowId = entry?.workflowId || generatedImage?.workflowId;
+        const mediaId =
+          entry?.mediaId ||
+          entry?.name ||
+          generatedImage?.mediaId ||
+          generatedImage?.mediaGenerationId ||
+          workflowId;
 
         return {
           encodedImage,
+          mediaId,
           mediaGenerationId: generatedImage?.mediaGenerationId,
           workflowId,
           prompt: generatedImage?.prompt || prompt,

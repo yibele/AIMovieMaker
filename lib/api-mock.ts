@@ -1,13 +1,420 @@
 import { GenerationMode, ImageElement } from './types';
 import { useCanvasStore } from './store';
-import {
-  generateImageWithFlow,
-  uploadImageWithFlow,
-  FlowAspectRatioEnum,
-  generateVideoStartEndWithFlow,
-  checkVideoStatusWithFlow,
-  generateVideoWithFlow,
-} from './flow-api';
+
+// ============================================================================
+// Flow API 类型定义和工具函数（从 flow-api.ts 合并）
+// ============================================================================
+
+export type FlowAspectRatioEnum =
+  | 'IMAGE_ASPECT_RATIO_LANDSCAPE'
+  | 'IMAGE_ASPECT_RATIO_PORTRAIT'
+  | 'IMAGE_ASPECT_RATIO_SQUARE';
+
+const aspectRatioMap: Record<'16:9' | '9:16' | '1:1', FlowAspectRatioEnum> = {
+  '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
+  '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT',
+  '1:1': 'IMAGE_ASPECT_RATIO_SQUARE',
+};
+
+function normalizeAspectRatio(ratio?: string): FlowAspectRatioEnum {
+  if (!ratio) {
+    return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
+  }
+  if (ratio in aspectRatioMap) {
+    return aspectRatioMap[ratio as keyof typeof aspectRatioMap];
+  }
+  if (
+    ratio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ||
+    ratio === 'IMAGE_ASPECT_RATIO_PORTRAIT' ||
+    ratio === 'IMAGE_ASPECT_RATIO_SQUARE'
+  ) {
+    return ratio;
+  }
+  return 'IMAGE_ASPECT_RATIO_LANDSCAPE';
+}
+
+async function handleFlowError(response: Response) {
+  const errorText = await response.text();
+  try {
+    const data = JSON.parse(errorText);
+    const message =
+      data?.error?.message ||
+      data?.message ||
+      errorText ||
+      'Flow API 请求失败';
+    throw new Error(`❌ Flow API 错误 (${response.status}): ${message}`);
+  } catch {
+    throw new Error(`❌ Flow API 错误 (${response.status}): ${errorText}`);
+  }
+}
+
+type FlowGeneratedImage = {
+  encodedImage: string;
+  base64Image?: string;
+  imageBase64?: string;
+  mediaId?: string;
+  mediaGenerationId?: string;
+  workflowId?: string;
+  prompt?: string;
+  seed?: number;
+  mimeType?: string;
+  fifeUrl?: string;
+};
+
+export type VideoGenerationStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'MEDIA_GENERATION_STATUS_PENDING'
+  | 'MEDIA_GENERATION_STATUS_ACTIVE'
+  | 'MEDIA_GENERATION_STATUS_QUEUED'
+  | 'MEDIA_GENERATION_STATUS_SUCCESSFUL'
+  | 'MEDIA_GENERATION_STATUS_FAILED';
+
+// ============================================================================
+// Flow API 调用函数（从 flow-api.ts 合并）
+// ============================================================================
+
+async function uploadImageWithFlow(params: {
+  imageBase64: string;
+  bearerToken: string;
+  sessionId: string;
+  proxy?: string;
+  aspectRatio?: FlowAspectRatioEnum;
+}): Promise<{
+  mediaGenerationId?: string;
+  width?: number;
+  height?: number;
+  workflowId?: string;
+  sessionId?: string;
+}> {
+  const { imageBase64, bearerToken, sessionId, proxy, aspectRatio } = params;
+
+  const response = await fetch('/api/flow/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      imageBase64,
+      bearerToken,
+      sessionId,
+      proxy,
+      aspectRatio: aspectRatio ?? 'IMAGE_ASPECT_RATIO_LANDSCAPE',
+    }),
+  });
+
+  if (!response.ok) {
+    await handleFlowError(response);
+  }
+
+  const data = await response.json();
+  return {
+    mediaGenerationId: data.mediaGenerationId,
+    width: data.width,
+    height: data.height,
+    workflowId: data.workflowId,
+    sessionId: data.sessionId ?? sessionId,
+  };
+}
+
+async function generateVideoWithFlow(params: {
+  prompt: string;
+  aspectRatio: '16:9' | '9:16' | '1:1';
+  bearerToken: string;
+  projectId: string;
+  sessionId: string;
+  proxy?: string;
+  seed?: number;
+  sceneId?: string;
+}): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: VideoGenerationStatus;
+  remainingCredits?: number;
+}> {
+  const {
+    prompt,
+    aspectRatio,
+    bearerToken,
+    projectId,
+    sessionId,
+    proxy,
+    seed,
+    sceneId,
+  } = params;
+
+  const response = await fetch('/api/flow/video/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      aspectRatio,
+      bearerToken,
+      projectId,
+      sessionId,
+      proxy,
+      seed,
+      sceneId,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleFlowError(response);
+  }
+
+  const data = await response.json();
+  return {
+    operationName: data.operationName,
+    sceneId: data.sceneId,
+    status: data.status,
+    remainingCredits: data.remainingCredits,
+  };
+}
+
+async function generateVideoStartEndWithFlow(params: {
+  prompt: string;
+  aspectRatio: '16:9' | '9:16' | '1:1';
+  bearerToken: string;
+  projectId: string;
+  sessionId: string;
+  startMediaId: string;
+  endMediaId: string;
+  proxy?: string;
+  seed?: number;
+  sceneId?: string;
+}): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: VideoGenerationStatus;
+  remainingCredits?: number;
+}> {
+  const {
+    prompt,
+    aspectRatio,
+    bearerToken,
+    projectId,
+    sessionId,
+    startMediaId,
+    endMediaId,
+    proxy,
+    seed,
+    sceneId,
+  } = params;
+
+  const response = await fetch('/api/flow/video/start-end', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      aspectRatio,
+      bearerToken,
+      projectId,
+      sessionId,
+      startMediaId,
+      endMediaId,
+      proxy,
+      seed,
+      sceneId,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleFlowError(response);
+  }
+
+  const data = await response.json();
+  return {
+    operationName: data.operationName,
+    sceneId: data.sceneId,
+    status: data.status,
+    remainingCredits: data.remainingCredits,
+  };
+}
+
+export async function checkVideoStatusWithFlow(params: {
+  operations: Array<{ operation: { name: string } }>;
+  bearerToken: string;
+  proxy?: string;
+}): Promise<{
+  operations: Array<{
+    operation: { name: string; metadata?: any };
+    status: VideoGenerationStatus;
+    metadata?: any;
+    video?: {
+      videoUrl?: string;
+      encodedVideo?: string;
+      thumbnailUrl?: string;
+      mimeType?: string;
+    };
+    error?: string;
+  }>;
+  remainingCredits?: number;
+}> {
+  const { operations, bearerToken, proxy } = params;
+
+  const response = await fetch('/api/flow/video/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      operations,
+      bearerToken,
+      proxy,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleFlowError(response);
+  }
+
+  const data = await response.json();
+  return {
+    operations: data.operations || [],
+    remainingCredits: data.remainingCredits,
+  };
+}
+
+async function generateImageWithFlow(params: {
+  prompt: string;
+  aspectRatio: '16:9' | '9:16' | '1:1';
+  bearerToken: string;
+  projectId: string;
+  sessionId: string;
+  proxy?: string;
+  seed?: number;
+  references?: Array<{ mediaId?: string; mediaGenerationId?: string }>;
+  count?: number;
+}): Promise<{
+  imageUrl: string;
+  mediaId?: string;
+  mediaGenerationId?: string;
+  workflowId?: string;
+  sessionId?: string;
+  translatedPrompt?: string;
+  seed?: number;
+  images?: Array<{
+    imageUrl: string;
+    mediaId?: string;
+    mediaGenerationId?: string;
+    workflowId?: string;
+    prompt?: string;
+    seed?: number;
+    fifeUrl?: string;
+  }>;
+}> {
+  const {
+    prompt,
+    aspectRatio,
+    bearerToken,
+    projectId,
+    sessionId,
+    proxy,
+    seed,
+    references,
+    count,
+  } = params;
+
+  const response = await fetch('/api/flow/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      aspectRatio,
+      bearerToken,
+      projectId,
+      sessionId,
+      proxy,
+      seed,
+      references,
+      count,
+    }),
+  });
+
+  if (!response.ok) {
+    await handleFlowError(response);
+  }
+
+  const data = await response.json();
+
+  const imagesRaw: FlowGeneratedImage[] = Array.isArray(data?.images)
+    ? data.images
+    : [];
+
+  const mappedImages = imagesRaw
+    .map((img) => {
+      const encoded =
+        img?.encodedImage || img?.base64Image || img?.imageBase64;
+      if (!encoded) {
+        return null;
+      }
+      const mime = img?.mimeType || 'image/png';
+      return {
+        encodedImage: encoded,
+        mimeType: mime,
+        mediaId: img?.mediaId,
+        mediaGenerationId: img?.mediaGenerationId,
+        workflowId: img?.workflowId,
+        prompt: img?.prompt,
+        seed: img?.seed,
+        fifeUrl: img?.fifeUrl,
+      };
+    })
+    .filter(Boolean) as Array<{
+      encodedImage: string;
+      mimeType: string;
+      mediaId?: string;
+      mediaGenerationId?: string;
+      workflowId?: string;
+      prompt?: string;
+      seed?: number;
+      fifeUrl?: string;
+    }>;
+
+  let primaryImage = mappedImages[0];
+
+  if (!primaryImage) {
+    const encoded =
+      data?.encodedImage || data?.base64Image || data?.imageBase64;
+    if (!encoded) {
+      throw new Error('❌ Flow API 响应中未找到图片数据');
+    }
+    primaryImage = {
+      encodedImage: encoded,
+      mimeType: data?.mimeType || 'image/png',
+      mediaId: data?.mediaId,
+      mediaGenerationId: data?.mediaGenerationId,
+      workflowId: data?.workflowId,
+      prompt: data?.prompt,
+      seed: data?.seed,
+      fifeUrl: data?.fifeUrl,
+    };
+  }
+
+  const imageUrl = `data:${primaryImage.mimeType};base64,${primaryImage.encodedImage}`;
+
+  return {
+    imageUrl,
+    mediaId: primaryImage.mediaId ?? data.mediaId,
+    mediaGenerationId:
+      primaryImage.mediaGenerationId ?? data.mediaGenerationId,
+    workflowId: primaryImage.workflowId ?? data.workflowId,
+    sessionId: data.sessionId ?? sessionId,
+    translatedPrompt: primaryImage.prompt || prompt,
+    seed: primaryImage.seed ?? seed,
+    images: mappedImages.map((img) => ({
+      imageUrl: `data:${img.mimeType};base64,${img.encodedImage}`,
+      mediaId: img.mediaId,
+      mediaGenerationId: img.mediaGenerationId,
+      workflowId: img.workflowId,
+      prompt: img.prompt,
+      seed: img.seed,
+      fifeUrl: img.fifeUrl,
+    })),
+  };
+}
+
+// ============================================================================
+// 原 api-mock.ts 代码开始
+// ============================================================================
 
 // 虚拟图片库（使用 Unsplash 随机图片）
 const MOCK_IMAGES = [
@@ -183,12 +590,14 @@ export async function generateImage(
 ): Promise<{
   imageUrl: string;
   promptId: string;
+  mediaId?: string;
   mediaGenerationId?: string;
   workflowId?: string;
   translatedPrompt?: string;
   sessionId?: string;
   images?: Array<{
     imageUrl: string;
+    mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
     prompt?: string;
@@ -236,6 +645,7 @@ export async function generateImage(
   return {
     imageUrl: result.imageUrl,
     promptId: generateId(),
+    mediaId: result.mediaId,
     mediaGenerationId: result.mediaGenerationId,
     workflowId: result.workflowId,
     translatedPrompt: result.translatedPrompt,
@@ -314,11 +724,13 @@ export async function runImageRecipe(
 ): Promise<{
   imageUrl: string;
   promptId: string;
+  mediaId?: string;
   mediaGenerationId?: string;
   workflowId?: string;
   translatedPrompt?: string;
   images?: Array<{
     imageUrl: string;
+    mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
     prompt?: string;
@@ -384,6 +796,7 @@ export async function runImageRecipe(
   return {
     imageUrl: result.imageUrl,
     promptId: generateId(),
+    mediaId: result.mediaId,
     mediaGenerationId: result.mediaGenerationId,
     workflowId: result.workflowId,
     translatedPrompt: result.translatedPrompt,
@@ -402,11 +815,13 @@ export async function imageToImage(
 ): Promise<{
   imageUrl: string;
   promptId: string;
+  mediaId?: string;
   mediaGenerationId?: string;
   workflowId?: string;
   translatedPrompt?: string;
   images?: Array<{
     imageUrl: string;
+    mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
     prompt?: string;
@@ -459,6 +874,7 @@ export async function imageToImage(
   return {
     imageUrl: result.imageUrl,
     promptId: generateId(),
+    mediaId: result.mediaId,
     mediaGenerationId: result.mediaGenerationId,
     workflowId: result.workflowId,
     translatedPrompt: result.translatedPrompt,
@@ -626,7 +1042,7 @@ export async function generateVideoFromImage(
 // 生成视频接口（图到图视频 - 首帧尾帧）
 export async function generateVideoFromImages(
   startImageId: string,
-  endImageId: string,
+  endImageId?: string,
   prompt?: string
 ): Promise<{
   videoUrl: string;
@@ -650,26 +1066,32 @@ export async function generateVideoFromImages(
   const startImage = elements.find(
     (el) => el.id === startImageId && el.type === 'image'
   ) as ImageElement | undefined;
-  const endImage = elements.find(
-    (el) => el.id === endImageId && el.type === 'image'
-  ) as ImageElement | undefined;
+  const endImage = endImageId
+    ? (elements.find(
+        (el) => el.id === endImageId && el.type === 'image'
+      ) as ImageElement | undefined)
+    : undefined;
 
   if (!startImage) {
     throw new Error('找不到首帧图片节点，请检查连线是否正确');
   }
-  if (!endImage) {
-    throw new Error('找不到尾帧图片节点，请检查连线是否正确');
-  }
-
-  const startMediaId = startImage.mediaGenerationId?.trim();
-  const endMediaId = endImage.mediaGenerationId?.trim();
+  const startMediaId =
+    startImage.mediaId?.trim() || startImage.mediaGenerationId?.trim();
+  const endMediaId = endImage
+    ? endImage.mediaId?.trim() || endImage.mediaGenerationId?.trim()
+    : undefined;
 
   if (!startMediaId) {
-    throw new Error('首帧图片缺少 Flow mediaGenerationId，请先使用 Flow 生成或上传同步');
+    throw new Error('首帧图片缺少 Flow mediaId，请先使用 Flow 生成或上传同步');
   }
-  if (!endMediaId) {
-    throw new Error('尾帧图片缺少 Flow mediaGenerationId，请先使用 Flow 生成或上传同步');
+  if (endImageId && !endImage) {
+    throw new Error('找不到尾帧图片节点，请检查连线是否正确');
   }
+  if (endImageId && !endMediaId) {
+    throw new Error('尾帧图片缺少 Flow mediaId，请先使用 Flow 生成或上传同步');
+  }
+
+  const resolvedEndMediaId = endMediaId || startMediaId;
 
   let sessionId = apiConfig.sessionId;
   if (!sessionId || !sessionId.trim()) {
@@ -686,7 +1108,7 @@ export async function generateVideoFromImages(
 
   console.log('🎬 调用 Flow 图生视频:', {
     startImageId,
-    endImageId,
+    endImageId: endImageId || startImageId,
     aspectRatio,
     sceneId,
   });
@@ -699,7 +1121,7 @@ export async function generateVideoFromImages(
     sessionId,
     proxy: apiConfig.proxy,
     startMediaId,
-    endMediaId,
+    endMediaId: resolvedEndMediaId,
     sceneId,
   });
 

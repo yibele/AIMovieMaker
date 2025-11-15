@@ -59,6 +59,13 @@ interface CanvasStore {
   getElementByIds: (ids: string[]) => CanvasElement[];
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
   triggerVideoGeneration?: (videoId: string) => void;
+  // 行级注释：从输入框生成图片的回调（由 Canvas 注入）
+  onGenerateFromInput?: (
+    prompt: string,
+    aspectRatio: '16:9' | '9:16' | '1:1',
+    count: number,
+    panelRef: HTMLDivElement | null
+  ) => void;
 }
 
 const createFlowContext = () => {
@@ -144,6 +151,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
   apiConfig: initialConfig,
   isSettingsOpen: false,
   triggerVideoGeneration: undefined,
+  onGenerateFromInput: undefined,
   
   addElement: (element) => 
     set((state) => ({ 
