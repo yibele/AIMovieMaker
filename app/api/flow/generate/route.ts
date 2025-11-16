@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       seed,
       references,
       count, // 生成数量 (1-4)
+      prefixPrompt, // 前置提示词
     } = body;
 
     // 行级注释：验证必需参数
@@ -34,9 +35,14 @@ export async function POST(request: NextRequest) {
     const normalizedAspect = normalizeImageAspectRatio(aspectRatio);
     const trimmedProjectId = projectId.trim();
     const trimmedSessionId = sessionId.trim();
-    
+
     // 确保生成数量在 1-4 之间
     const generationCount = Math.max(1, Math.min(4, typeof count === 'number' ? count : 1));
+
+    // 构建最终提示词：如果有前置提示词，则添加到前面
+    const finalPrompt = prefixPrompt && prefixPrompt.trim()
+      ? `${prefixPrompt.trim()}, ${prompt}`
+      : prompt;
 
     const imageInputs =
       Array.isArray(references) && references.length > 0
@@ -65,7 +71,7 @@ export async function POST(request: NextRequest) {
         seed: requestSeed,
         imageModelName: 'GEM_PIX',
         imageAspectRatio: normalizedAspect,
-        prompt,
+        prompt: finalPrompt,
         imageInputs, // 始终包含 imageInputs（文生图时为空数组，图生图时为参考图数组）
       };
       
@@ -182,7 +188,7 @@ export async function POST(request: NextRequest) {
           mediaId,
           mediaGenerationId: generatedImage?.mediaGenerationId,
           workflowId,
-          prompt: generatedImage?.prompt || prompt,
+          prompt: generatedImage?.prompt || finalPrompt,
           seed: generatedImage?.seed,
           mimeType,
           fifeUrl: generatedImage?.fifeUrl,

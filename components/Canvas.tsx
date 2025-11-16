@@ -66,6 +66,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const addElement = useCanvasStore((state) => state.addElement);
   const setSelection = useCanvasStore((state) => state.setSelection);
   const uiState = useCanvasStore((state) => state.uiState);
+  const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
 
   const createConnectionMenuState = (): ConnectionMenuState => ({
     visible: false,
@@ -94,10 +95,13 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         projectId,
       },
     }));
+    // 加载项目的前置提示词
+    loadProjectPrefixPrompt(projectId);
+    // 加载项目素材
     loadMaterialsFromProject(projectId).catch((error) => {
       console.error('同步项目素材失败:', error);
     });
-  }, [projectId]);
+  }, [projectId, loadProjectPrefixPrompt]);
 
   // 将 store 中的元素转换为 React Flow 节点
   // @ts-ignore - React Flow 类型推断问题

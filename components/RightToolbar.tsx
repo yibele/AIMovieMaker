@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
+import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
 import { MaterialsIcon } from './icons/MaterialsIcon';
+import PrefixPromptModal from './PrefixPromptModal';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
   const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
+  const [isPrefixPromptOpen, setIsPrefixPromptOpen] = useState(false);
+  const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
 
   return (
     <>
@@ -29,13 +32,20 @@ export default function RightToolbar() {
         {/* 分隔线 */}
         <div className="border-t border-gray-200 my-1" />
 
-        {/* 缩放控制 */}
+        {/* 前置提示词 */}
         <button
-          onClick={() => console.log('放大画布')}
-          className="p-3 rounded-lg transition-all hover:bg-gray-100 text-gray-700"
-          title="放大"
+          onClick={() => setIsPrefixPromptOpen(true)}
+          className={`p-3 rounded-lg transition-all group relative
+            ${prefixPrompt
+              ? 'bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700'
+              : 'hover:bg-gray-100 text-gray-700'
+            }`}
+          title={prefixPrompt ? `前置提示词：${prefixPrompt.slice(0, 50)}${prefixPrompt.length > 50 ? '...' : ''}` : '前置提示词'}
         >
-          <ZoomIn className="w-5 h-5" />
+          <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          {prefixPrompt && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full"></div>
+          )}
         </button>
         <button
           onClick={() => console.log('缩小画布')}
@@ -76,6 +86,12 @@ export default function RightToolbar() {
       <MaterialsPanel
         isOpen={isMaterialsPanelOpen}
         onClose={() => setIsMaterialsPanelOpen(false)}
+      />
+
+      {/* 前置提示词弹窗 */}
+      <PrefixPromptModal
+        isOpen={isPrefixPromptOpen}
+        onClose={() => setIsPrefixPromptOpen(false)}
       />
     </>
   );

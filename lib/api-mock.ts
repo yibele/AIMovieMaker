@@ -283,6 +283,7 @@ async function generateImageWithFlow(params: {
   seed?: number;
   references?: Array<{ mediaId?: string; mediaGenerationId?: string }>;
   count?: number;
+  prefixPrompt?: string;
 }): Promise<{
   imageUrl: string;
   mediaId?: string;
@@ -311,6 +312,7 @@ async function generateImageWithFlow(params: {
     seed,
     references,
     count,
+    prefixPrompt,
   } = params;
 
   const response = await fetch('/api/flow/generate', {
@@ -326,6 +328,7 @@ async function generateImageWithFlow(params: {
       seed,
       references,
       count,
+      prefixPrompt,
     }),
   });
 
@@ -631,6 +634,7 @@ export async function generateImage(
     sessionId,
     proxy: apiConfig.proxy,
     count: count ?? apiConfig.generationCount ?? 1, // 使用传入的 count 或配置的 generationCount
+    prefixPrompt: useCanvasStore.getState().currentPrefixPrompt, // 添加前置提示词
   });
   const contextUpdates: Partial<typeof apiConfig> = {};
   if (result.workflowId && result.workflowId !== apiConfig.workflowId) {
@@ -781,6 +785,7 @@ export async function runImageRecipe(
     seed,
     references: validReferences,
     count: count ?? apiConfig.generationCount ?? 1, // 使用传入的 count 或配置的 generationCount
+    prefixPrompt: useCanvasStore.getState().currentPrefixPrompt, // 添加前置提示词
   });
   const recipeContextUpdates: Partial<typeof apiConfig> = {};
   if (result.workflowId && result.workflowId !== apiConfig.workflowId) {
@@ -859,6 +864,7 @@ export async function imageToImage(
     proxy: apiConfig.proxy,
     references: [{ mediaId: originalMediaId }], // 传 mediaId 给 Flow API // 行级注释说明用途
     count: count ?? apiConfig.generationCount ?? 1, // 使用传入的 count 或配置的 generationCount
+    prefixPrompt: useCanvasStore.getState().currentPrefixPrompt, // 添加前置提示词
   });
   const editContextUpdates: Partial<typeof apiConfig> = {};
   if (result.workflowId && result.workflowId !== apiConfig.workflowId) {

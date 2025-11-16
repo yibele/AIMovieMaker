@@ -42,6 +42,10 @@ interface CanvasStore {
   apiConfig: ApiConfig;
   // 设置面板打开状态
   isSettingsOpen: boolean;
+  // 项目前置提示词映射（按 projectId 存储）
+  projectPrefixPrompts: Record<string, string>;
+  // 当前项目的前置提示词
+  currentPrefixPrompt: string;
   
   // 操作方法
   addElement: (element: CanvasElement) => void;
@@ -55,6 +59,8 @@ interface CanvasStore {
   setUIState: (updates: Partial<UIState>) => void;
   setProjectTitle: (title: string) => void;
   setApiConfig: (config: Partial<ApiConfig>) => void;
+  setPrefixPrompt: (prompt: string) => void;
+  loadProjectPrefixPrompt: (projectId: string) => void;
   setIsSettingsOpen: (isOpen: boolean) => void;
   getElementByIds: (ids: string[]) => CanvasElement[];
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
@@ -137,6 +143,37 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     }
   };
 
+  // 保存项目前置提示词
+  const saveProjectPrefixPrompt = (projectId: string, prompt: string) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aimovimaker_project_prefix_prompts');
+        const prompts: Record<string, string> = saved ? JSON.parse(saved) : {};
+        if (prompt) {
+          prompts[projectId] = prompt;
+        } else {
+          delete prompts[projectId];
+        }
+        localStorage.setItem('aimovimaker_project_prefix_prompts', JSON.stringify(prompts));
+      } catch (error) {
+        console.error('保存项目前置提示词失败:', error);
+      }
+    }
+  };
+
+  // 加载所有项目前置提示词
+  const loadProjectPrefixPrompts = (): Record<string, string> => {
+    if (typeof window === 'undefined') return {};
+
+    try {
+      const saved = localStorage.getItem('aimovimaker_project_prefix_prompts');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('加载项目前置提示词失败:', error);
+      return {};
+    }
+  };
+
   return {
   elements: [],
   selection: [],
@@ -150,6 +187,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
   projectTitle: 'Untitled',
   apiConfig: initialConfig,
   isSettingsOpen: false,
+  projectPrefixPrompts: loadProjectPrefixPrompts(),
+  currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
   triggerVideoGeneration: undefined,
   onGenerateFromInput: undefined,
   
@@ -205,6 +244,26 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
       };
       saveConfig(merged);
       return { apiConfig: merged };
+    });
+  },
+
+  setPrefixPrompt: (prompt) => {
+    const projectId = get().apiConfig.projectId;
+    if (!projectId) return;
+
+    // 保存到项目映射中
+    saveProjectPrefixPrompt(projectId, prompt);
+
+    // 更新当前前置提示词
+    set({ currentPrefixPrompt: prompt });
+  },
+
+  loadProjectPrefixPrompt: (projectId) => {
+    const prompts = get().projectPrefixPrompts;
+    const prompt = prompts[projectId] || '';
+    set({
+      currentPrefixPrompt: prompt,
+      apiConfig: { ...get().apiConfig, projectId }
     });
   },
 

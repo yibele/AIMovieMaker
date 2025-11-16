@@ -28,7 +28,9 @@ body {
   --xy-node-boxshadow-default:
     0px 1px 2px 0px rgba(0, 0, 0, 0.05);
 
-  --xy-node-border-radius-default: 20px;
+  --xy-node-border-radius-default: 8px;
+
+  --xy-node-background-color-default: transparent; /* 透明背景 */
 
   --xy-handle-background-color-default: #ffffff;
   --xy-handle-border-color-default: #d1d5db;

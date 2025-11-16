@@ -182,7 +182,7 @@ function TextNode({ data, id }: NodeProps) {
 
   return (
     <div
-      className="relative transition-all flex items-center justify-center w-full h-full bg-transparent "
+      className="relative transition-all flex items-center justify-center w-full h-full bg-transparent rounded-lg"
 
       onDoubleClick={handleDoubleClick}
     >
@@ -260,7 +260,7 @@ function TextNode({ data, id }: NodeProps) {
             }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-2"
+            className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-2 rounded-lg"
             style={{
               fontSize: `${BASE_FONT_SIZE}px`,
               color: textData.color || '#000',
@@ -274,7 +274,7 @@ function TextNode({ data, id }: NodeProps) {
           />
         ) : (
           <div
-            className="whitespace-pre-wrap cursor-text select-text text-center w-full break-words overflow-hidden p-2"
+            className="whitespace-pre-wrap cursor-text select-text text-center w-full break-words overflow-hidden p-2 rounded-lg"
             style={{
               fontSize: `${BASE_FONT_SIZE}px`,
               color: textData.color || '#000',

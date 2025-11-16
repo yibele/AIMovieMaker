@@ -201,8 +201,16 @@ export async function POST(request: NextRequest) {
     const operation = operations[0];
     const operationName =
       operation?.operation?.name || operation?.name || '';
-    const operationStatus = operation?.status;
+    // 行级注释：首尾帧模式下 Flow 不返回 status，默认设为 PENDING
+    const operationStatus = operation?.status || 'MEDIA_GENERATION_STATUS_PENDING';
+    // 行级注释：首尾帧模式下 Flow 不返回 sceneId，使用我们发送的
     const operationSceneId = operation?.sceneId || resolvedSceneId;
+
+    console.log('✅ 视频生成任务已提交', {
+      operationName,
+      sceneId: operationSceneId,
+      status: operationStatus,
+    });
 
     return NextResponse.json({
       operationName,
