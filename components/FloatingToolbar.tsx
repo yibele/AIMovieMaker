@@ -1,6 +1,6 @@
 'use client';
 
-import { RefreshCw, Copy, Download, Trash2 } from 'lucide-react';
+import { RefreshCw, Copy, Download, Trash2, Square } from 'lucide-react';
 import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
@@ -16,6 +16,7 @@ export default function FloatingToolbar() {
   const addElement = useCanvasStore((state) => state.addElement);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addPromptHistory = useCanvasStore((state) => state.addPromptHistory);
+  const setSelection = useCanvasStore((state) => state.setSelection);
 
   // 只在选中图片时显示
   const selectedElements = elements.filter((el) => selection.includes(el.id));
@@ -91,6 +92,23 @@ export default function FloatingToolbar() {
     }
   };
 
+  // 复制图片
+  const handleDuplicate = () => {
+    if (!selectedImage) return;
+
+    const newImage: ImageElement = {
+      ...selectedImage,
+      id: `image-${Date.now()}`,
+      position: {
+        x: selectedImage.position.x + (selectedImage.size?.width || 400) + 30,
+        y: selectedImage.position.y,
+      },
+    };
+
+    addElement(newImage);
+    setSelection([newImage.id]);
+  };
+
   // 下载图片
   const handleDownload = () => {
     imageElements.forEach((img) => {
@@ -136,6 +154,7 @@ export default function FloatingToolbar() {
       >
         <ToolbarButton icon={<RefreshCw className="w-4 h-4" />} label="再次生成" onClick={() => handleRegenerate()} />
         <ToolbarButton icon={<Copy className="w-4 h-4" />} label="类似图片" onClick={() => handleSimilar()} />
+        <ToolbarButton icon={<Square className="w-4 h-4" />} label="复制" onClick={() => handleDuplicate()} />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
         <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
