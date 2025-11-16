@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
       const request: any = {
         clientContext: {
           sessionId: trimmedSessionId,
+          projectId: trimmedProjectId,
+          tool: 'PINHOLE',
+          userPaygateTier: 'PAYGATE_TIER_ONE',
         },
         seed: requestSeed,
         imageModelName: 'GEM_PIX',
