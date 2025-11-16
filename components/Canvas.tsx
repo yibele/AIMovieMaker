@@ -1089,8 +1089,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         panOnScroll
         panOnDrag={[1, 2]} // 中键和右键拖拽
         zoomOnScroll
-        minZoom={0.5}
-        maxZoom={2}
+        minZoom={0.1}
+        maxZoom={3}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         nodesDraggable={true}
         nodesConnectable={true}
