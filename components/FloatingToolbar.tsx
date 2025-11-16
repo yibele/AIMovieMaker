@@ -4,7 +4,8 @@ import { RefreshCw, Copy, Download, Trash2, Square } from 'lucide-react';
 import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
-import { editImage } from '@/lib/api-mock';
+import { editImage, generateImageWithFlow } from '@/lib/api-mock';
+import { generateFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
 
 export default function FloatingToolbar() {
@@ -17,6 +18,7 @@ export default function FloatingToolbar() {
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addPromptHistory = useCanvasStore((state) => state.addPromptHistory);
   const setSelection = useCanvasStore((state) => state.setSelection);
+  const promptsHistory = useCanvasStore((state) => state.promptsHistory);
 
   // 只在选中图片时显示
   const selectedElements = elements.filter((el) => selection.includes(el.id));
@@ -31,24 +33,67 @@ export default function FloatingToolbar() {
   // 再次生成
   const handleRegenerate = async () => {
     if (!selectedImage) return;
-    
-    const prompt = '生成类似的图片';
-    
+
     try {
-      const result = await editImage(prompt, selectedImage.id, 'regenerate');
-      
-      updateElement(selectedImage.id, {
-        src: result.imageUrl,
-        promptId: result.promptId,
-      } as Partial<ImageElement>);
-      
-      addPromptHistory({
-        promptId: result.promptId,
-        promptText: prompt,
-        imageId: selectedImage.id,
-        mode: 'regenerate',
-        createdAt: Date.now(),
-      });
+      // 1. 获取原始提示词
+      let originalPrompt = '';
+
+      // 首先从 generatedFrom 中获取
+      if (selectedImage.generatedFrom?.prompt) {
+        originalPrompt = selectedImage.generatedFrom.prompt;
+      } else if (selectedImage.promptId) {
+        // 从历史记录中查找
+        const history = promptsHistory.find(h => h.promptId === selectedImage.promptId);
+        if (history) {
+          originalPrompt = history.promptText;
+        }
+      }
+
+      // 如果还是没有提示词，使用默认值
+      if (!originalPrompt) {
+        originalPrompt = '生成图片';
+      }
+
+      // 2. 根据生成类型执行不同的生成逻辑
+      const generationType = selectedImage.generatedFrom?.type;
+
+      if (generationType === 'image-to-image') {
+        // 图生图：找到源图片，再次运行图生图
+        console.log('图生图再次生成:', originalPrompt);
+        // TODO: 实现图生图逻辑
+        alert('图生图再次生成功能开发中...');
+      } else {
+        // 文生图：直接生成新图片
+        console.log('文生图再次生成:', originalPrompt);
+
+        // 从原图尺寸推断宽高比
+        let aspectRatio = '16:9';
+        if (selectedImage.size) {
+          const { width = 400, height = 300 } = selectedImage.size;
+          const ratio = width / height;
+          if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
+          else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+          else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
+        }
+
+        // 计算新图片位置（在原图右侧）
+        const newPosition = {
+          x: selectedImage.position.x + (selectedImage.size?.width || 640) + 50,
+          y: selectedImage.position.y,
+        };
+
+        // 使用 generateFromInput 生成新图片
+        await generateFromInput(
+          originalPrompt,
+          aspectRatio as '16:9' | '9:16' | '1:1',
+          1, // 生成数量
+          newPosition,
+          addElement,
+          updateElement,
+          useCanvasStore.getState().deleteElement,
+          addPromptHistory
+        );
+      }
     } catch (error) {
       console.error('再次生成失败:', error);
       alert('生成失败，请重试');

@@ -1083,7 +1083,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         onConnectEnd={handleConnectEnd}
         nodeTypes={nodeTypes}
         fitView
-        selectNodesOnDrag={false}
+        selectNodesOnDrag={true}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag
         panOnScroll
@@ -1095,7 +1095,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
-        connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 1 }}
+        connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 2}}
         connectionLineType={ConnectionLineType.Bezier}
         proOptions={{ hideAttribution: true }}
       >
