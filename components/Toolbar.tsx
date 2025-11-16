@@ -6,6 +6,11 @@ import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { TextElement, ImageElement, VideoElement } from '@/lib/types';
 import { registerUploadedImage } from '@/lib/api-mock';
+import type { FlowAspectRatioEnum } from '@/lib/api-mock';
+import ImageCropperModal, {
+  AspectRatioOption,
+  CroppedImageResult,
+} from './ImageCropperModal';
 
 export default function Toolbar() {
   const activeTool = useCanvasStore((state) => state.uiState.activeTool);
@@ -14,6 +19,29 @@ export default function Toolbar() {
   const updateElement = useCanvasStore((state) => state.updateElement);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
   const { screenToFlowPosition } = useReactFlow(); // 获取屏幕坐标转画布坐标的方法
+
+  type CropperState = {
+    open: boolean;
+    imageSrc: string | null;
+    aspect: AspectRatioOption;
+  };
+
+  const createDefaultCropperState = (): CropperState => ({
+    open: false,
+    imageSrc: null,
+    aspect: '16:9',
+  });
+
+  const [cropperState, setCropperState] = useState<CropperState>(
+    createDefaultCropperState
+  );
+
+  const closeCropper = () => setCropperState(createDefaultCropperState());
+
+  const flowAspectMap: Record<AspectRatioOption, FlowAspectRatioEnum> = {
+    '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
+    '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT',
+  };
 
   // 工具按钮配置
   const tools = [
@@ -124,40 +152,56 @@ export default function Toolbar() {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const imageUrl = event.target?.result as string;
+        if (!imageUrl) {
+          alert('读取图片失败，请重试');
+          return;
+        }
         
-        // 创建图片元素获取尺寸
         const img = new Image();
-        img.onload = async () => {
-          const maxWidth = 500;
-          const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+        img.onload = () => {
+          const preferAspect: AspectRatioOption =
+            img.width >= img.height ? '16:9' : '9:16';
+          setCropperState({
+            open: true,
+            imageSrc: imageUrl,
+            aspect: preferAspect,
+          });
+        };
+        img.onerror = () => {
+          alert('加载图片失败，请重试');
+        };
+        img.src = imageUrl;
+      };
+      reader.readAsDataURL(file);
+    };
+    
+    input.click();
+  };
+
+  const placeImageOnCanvas = async (result: CroppedImageResult) => {
+    const { dataUrl, width, height, aspect } = result;
           const imageId = `image-${Date.now()}`;
           const hasFlowCredential =
             Boolean(apiConfig.bearerToken && apiConfig.bearerToken.trim()) &&
             Boolean(apiConfig.projectId && apiConfig.projectId.trim());
-          const flowAspectRatio =
-            img.width === img.height
-              ? 'IMAGE_ASPECT_RATIO_SQUARE'
-              : img.width > img.height
-              ? 'IMAGE_ASPECT_RATIO_LANDSCAPE'
-              : 'IMAGE_ASPECT_RATIO_PORTRAIT';
-          
-          // 获取屏幕中心的画布坐标
+
           const screenCenter = {
             x: window.innerWidth / 2,
             y: window.innerHeight / 2,
           };
           const flowPosition = screenToFlowPosition(screenCenter);
           
-          // 图片缩放后的尺寸
-          const imageWidth = img.width * scale;
-          const imageHeight = img.height * scale;
+    const maxWidth = 500;
+    const scale = width > maxWidth ? maxWidth / width : 1;
+    const imageWidth = width * scale;
+    const imageHeight = height * scale;
           
           const newImage: ImageElement = {
             id: imageId,
             type: 'image',
-            src: imageUrl,
+      src: dataUrl,
             position: {
-              x: flowPosition.x - imageWidth / 2, // 居中对齐
+        x: flowPosition.x - imageWidth / 2,
               y: flowPosition.y - imageHeight / 2,
             },
             size: {
@@ -165,20 +209,26 @@ export default function Toolbar() {
               height: imageHeight,
             },
             generatedFrom: {
-              type: 'input', // 上传的图片标记为 input 类型，无源节点
+        type: 'input',
             },
-            uploadState: hasFlowCredential ? 'syncing' : 'local', // 若可同步则展示进度态 // 行级注释说明状态初始化
+      uploadState: hasFlowCredential ? 'syncing' : 'local',
           };
+
           addElement(newImage);
 
           if (!hasFlowCredential) {
             console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
-            alert('图片已添加，但未配置 Flow 的 Bearer Token 或 Project ID，无法进行图生图，请先在设置中填写');
+      alert(
+        '图片已添加，但未配置 Flow 的 Bearer Token 或 Project ID，无法进行图生图，请先在设置中填写'
+      );
             return;
           }
 
           try {
-            const result = await registerUploadedImage(imageUrl, flowAspectRatio);
+      const result = await registerUploadedImage(
+        dataUrl,
+        flowAspectMap[aspect]
+      );
             updateElement(imageId, {
               mediaGenerationId: result.mediaGenerationId || undefined,
               alt: result.caption || newImage.alt,
@@ -196,16 +246,15 @@ export default function Toolbar() {
             } as Partial<ImageElement>);
             alert(message);
           }
-        };
-        img.src = imageUrl;
-      };
-      reader.readAsDataURL(file);
     };
     
-    input.click();
+  const handleCropConfirm = async (result: CroppedImageResult) => {
+    closeCropper();
+    await placeImageOnCanvas(result);
   };
 
   return (
+    <>
     <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
       {tools.map((tool) => {
         const Icon = tool.icon;
@@ -227,6 +276,14 @@ export default function Toolbar() {
         );
       })}
     </div>
+      <ImageCropperModal
+        open={cropperState.open}
+        imageSrc={cropperState.imageSrc}
+        initialAspect={cropperState.aspect}
+        onCancel={closeCropper}
+        onConfirm={handleCropConfirm}
+      />
+    </>
   );
 }
 
