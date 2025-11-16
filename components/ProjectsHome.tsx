@@ -344,7 +344,9 @@ export default function ProjectsHome() {
 
         // 检查是否是401错误（token或cookie过期）
         if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期')) {
-          toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置');
+          toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置', {
+            duration: 8000,
+          });
         }
       }
     } finally {
@@ -497,7 +499,9 @@ export default function ProjectsHome() {
 
       // 检查是否是401错误（token或cookie过期）
       if (is401Error) {
-        toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置');
+        toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置', {
+          duration: 8000,
+        });
       }
     } finally {
       setIsCreating(false); // 恢复按钮状态

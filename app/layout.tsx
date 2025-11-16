@@ -23,9 +23,6 @@ export default function RootLayout({
           theme="system"
           toastOptions={{
             duration: 3000,
-            error: {
-              duration: 8000,
-            },
             style: {
               background: 'hsl(var(--background))',
               border: '1px solid hsl(var(--border))',
@@ -36,10 +33,10 @@ export default function RootLayout({
             },
             classNames: {
               toast: 'border-l-4',
-              toastError: 'border-l-red-500',
-              toastSuccess: 'border-l-green-500',
-              toastInfo: 'border-l-blue-500',
-              toastWarning: 'border-l-yellow-500',
+              error: 'border-l-red-500',
+              success: 'border-l-green-500',
+              info: 'border-l-blue-500',
+              warning: 'border-l-yellow-500',
             },
           }}
         />
