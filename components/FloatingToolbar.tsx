@@ -159,7 +159,8 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
                 promptId: result.promptId,
                 mediaId: result.mediaId,
                 mediaGenerationId: result.mediaGenerationId,
-              });
+                uploadState: 'synced',
+              } as Partial<ImageElement>);
 
               // 停止连线动画
               if (setEdges) {
@@ -186,7 +187,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
               updateElement(newImageId, {
                 uploadState: 'error',
                 uploadMessage: '生成失败',
-              });
+              } as Partial<ImageElement>);
             });
           });
         } catch (error) {
@@ -194,7 +195,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           updateElement(newImageId, {
             uploadState: 'error',
             uploadMessage: '生成失败',
-          });
+          } as Partial<ImageElement>);
         }
       } else {
         // 文生图：直接生成新图片

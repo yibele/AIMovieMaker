@@ -148,7 +148,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       }
 
       // 合并所有数据
-      const blob = new Blob(chunks, { type: 'video/mp4' });
+      const blob = new Blob(chunks as any, { type: 'video/mp4' });
       console.log('✅ Blob 创建成功，大小:', blob.size, 'bytes');
       setBlobSize(blob.size);
 
@@ -180,7 +180,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       setIsDownloading(false);
       setDownloadProgress(0);
       setBlobSize(0);
-      alert('视频下载失败：' + error.message);
+      alert('视频下载失败：' + (error as Error)?.message || '未知错误');
     }
   }, [videoData.src, id]);
 
