@@ -93,25 +93,14 @@ export default function ImageCropperModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/75 flex items-center justify-center p-4">
-      <div className="flex flex-col bg-gray-900 text-white rounded-2xl shadow-2xl w-full max-w-[1200px] h-[88vh] overflow-hidden border border-white/10">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <div>
-            <p className="text-lg font-semibold">裁剪图片</p>
-            <p className="text-sm text-white/70 mt-0.5">
-              请选择 Flow 支持的 16:9 或 9:16 比例并调整取景区域
-            </p>
-          </div>
-          <button
-            onClick={onCancel}
-            className="text-sm px-3 py-1.5 rounded-md border border-white/30 hover:bg-white/10 transition"
-          >
-            关闭
-          </button>
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="flex flex-col bg-white rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-5xl h-[90vh] overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-center">
+          <p className="text-lg font-medium text-gray-900">裁剪图片</p>
         </div>
 
-        <div className="flex-1 flex flex-col gap-4 px-6 py-4">
-          <div className="flex-1 relative rounded-xl overflow-hidden bg-black/70">
+        <div className="flex-1 flex flex-col p-5">
+          <div className="flex-1 relative rounded-lg overflow-hidden bg-gray-50 border border-gray-200">
             <Cropper
               image={imageSrc}
               crop={crop}
@@ -126,9 +115,9 @@ export default function ImageCropperModal({
             />
           </div>
 
-          <div className="bg-black/40 rounded-xl border border-white/5 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-white/70">缩放</span>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+              <span className="text-sm text-gray-600">缩放</span>
               <input
                 type="range"
                 min={1}
@@ -136,22 +125,22 @@ export default function ImageCropperModal({
                 step={0.01}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-48 accent-white"
+                className="w-32 accent-blue-500"
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
               {(['16:9', '9:16'] as AspectRatioOption[]).map((option) => (
                 <button
                   key={option}
                   onClick={() => setSelectedAspect(option)}
-                  className={`px-3 py-1.5 rounded-md border text-sm transition ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
                     selectedAspect === option
-                      ? 'bg-white text-gray-900 border-white'
-                      : 'border-white/40 text-white hover:bg-white/10'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  {option === '16:9' ? '横向 16:9' : '纵向 9:16'}
+                  {option}
                 </button>
               ))}
             </div>
@@ -161,36 +150,31 @@ export default function ImageCropperModal({
                 setCrop({ x: 0, y: 0 });
                 setZoom(1);
               }}
-              className="px-4 py-2 rounded-md border border-white/30 text-sm hover:bg-white/10 transition"
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
             >
               重置
             </button>
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-          <p className="text-sm text-white/70">
-            建议使用竖屏 9:16 或横屏 16:9，以确保 Flow 上传后可直接生成视频
-          </p>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 rounded-md border border-white/30 text-sm hover:bg-white/10 transition"
-            >
-              取消
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={isProcessing || !croppedAreaPixels}
-              className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
-                isProcessing || !croppedAreaPixels
-                  ? 'bg-white/30 text-gray-700 cursor-not-allowed'
-                  : 'bg-white text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              {isProcessing ? '裁剪中...' : '裁剪并上传'}
-            </button>
-          </div>
+        <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-center gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+          >
+            取消
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={isProcessing || !croppedAreaPixels}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+              isProcessing || !croppedAreaPixels
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-500'
+            }`}
+          >
+            {isProcessing ? '裁剪中...' : '确定'}
+          </button>
         </div>
       </div>
     </div>
