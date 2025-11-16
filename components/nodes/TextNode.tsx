@@ -37,19 +37,19 @@ function TextNode({ data, id }: NodeProps) {
     tempDiv.style.textDecoration = textDecoration; // 行级注释：保持测量与展示样式一致
     tempDiv.style.whiteSpace = 'pre-wrap';
     tempDiv.style.lineHeight = '1.4';
-    tempDiv.style.maxWidth = '600px'; // 最大宽度限制
+    tempDiv.style.padding = '6px 12px'; // 最小内边距，让文字不贴边
+    tempDiv.style.maxWidth = '400px'; // 减小最大宽度
     tempDiv.textContent = textContent || '双击编辑文字';
-    
+
     document.body.appendChild(tempDiv);
     const width = Math.ceil(tempDiv.offsetWidth);
     const height = Math.ceil(tempDiv.offsetHeight);
     document.body.removeChild(tempDiv);
-    
-    // 添加内边距
-    const padding = 24;
+
+    // 直接返回测量结果，不加额外padding（已经包含了最小padding）
     const newSize = {
-      width: Math.max(100, Math.min(600, width + padding * 2)), // 最小100，最大600
-      height: Math.max(60, Math.min(400, height + padding * 2)), // 最小60，最大400
+      width: Math.max(80, width), // 最小宽度80
+      height: Math.max(32, height), // 最小高度32
     };
     return newSize;
   }, [fontWeight, fontStyle, textDecoration, BASE_FONT_SIZE]);
@@ -182,8 +182,8 @@ function TextNode({ data, id }: NodeProps) {
 
   return (
     <div
-      className="relative transition-all flex items-center justify-center w-full h-full"
-      
+      className="relative transition-all flex items-center justify-center w-full h-full bg-transparent "
+
       onDoubleClick={handleDoubleClick}
     >
         {/* 编辑工具栏 - 样式与视频节点保持一致 */}
@@ -260,7 +260,7 @@ function TextNode({ data, id }: NodeProps) {
             }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-3"
+            className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-2"
             style={{
               fontSize: `${BASE_FONT_SIZE}px`,
               color: textData.color || '#000',
@@ -274,7 +274,7 @@ function TextNode({ data, id }: NodeProps) {
           />
         ) : (
           <div
-            className="whitespace-pre-wrap cursor-text select-none text-center w-full break-words overflow-hidden p-3"
+            className="whitespace-pre-wrap cursor-text select-text text-center w-full break-words overflow-hidden p-2"
             style={{
               fontSize: `${BASE_FONT_SIZE}px`,
               color: textData.color || '#000',
