@@ -14,6 +14,12 @@ const i2vModelMap: Record<string, string> = {
   VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait', // 行级注释：方形场景使用竖屏模型
 };
 
+const i2vStartEndModelMap: Record<string, string> = {
+  VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast_fl', // 行级注释：横屏首尾帧模型，具备 prompt 重写配置
+  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：竖屏首尾帧模型
+  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：方形首尾帧沿用竖屏
+};
+
 function normalizeAspectRatio(aspectRatio?: string): string {
   if (!aspectRatio) {
     return 'VIDEO_ASPECT_RATIO_PORTRAIT'; // 行级注释：默认竖屏
@@ -87,17 +93,22 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedAspect = normalizeAspectRatio(aspectRatio);
-    const modelKey =
-      i2vModelMap[normalizedAspect] ??
-      'veo_3_1_i2v_s_fast_portrait'; // 行级注释：未知比例回退竖屏模型（修正：移除 _fl 后缀）
-
     const trimmedProjectId = projectId.trim();
     const trimmedSessionId = sessionId.trim();
     const requestPrompt = typeof prompt === 'string' ? prompt : '';
     const trimmedStartMediaId = startMediaId.trim();
     const trimmedEndMediaId =
       typeof endMediaId === 'string' ? endMediaId.trim() : '';
-    const hasEndImage = trimmedEndMediaId && trimmedEndMediaId.length > 0; // 行级注释：检查是否真的有尾帧
+    const hasEndImage = Boolean(
+      trimmedEndMediaId && trimmedEndMediaId.length > 0
+    ); // 行级注释：检查是否真的有尾帧
+    const baseModelFallback = 'veo_3_1_i2v_s_fast_portrait';
+    const startEndModelFallback = 'veo_3_1_i2v_s_fast_portrait_fl';
+    const baseModelKey =
+      i2vModelMap[normalizedAspect] ?? baseModelFallback; // 行级注释：仅首帧模式模型
+    const startEndModelKey =
+      i2vStartEndModelMap[normalizedAspect] ?? startEndModelFallback; // 行级注释：首尾帧模式模型
+    const modelKey = hasEndImage ? startEndModelKey : baseModelKey; // 行级注释：根据模式选择模型
     const resolvedSceneId = resolveSceneId(sceneId);
     const requestSeed =
       typeof seed === 'number'

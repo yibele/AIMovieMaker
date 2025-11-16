@@ -330,7 +330,7 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
             "textInput": {
                 "prompt": "描述性文字提示"
             },
-            "videoModelKey": "veo_3_1_i2v_s_fast_portrait",
+            "videoModelKey": "veo_3_1_i2v_s_fast_portrait_fl",
             "startImage": {
                 "mediaId": "首帧图片ID"
             },
@@ -347,7 +347,7 @@ GET https://labs.google/fx/api/trpc/project.searchProjectWorkflows
 
 | 参数 | 说明 |
 |------|------|
-| videoModelKey | 图生视频模型：`veo_3_1_i2v_s_fast`（横屏）或 `veo_3_1_i2v_s_fast_portrait`（竖屏） |
+| videoModelKey | 图生视频模型：`veo_3_1_i2v_s_fast_fl`（横屏）或 `veo_3_1_i2v_s_fast_portrait_fl`（竖屏） |
 | startImage.mediaId | 首帧图片ID |
 | endImage.mediaId | 尾帧图片ID |
 
@@ -760,7 +760,7 @@ const generateFlowVideoFromStartImage = async (projectId, prompt, startMediaId, 
                        aspectRatio === '9:16' ? 'VIDEO_ASPECT_RATIO_PORTRAIT' : 'VIDEO_ASPECT_RATIO_SQUARE',
           seed: Math.floor(Math.random() * 100000),
           textInput: { prompt },
-          videoModelKey: aspectRatio === '16:9' ? 'veo_3_1_i2v_s_fast' : 'veo_3_1_i2v_s_fast_portrait',
+          videoModelKey: aspectRatio === '16:9' ? 'veo_3_1_i2v_s_fast_fl' : 'veo_3_1_i2v_s_fast_portrait_fl',
           startImage: {
             mediaId: startMediaId
           },
