@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 export default function SettingsPanel() {
   const isOpen = useCanvasStore((state) => state.isSettingsOpen);
@@ -34,7 +35,7 @@ export default function SettingsPanel() {
     const context = regenerateFlowContext();
     setWorkflowId(context.workflowId);
     setSessionId(context.sessionId);
-    alert('已生成新的 Workflow ID 和 Session ID');
+    toast.success('已生成新的 Workflow ID 和 Session ID');
   };
 
   // 保存设置
@@ -48,7 +49,7 @@ export default function SettingsPanel() {
       sessionId: sessionId.trim(),
     });
     setIsOpen(false);
-    alert('API 配置已保存');
+    toast.success('API 配置已保存');
   };
 
   return (

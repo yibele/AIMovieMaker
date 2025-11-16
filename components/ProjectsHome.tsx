@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
   FolderOpen,
   Plus,
@@ -258,8 +259,7 @@ export default function ProjectsHome() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // 错误提示
   const [isHydrated, setIsHydrated] = useState(false); // 客户端渲染完成
   const [isRefreshing, setIsRefreshing] = useState(false); // 后台刷新状态
-  const [showUpdateNotification, setShowUpdateNotification] = useState(false); // 显示更新通知
-
+  
   useEffect(() => {
     setIsHydrated(true); // 仅在客户端设置为 true
 
@@ -324,10 +324,13 @@ export default function ProjectsHome() {
       // 缓存新数据
       setCachedProjects(normalizedProjects, data?.cursor);
 
-      // 如果是后台刷新，显示更新通知
+      // 显示加载完成提示
       if (!forceRefresh && cachedData && cachedData.projects.length > 0) {
-        setShowUpdateNotification(true);
-        setTimeout(() => setShowUpdateNotification(false), 3000); // 3秒后自动隐藏
+        toast.success('项目列表已更新');
+      } else if (forceRefresh) {
+        toast.success('项目列表已刷新');
+      } else {
+        console.log('首次加载完成');
       }
     } catch (error) {
       // 如果是后台刷新失败，不显示错误，保持缓存数据
@@ -336,9 +339,13 @@ export default function ProjectsHome() {
       } else {
         setProjects([]); // 出错时清空列表
         setCursor(null); // 清空游标
-        setErrorMessage(
-          error instanceof Error ? error.message : '无法获取项目列表'
-        ); // 显示错误提示
+        const errorMessage = error instanceof Error ? error.message : '无法获取项目列表';
+        setErrorMessage(errorMessage); // 显示错误提示
+
+        // 检查是否是401错误（token或cookie过期）
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期')) {
+          toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置');
+        }
       }
     } finally {
       setIsLoading(false); // 退出加载态
@@ -454,14 +461,44 @@ export default function ProjectsHome() {
       const data = await response.json(); // 解析结果
 
       if (!response.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || '新建项目失败'); // 统一错误
+        let errorMessage = '新建项目失败';
+
+        // 检查response状态
+        if (response.status === 401) {
+          errorMessage = '401 Unauthorized';
+        } else if (typeof data?.error === 'string') {
+          errorMessage = data.error;
+        } else if (typeof data?.message === 'string') {
+          errorMessage = data.message;
+        } else if (data?.error && typeof data?.error === 'object') {
+          errorMessage = JSON.stringify(data.error);
+        } else if (data?.message && typeof data?.message === 'object') {
+          errorMessage = JSON.stringify(data.message);
+        }
+
+        throw new Error(errorMessage); // 统一错误
       }
 
       await fetchProjects(true); // 创建成功后强制刷新列表
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : '新建项目失败'
-      ); // 显示错误
+      let errorMessage = '新建项目失败';
+      let is401Error = false;
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        is401Error = errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期');
+      } else if (typeof error === 'object' && error !== null) {
+        // 处理非Error对象
+        errorMessage = (error as any)?.message || (error as any)?.error || JSON.stringify(error);
+        is401Error = errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期');
+      }
+
+      setErrorMessage(errorMessage); // 显示错误
+
+      // 检查是否是401错误（token或cookie过期）
+      if (is401Error) {
+        toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置');
+      }
     } finally {
       setIsCreating(false); // 恢复按钮状态
     }
@@ -723,17 +760,7 @@ export default function ProjectsHome() {
       </div>
 
       {/* 更新通知 */}
-      {showUpdateNotification && (
-        <div className="fixed top-4 right-4 z-50 transition-all duration-300 ease-out animate-pulse">
-          <div className="rounded-xl bg-green-500 px-4 py-3 text-white shadow-lg">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              <span className="text-sm font-medium">项目列表已更新</span>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* 底部中间悬浮的新建项目按钮 - 大卡片式毛玻璃 */}
       <div className="fixed bottom-12 left-1/2 z-50 -translate-x-1/2">
         <button
