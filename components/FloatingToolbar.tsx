@@ -4,7 +4,7 @@ import { RefreshCw, Copy, Download, Trash2, Square } from 'lucide-react';
 import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
-import { editImage, generateImageWithFlow } from '@/lib/api-mock';
+import { editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
 import { useState } from 'react';
