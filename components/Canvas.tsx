@@ -1118,7 +1118,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         )}
 
         {/* 悬浮工具栏 - 放在 React Flow 内部 */}
-        <FloatingToolbar />
+        <FloatingToolbar setEdges={setEdges} />
 
         {/* AI 输入面板 - 放在 React Flow 内部以使用 useReactFlow */}
         <AIInputPanel />

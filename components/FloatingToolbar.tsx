@@ -5,10 +5,15 @@ import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
 import { editImage, generateImageWithFlow } from '@/lib/api-mock';
-import { generateFromInput } from '@/lib/input-panel-generator';
+import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
+import { useState } from 'react';
 
-export default function FloatingToolbar() {
+interface FloatingToolbarProps {
+  setEdges?: (edges: any) => void;
+}
+
+export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const { getNode } = useReactFlow();
   const { zoom, x: viewportX, y: viewportY } = useViewport();
   const selection = useCanvasStore((state) => state.selection);
@@ -60,8 +65,137 @@ export default function FloatingToolbar() {
       if (generationType === 'image-to-image') {
         // 图生图：找到源图片，再次运行图生图
         console.log('图生图再次生成:', originalPrompt);
-        // TODO: 实现图生图逻辑
-        alert('图生图再次生成功能开发中...');
+
+        // 查找基图
+        const sourceImageId = selectedImage.sourceImageIds?.[0] ||
+                             selectedImage.generatedFrom?.sourceIds?.[0];
+
+        if (!sourceImageId) {
+          alert('找不到原始图片，无法再次生成');
+          return;
+        }
+
+        const sourceImage = elements.find(el => el.id === sourceImageId && el.type === 'image') as ImageElement;
+
+        if (!sourceImage) {
+          alert('原始图片已被删除，无法再次生成');
+          return;
+        }
+
+        // 从原图尺寸推断宽高比
+        let aspectRatio = '16:9';
+        if (selectedImage.size) {
+          const { width = 400, height = 300 } = selectedImage.size;
+          const ratio = width / height;
+          if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
+          else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+          else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
+        }
+
+        // 创建图生图的 placeholder 和连线
+        const size = { width: 640, height: 360 }; // 默认尺寸，后续根据 aspectRatio 调整
+
+        // 根据宽高比调整尺寸
+        if (aspectRatio === '9:16') {
+          size.width = 360;
+          size.height = 640;
+        } else if (aspectRatio === '1:1') {
+          size.width = 512;
+          size.height = 512;
+        }
+
+        // 在当前选中的图片上方创建新图片
+        const newImageId = `image-${Date.now()}`;
+        const newImage: ImageElement = {
+          id: newImageId,
+          type: 'image',
+          src: '',
+          position: {
+            x: selectedImage.position.x,
+            y: selectedImage.position.y - size.height - 100, // 上方 100px 间距
+          },
+          size: size,
+          sourceImageIds: [sourceImage.id],
+          generatedFrom: {
+            type: 'image-to-image',
+            sourceIds: [sourceImage.id],
+            prompt: originalPrompt,
+          },
+        };
+
+        // 添加图片节点
+        addElement(newImage);
+
+        // 创建连线（带动画）
+        if (setEdges) {
+          const edgeId = `edge-${sourceImage.id}-${newImageId}`;
+          setEdges((eds: any) => [
+            ...eds,
+            {
+              id: edgeId,
+              source: sourceImage.id,
+              target: newImageId,
+              type: 'default',
+              animated: true,
+              style: { stroke: '#3b82f6', strokeWidth: 1 },
+            },
+          ]);
+        }
+
+        // 调用图生图 API
+        try {
+          import('@/lib/api-mock').then(({ imageToImage }) => {
+            imageToImage(
+              originalPrompt,
+              sourceImage.src,
+              aspectRatio as '16:9' | '9:16' | '1:1',
+              '',
+              sourceImage.mediaId || sourceImage.mediaGenerationId,
+              1
+            ).then((result) => {
+              // 更新图片内容
+              updateElement(newImageId, {
+                src: result.imageUrl,
+                promptId: result.promptId,
+                mediaId: result.mediaId,
+                mediaGenerationId: result.mediaGenerationId,
+              });
+
+              // 停止连线动画
+              if (setEdges) {
+                const edgeId = `edge-${sourceImage.id}-${newImageId}`;
+                setEdges((eds: any) =>
+                  eds.map((edge: any) =>
+                    edge.id === edgeId
+                      ? { ...edge, animated: false }
+                      : edge
+                  )
+                );
+              }
+
+              // 添加到历史记录
+              addPromptHistory({
+                promptId: result.promptId,
+                promptText: originalPrompt,
+                imageId: newImageId,
+                mode: 'regenerate',
+                createdAt: Date.now(),
+              });
+            }).catch((error) => {
+              console.error('图生图失败:', error);
+              updateElement(newImageId, {
+                uploadState: 'error',
+                uploadMessage: '生成失败',
+              });
+            });
+          });
+        } catch (error) {
+          console.error('图生图失败:', error);
+          updateElement(newImageId, {
+            uploadState: 'error',
+            uploadMessage: '生成失败',
+          });
+        }
       } else {
         // 文生图：直接生成新图片
         console.log('文生图再次生成:', originalPrompt);
