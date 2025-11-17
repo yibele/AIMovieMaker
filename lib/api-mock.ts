@@ -48,8 +48,9 @@ async function handleFlowError(response: Response) {
   }
 }
 
+// 行级注释：Flow 返回的图片数据，encodedImage 和 fifeUrl 至少有一个
 type FlowGeneratedImage = {
-  encodedImage: string;
+  encodedImage?: string;
   base64Image?: string;
   imageBase64?: string;
   mediaId?: string;
@@ -342,14 +343,19 @@ async function generateImageWithFlow(params: {
     ? data.images
     : [];
 
+  // 行级注释：映射图片数据，优先使用 fifeUrl 以减少传输体积
   const mappedImages = imagesRaw
     .map((img) => {
       const encoded =
         img?.encodedImage || img?.base64Image || img?.imageBase64;
-      if (!encoded) {
+      const mime = img?.mimeType || 'image/png';
+      const fifeUrl = img?.fifeUrl;
+      
+      // 行级注释：如果没有 fifeUrl 也没有 base64，则跳过
+      if (!fifeUrl && !encoded) {
         return null;
       }
-      const mime = img?.mimeType || 'image/png';
+      
       return {
         encodedImage: encoded,
         mimeType: mime,
@@ -358,11 +364,11 @@ async function generateImageWithFlow(params: {
         workflowId: img?.workflowId,
         prompt: img?.prompt,
         seed: img?.seed,
-        fifeUrl: img?.fifeUrl,
+        fifeUrl: fifeUrl,
       };
     })
     .filter(Boolean) as Array<{
-      encodedImage: string;
+      encodedImage?: string;
       mimeType: string;
       mediaId?: string;
       mediaGenerationId?: string;
@@ -377,9 +383,13 @@ async function generateImageWithFlow(params: {
   if (!primaryImage) {
     const encoded =
       data?.encodedImage || data?.base64Image || data?.imageBase64;
-    if (!encoded) {
-      throw new Error('❌ Flow API 响应中未找到图片数据');
+    const fifeUrl = data?.fifeUrl;
+    
+    // 行级注释：如果既没有 fifeUrl 也没有 base64，则报错
+    if (!fifeUrl && !encoded) {
+      throw new Error('❌ Flow API 响应中未找到图片数据（缺少 fifeUrl 和 base64）');
     }
+    
     primaryImage = {
       encodedImage: encoded,
       mimeType: data?.mimeType || 'image/png',
@@ -388,11 +398,13 @@ async function generateImageWithFlow(params: {
       workflowId: data?.workflowId,
       prompt: data?.prompt,
       seed: data?.seed,
-      fifeUrl: data?.fifeUrl,
+      fifeUrl: fifeUrl,
     };
   }
 
-  const imageUrl = `data:${primaryImage.mimeType};base64,${primaryImage.encodedImage}`;
+  // 行级注释：优先使用 fifeUrl，降级到 base64（减少 Vercel 流量费用）
+  const imageUrl = primaryImage.fifeUrl || 
+    `data:${primaryImage.mimeType};base64,${primaryImage.encodedImage}`;
 
   return {
     imageUrl,
@@ -403,8 +415,9 @@ async function generateImageWithFlow(params: {
     sessionId: data.sessionId ?? sessionId,
     translatedPrompt: primaryImage.prompt || prompt,
     seed: primaryImage.seed ?? seed,
+    // 行级注释：批量生成的图片列表，优先使用 fifeUrl
     images: mappedImages.map((img) => ({
-      imageUrl: `data:${img.mimeType};base64,${img.encodedImage}`,
+      imageUrl: img.fifeUrl || `data:${img.mimeType};base64,${img.encodedImage}`,
       mediaId: img.mediaId,
       mediaGenerationId: img.mediaGenerationId,
       workflowId: img.workflowId,
