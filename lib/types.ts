@@ -18,6 +18,7 @@ export interface CanvasElement {
 export interface ImageElement extends CanvasElement {
   type: 'image';
   src: string; // 图片 URL
+  base64?: string; // 图片 base64 数据（用于图片编辑，避免重新下载）
   alt?: string;
   caption?: string; // 上传图片时保存的 Caption 描述 // 行级注释说明字段用途
   mediaId?: string; // Flow 返回的 mediaId，图生图时用作 imageInputs.name // 行级注释说明字段用途

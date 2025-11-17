@@ -39,10 +39,25 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const isSingleSelection = imageElements.length === 1;
   const selectedImage = isSingleSelection ? imageElements[0] : null;
 
-  // 打开图片注释 - 通过 Media API 获取原图 base64
+  // 打开图片注释 - 优先使用已有的 base64，无需再次下载
   const handleAnnotate = async () => {
     if (!selectedImage?.src) {
       alert('当前图片暂无可编辑内容');
+      return;
+    }
+    
+    // 如果图片已有 base64，直接使用（新生成的图片都有 base64）
+    if (selectedImage.base64) {
+      console.log('✅ 使用图片自带的 base64');
+      const imageDataUrl = selectedImage.base64.startsWith('data:')
+        ? selectedImage.base64
+        : `data:image/png;base64,${selectedImage.base64}`;
+      
+      setAnnotatorTarget({
+        ...selectedImage,
+        src: imageDataUrl,
+      });
+      setIsLoadingAnnotatorImage(false);
       return;
     }
     

@@ -84,6 +84,7 @@ export async function generateFromInput(
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
             src: img.imageUrl,
+            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
             mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
             mediaGenerationId: img.mediaGenerationId,
@@ -195,6 +196,7 @@ export async function imageToImageFromInput(
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
             src: img.imageUrl,
+            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
             mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
             mediaGenerationId: img.mediaGenerationId,
@@ -335,6 +337,7 @@ export async function multiImageRecipeFromInput(
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
             src: img.imageUrl,
+            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
             mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
             mediaGenerationId: img.mediaGenerationId,

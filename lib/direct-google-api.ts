@@ -84,49 +84,172 @@ export async function uploadImageDirectly(
 }
 
 /**
- * 直接从 Google Flow Media API 获取图片 base64
- * 不需要 Cookie，可以绕过 Vercel 服务器
+ * 直接调用 Google Flow Generate API 生成图片
+ * 返回 base64，不通过 Vercel 服务器，节省 Fast Origin Transfer
  */
-export async function getImageBase64Directly(
-  mediaId: string,
-  apiKey: string,
-  bearerToken: string
+export async function generateImageDirectly(
+  prompt: string,
+  bearerToken: string,
+  projectId: string,
+  sessionId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  references?: Array<{ mediaId?: string; mediaGenerationId?: string }>,
+  seed?: number,
+  count?: number,
+  prefixPrompt?: string
 ): Promise<{
-  encodedImage: string;
-  servingBaseUri?: string;
+  images: Array<{
+    encodedImage?: string; // base64
+    mediaId?: string;
+    mediaGenerationId?: string;
+    workflowId?: string;
+    prompt?: string;
+    seed?: number;
+    mimeType?: string;
+    fifeUrl?: string;
+  }>;
+  sessionId: string;
 }> {
-  console.log('📥 直接从 Google API 获取图片 base64...');
+  // 规范化宽高比
+  const normalizedAspect = aspectRatio === '9:16'
+    ? 'IMAGE_ASPECT_RATIO_PORTRAIT'
+    : aspectRatio === '1:1'
+    ? 'IMAGE_ASPECT_RATIO_SQUARE'
+    : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
 
-  try {
-    const url = `https://aisandbox-pa.googleapis.com/v1/media/${encodeURIComponent(mediaId)}?key=${encodeURIComponent(apiKey)}&clientContext.tool=PINHOLE&returnUriOnly=false`;
+  const generationCount = Math.max(1, Math.min(4, count || 1));
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${bearerToken}`,
-        'Accept': '*/*',
-      },
-    });
+  // 构建最终提示词
+  const finalPrompt = prefixPrompt && prefixPrompt.trim()
+    ? `${prefixPrompt.trim()}, ${prompt}`
+    : prompt;
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`);
-    }
+  // 处理参考图
+  const imageInputs =
+    Array.isArray(references) && references.length > 0
+      ? references
+          .filter(
+            (ref: any) =>
+              (typeof ref?.mediaId === 'string' && ref.mediaId.trim().length > 0) ||
+              (typeof ref?.mediaGenerationId === 'string' && ref.mediaGenerationId.trim().length > 0)
+          )
+          .map((ref: any) => ({
+            name: ref.mediaId || ref.mediaGenerationId,
+            imageInputType: 'IMAGE_INPUT_TYPE_REFERENCE',
+          }))
+      : [];
 
-    const data = await response.json();
-
-    const encodedImage = data?.image?.encodedImage;
-    if (!encodedImage) {
-      throw new Error('No encodedImage in response');
-    }
-
-    console.log('✅ 获取图片 base64 成功（直接调用）');
+  // 生成多个请求
+  const requests = Array.from({ length: generationCount }, (_, index) => {
+    const requestSeed =
+      typeof seed === 'number'
+        ? seed + index
+        : Math.floor(Math.random() * 1_000_000);
 
     return {
-      encodedImage,
-      servingBaseUri: data?.servingBaseUri || data?.image?.servingBaseUri,
+      clientContext: {
+        sessionId: sessionId.trim(),
+        projectId: projectId.trim(),
+        tool: 'PINHOLE',
+        userPaygateTier: 'PAYGATE_TIER_ONE',
+      },
+      seed: requestSeed,
+      imageModelName: 'GEM_PIX',
+      imageAspectRatio: normalizedAspect,
+      prompt: finalPrompt,
+      imageInputs,
+    };
+  });
+
+  const payload = { requests };
+
+  console.log('🎨 直接调用 Google Flow Generate API...');
+
+  try {
+    const response = await fetch(
+      `https://aisandbox-pa.googleapis.com/v1/projects/${projectId.trim()}/flowMedia:batchGenerateImages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Generate failed: ${response.status} ${response.statusText}`);
+    }
+
+    const rawData = await response.json();
+    console.log('✅ 图片生成成功（直接调用）');
+
+    // 解析响应
+    const mediaArray = Array.isArray(rawData)
+      ? rawData
+      : rawData?.media || rawData?.result?.media || [];
+
+    if (!mediaArray.length) {
+      throw new Error('No media in response');
+    }
+
+    const normalizedImages = mediaArray
+      .map((entry: any) => {
+        const generatedImage =
+          entry?.generatedImage ||
+          entry?.image?.generatedImage ||
+          entry?.image;
+
+        if (!generatedImage) {
+          return null;
+        }
+
+        const encodedImage =
+          generatedImage?.encodedImage ||
+          generatedImage?.base64Image ||
+          generatedImage?.imageBase64;
+
+        const fifeUrl = generatedImage?.fifeUrl;
+
+        // 必须有 fifeUrl 或 encodedImage
+        if (!fifeUrl && !encodedImage) {
+          return null;
+        }
+
+        const mimeType = generatedImage?.mimeType || 'image/png';
+        const workflowId = entry?.workflowId || generatedImage?.workflowId;
+        const mediaId =
+          entry?.mediaId ||
+          entry?.name ||
+          generatedImage?.mediaId ||
+          generatedImage?.mediaGenerationId ||
+          workflowId;
+
+        return {
+          encodedImage, // 返回 base64！
+          mediaId,
+          mediaGenerationId: generatedImage?.mediaGenerationId,
+          workflowId,
+          prompt: generatedImage?.prompt || finalPrompt,
+          seed: generatedImage?.seed,
+          mimeType,
+          fifeUrl,
+        };
+      })
+      .filter(Boolean);
+
+    if (!normalizedImages.length) {
+      throw new Error('No valid images in response');
+    }
+
+    return {
+      images: normalizedImages,
+      sessionId: sessionId.trim(),
     };
   } catch (error) {
-    console.error('❌ 直接获取图片 base64 失败:', error);
+    console.error('❌ 直接生成图片失败:', error);
     throw error;
   }
 }
