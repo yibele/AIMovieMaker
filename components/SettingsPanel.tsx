@@ -14,6 +14,7 @@ export default function SettingsPanel() {
     (state) => state.regenerateFlowContext
   );
 
+  const [apiKey, setApiKey] = useState(apiConfig.apiKey || '');
   const [bearerToken, setBearerToken] = useState(apiConfig.bearerToken || '');
   const [cookie, setCookie] = useState(apiConfig.cookie || '');
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
@@ -23,6 +24,7 @@ export default function SettingsPanel() {
 
   // 同步本地状态
   useEffect(() => {
+    setApiKey(apiConfig.apiKey || '');
     setBearerToken(apiConfig.bearerToken || '');
     setCookie(apiConfig.cookie || '');
     setProxy(apiConfig.proxy || '');
@@ -41,6 +43,7 @@ export default function SettingsPanel() {
   // 保存设置
   const handleSave = () => {
     setApiConfig({
+      apiKey: apiKey.trim(),
       bearerToken: bearerToken.trim(),
       cookie: cookie.trim(),
       proxy: proxy.trim(),
@@ -78,6 +81,24 @@ export default function SettingsPanel() {
 
             {/* 表单 */}
             <div className="space-y-6">
+              {/* API Key */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  API Key
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  用于调用 Flow Media API 获取图片数据
+                </p>
+              </div>
+
               {/* Bearer Token */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -15,6 +15,7 @@ import {
 
 // API 配置接口
 interface ApiConfig {
+  apiKey: string; // Flow API Key
   bearerToken: string;
   cookie: string;
   proxy: string; // 代理地址，例如 http://127.0.0.1:10808
@@ -88,6 +89,7 @@ const loadApiConfig = (): ApiConfig => {
   if (typeof window === 'undefined') {
     const context = createFlowContext();
     return {
+      apiKey: '',
       bearerToken: '',
       cookie: '',
       proxy: '',
@@ -104,6 +106,7 @@ const loadApiConfig = (): ApiConfig => {
       const parsed = JSON.parse(saved);
       const context = createFlowContext();
       return {
+        apiKey: parsed?.apiKey || '',
         bearerToken: parsed?.bearerToken || '',
         cookie: parsed?.cookie || '',
         proxy: parsed?.proxy || '',
@@ -119,6 +122,7 @@ const loadApiConfig = (): ApiConfig => {
   
   const context = createFlowContext();
   return {
+    apiKey: '',
     bearerToken: '',
     cookie: '',
     proxy: '',

@@ -35,42 +35,63 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const isSingleSelection = imageElements.length === 1;
   const selectedImage = isSingleSelection ? imageElements[0] : null;
 
-  // 打开图片注释 - 先上传原图到 Blob，再打开编辑器
+  // 打开图片注释 - 通过 Media API 获取原图 base64
   const handleAnnotate = async () => {
     if (!selectedImage?.src) {
       alert('当前图片暂无可编辑内容');
       return;
     }
     
+    // 如果没有 mediaId，无法获取 base64
+    if (!selectedImage.mediaId) {
+      alert('当前图片缺少 mediaId，无法编辑');
+      return;
+    }
+    
     try {
-      console.log('📤 上传原图到 Vercel Blob...');
+      console.log('📥 通过 Media API 获取原图 base64...');
       
-      // 直接发送图片 URL 给后端，让后端去下载（避免前端跨域）
-      const blobResponse = await fetch('/api/blob/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: selectedImage.src, // 直接传 URL
-          filename: `original-${Date.now()}.png`,
-        }),
-      });
+      const { useCanvasStore } = await import('@/lib/store');
+      const apiConfig = useCanvasStore.getState().apiConfig;
       
-      if (!blobResponse.ok) {
-        const errorData = await blobResponse.json();
-        throw new Error(errorData.error || 'Blob 上传失败');
+      if (!apiConfig.apiKey) {
+        alert('请先在设置中配置 API Key');
+        return;
       }
       
-      const blobData = await blobResponse.json();
-      console.log('✅ 原图上传成功:', blobData.url);
+      // 调用 Media API，returnUriOnly=false 获取 base64
+      const mediaResponse = await fetch(
+        `/api/flow/media/${selectedImage.mediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+        {
+          headers: apiConfig.bearerToken ? {
+            'Authorization': `Bearer ${apiConfig.bearerToken}`
+          } : {}
+        }
+      );
       
-      // 使用 Blob URL 打开编辑器
+      if (!mediaResponse.ok) {
+        throw new Error('Media API 调用失败');
+      }
+      
+      const mediaData = await mediaResponse.json();
+      
+      // 提取 base64 数据
+      const encodedImage = mediaData?.image?.encodedImage;
+      if (!encodedImage) {
+        throw new Error('未获取到图片数据');
+      }
+      
+      console.log('✅ 获取原图 base64 成功');
+      
+      // 使用 base64 DataURL 打开编辑器
+      const imageDataUrl = `data:image/png;base64,${encodedImage}`;
       setAnnotatorTarget({
         ...selectedImage,
-        src: blobData.url, // 用 Blob URL 替换原图 URL
+        src: imageDataUrl, // 用 base64 DataURL
       });
       
     } catch (error) {
-      console.error('❌ 上传原图失败:', error);
+      console.error('❌ 获取原图失败:', error);
       alert(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
