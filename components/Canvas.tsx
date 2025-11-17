@@ -34,7 +34,6 @@ import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage } from '@/lib/api-mock';
-import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
   getPositionAboveInput,
   generateFromInput,
@@ -105,10 +104,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     }));
     // 加载项目的前置提示词
     loadProjectPrefixPrompt(projectId);
-    // 加载项目素材
-    loadMaterialsFromProject(projectId).catch((error) => {
-      console.error('同步项目素材失败:', error);
-    });
+    // 移除自动加载项目素材，改为手动同步以避免页面卡顿
   }, [projectId, loadProjectPrefixPrompt]);
 
   // 将 store 中的元素转换为 React Flow 节点
