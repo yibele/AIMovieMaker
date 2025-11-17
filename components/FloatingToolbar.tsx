@@ -1,6 +1,6 @@
 'use client';
 
-import { RefreshCw, Copy, Download, Trash2, Square } from 'lucide-react';
+import { RefreshCw, Copy, Download, Trash2, Square, Edit3 } from 'lucide-react';
 import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
@@ -8,6 +8,7 @@ import { editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
 import { useState } from 'react';
+import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 
 interface FloatingToolbarProps {
   setEdges?: (edges: any) => void;
@@ -28,12 +29,31 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   // 只在选中图片时显示
   const selectedElements = elements.filter((el) => selection.includes(el.id));
   const imageElements = selectedElements.filter((el) => el.type === 'image') as ImageElement[];
-  
-  if (imageElements.length === 0) return null;
+  const [annotatorTarget, setAnnotatorTarget] = useState<ImageElement | null>(null);
 
   // 单选时的操作
   const isSingleSelection = imageElements.length === 1;
   const selectedImage = isSingleSelection ? imageElements[0] : null;
+
+  // 打开图片注释
+  const handleAnnotate = () => {
+    if (!selectedImage?.src) {
+      alert('当前图片暂无可编辑内容');
+      return;
+    }
+    setAnnotatorTarget(selectedImage);
+  };
+
+  // 注释完成
+  const handleAnnotatorConfirm = async (result: ImageAnnotatorResult) => {
+    console.log('🖍️ 图片注释数据:', result);
+    setAnnotatorTarget(null);
+  };
+
+  // 关闭注释
+  const handleAnnotatorClose = () => {
+    setAnnotatorTarget(null);
+  };
 
   // 再次生成
   const handleRegenerate = async () => {
@@ -317,54 +337,67 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     e.stopPropagation();
   };
 
-  // 单选：使用 Panel 定位到图片上方
-  if (isSingleSelection && selectedImage) {
-    const node = getNode(selectedImage.id);
-    if (!node) return null;
+  const hasSelection = imageElements.length > 0;
+  let toolbarContent: JSX.Element | null = null;
 
-    const imgWidth = selectedImage.size?.width || 400;
-    const imgHeight = selectedImage.size?.height || 300;
-    
-    // 计算屏幕坐标（考虑 viewport 偏移和缩放）
-    const screenX = node.position.x * zoom + viewportX;
-    const screenY = node.position.y * zoom + viewportY;
-    
-    return (
-      <div
-        key={selectedImage.id}
-        className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto"
-        style={{
-          left: `${screenX + (imgWidth * zoom) / 2}px`,
-          top: `${screenY - 58}px`,
-          transform: 'translateX(-50%)',
-        }}
-        onMouseDown={handleMouseDown}
-      >
-        <ToolbarButton icon={<RefreshCw className="w-4 h-4" />} label="再次生成" onClick={() => handleRegenerate()} />
-        <ToolbarButton icon={<Copy className="w-4 h-4" />} label="类似图片" onClick={() => handleSimilar()} />
-        <ToolbarButton icon={<Square className="w-4 h-4" />} label="复制" onClick={() => handleDuplicate()} />
-        <ToolbarDivider />
-        <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
-        <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
-      </div>
-    );
+  if (hasSelection) {
+    if (isSingleSelection && selectedImage) {
+      const node = getNode(selectedImage.id);
+      if (node) {
+        const imgWidth = selectedImage.size?.width || 400;
+        const screenX = node.position.x * zoom + viewportX;
+        const screenY = node.position.y * zoom + viewportY;
+
+        toolbarContent = (
+          <div
+            key={selectedImage.id}
+            className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto"
+            style={{
+              left: `${screenX + (imgWidth * zoom) / 2}px`,
+              top: `${screenY - 58}px`,
+              transform: 'translateX(-50%)',
+            }}
+            onMouseDown={handleMouseDown}
+          >
+            <ToolbarButton icon={<RefreshCw className="w-4 h-4" />} label="再次生成" onClick={() => handleRegenerate()} />
+            <ToolbarButton icon={<Copy className="w-4 h-4" />} label="类似图片" onClick={() => handleSimilar()} />
+            <ToolbarButton icon={<Edit3 className="w-4 h-4" />} label="图片编辑" onClick={() => handleAnnotate()} />
+            <ToolbarButton icon={<Square className="w-4 h-4" />} label="复制" onClick={() => handleDuplicate()} />
+            <ToolbarDivider />
+            <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
+            <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
+          </div>
+        );
+      }
+    } else {
+      toolbarContent = (
+        <Panel position="top-center" className="!m-0 !p-0">
+          <div
+            className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2"
+            onMouseDown={handleMouseDown}
+          >
+            <span className="px-2 py-1 text-xs font-medium text-gray-500">
+              已选中 {imageElements.length} 张图片
+            </span>
+
+            <ToolbarDivider />
+            <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
+            <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
+          </div>
+        </Panel>
+      );
+    }
   }
 
-  // 多选：使用 Panel 固定在顶部
   return (
-    <Panel position="top-center" className="!m-0 !p-0">
-      <div 
-        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2"
-        onMouseDown={handleMouseDown}
-      >
-        <span className="px-2 py-1 text-xs font-medium text-gray-500">
-          已选中 {imageElements.length} 张图片
-        </span>
-
-        <ToolbarDivider />
-        <ToolbarButton icon={<Download className="w-4 h-4" />} label="下载" onClick={() => handleDownload()} />
-        <ToolbarButton icon={<Trash2 className="w-4 h-4" />} label="删除" variant="danger" onClick={() => handleDelete()} />
-      </div>
-    </Panel>
+    <>
+      {toolbarContent}
+      <ImageAnnotatorModal
+        open={Boolean(annotatorTarget)}
+        imageSrc={annotatorTarget?.src || null}
+        onClose={handleAnnotatorClose}
+        onConfirm={handleAnnotatorConfirm}
+      />
+    </>
   );
 }

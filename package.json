@@ -8,7 +8,18 @@
     "start": "next start",
     "lint": "next lint"
   },
-  "keywords": ["aigc", "canvas", "react", "nextjs", "flow", "whisk", "google", "creative", "image-generation", "video-generation"],
+  "keywords": [
+    "aigc",
+    "canvas",
+    "react",
+    "nextjs",
+    "flow",
+    "whisk",
+    "google",
+    "creative",
+    "image-generation",
+    "video-generation"
+  ],
   "author": "",
   "license": "ISC",
   "description": "AIGC 画布创作工具 - 基于Google Flow和Whisk API的创意应用",
