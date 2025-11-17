@@ -2,7 +2,7 @@
 export type ElementType = 'image' | 'text' | 'video';
 
 // 生成模式
-export type GenerationMode = 'generate' | 'regenerate' | 'similar' | 'batch';
+export type GenerationMode = 'generate' | 'regenerate' | 'similar' | 'batch' | 'edit';
 
 // 画布元素基础接口
 export interface CanvasElement {

@@ -555,7 +555,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   };
 
   const hasSelection = imageElements.length > 0;
-  let toolbarContent: JSX.Element | null = null;
+  let toolbarContent: React.ReactElement | null = null;
 
   if (hasSelection) {
     if (isSingleSelection && selectedImage) {
