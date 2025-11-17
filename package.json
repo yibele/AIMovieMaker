@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "next lint"
   },
-  "keywords": [],
+  "keywords": ["aigc", "canvas", "react", "nextjs", "flow", "whisk", "google", "creative", "image-generation", "video-generation"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "AIGC 画布创作工具 - 基于Google Flow和Whisk API的创意应用",
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.10.0",
@@ -29,6 +29,7 @@
     "react-dom": "^19.2.0",
     "react-easy-crop": "^5.5.3",
     "socks-proxy-agent": "^8.0.5",
+    "sonner": "^2.0.7",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
     "uuid": "^13.0.0",

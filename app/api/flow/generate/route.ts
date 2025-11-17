@@ -171,9 +171,12 @@ export async function POST(request: NextRequest) {
           generatedImage?.encodedImage ||
           generatedImage?.base64Image ||
           generatedImage?.imageBase64;
+        
+        const fifeUrl = generatedImage?.fifeUrl;
 
-        if (!encodedImage) {
-          console.warn('⚠️ generatedImage 缺少 encodedImage:', generatedImage);
+        // 行级注释：优先使用 fifeUrl，如果都没有才报错
+        if (!fifeUrl && !encodedImage) {
+          console.warn('⚠️ generatedImage 缺少 fifeUrl 和 encodedImage:', generatedImage);
           return null;
         }
 
@@ -194,7 +197,7 @@ export async function POST(request: NextRequest) {
           prompt: generatedImage?.prompt || finalPrompt,
           seed: generatedImage?.seed,
           mimeType,
-          fifeUrl: generatedImage?.fifeUrl,
+          fifeUrl,
         };
       })
       .filter(Boolean);

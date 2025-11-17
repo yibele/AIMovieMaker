@@ -289,14 +289,20 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setSelection([newImage.id]);
   };
 
-  // 下载图片：直接在新标签打开图片地址，交由浏览器处理保存
+// 下载图片 - 在新标签页打开让用户右键保存
   const handleDownload = () => {
     imageElements.forEach((img) => {
       if (!img?.src) return;
+      // 在新标签页打开图片
       const newWindow = window.open(img.src, '_blank', 'noopener,noreferrer');
-      if (!newWindow) {
-        // 部分浏览器会拦截弹窗，这里做降级提示
-        alert('浏览器阻止了新窗口，请允许弹窗后再次尝试下载');
+
+      // 如果新窗口打开成功，显示提示
+      if (newWindow) {
+        console.log(`✅ 已在新标签页打开图片: ${img.id}`);
+      } else {
+        // 如果新窗口被阻止，回退到当前窗口打开
+        window.location.href = img.src;
+        console.log(`⚠️ 新标签页被阻止，在当前窗口打开图片: ${img.id}`);
       }
     });
   };
