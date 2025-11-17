@@ -69,7 +69,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         return;
       }
       
-      console.log('📥 直接从 Google API 获取原图 base64...');
+      console.log('📥 通过 API 获取原图 base64...');
       
       const { useCanvasStore } = await import('@/lib/store');
       const apiConfig = useCanvasStore.getState().apiConfig;
@@ -81,19 +81,32 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         return;
       }
       
-      // 直接调用 Google API，不通过 Vercel 服务器
-      const { getImageBase64Directly } = await import('@/lib/direct-google-api');
-      
-      const result = await getImageBase64Directly(
-        selectedImage.mediaId,
-        apiConfig.apiKey,
-        apiConfig.bearerToken
+      // 通过后端代理调用（避免 API Key Referrer 限制）
+      const mediaResponse = await fetch(
+        `/api/flow/media/${selectedImage.mediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+        {
+          headers: apiConfig.bearerToken ? {
+            'Authorization': `Bearer ${apiConfig.bearerToken}`
+          } : {}
+        }
       );
       
-      console.log('✅ 获取原图 base64 成功（直接调用）');
+      if (!mediaResponse.ok) {
+        throw new Error('Media API 调用失败');
+      }
+      
+      const mediaData = await mediaResponse.json();
+      
+      // 提取 base64 数据
+      const encodedImage = mediaData?.image?.encodedImage;
+      if (!encodedImage) {
+        throw new Error('未获取到图片数据');
+      }
+      
+      console.log('✅ 获取原图 base64 成功');
       
       // 使用 base64 DataURL 更新目标
-      const imageDataUrl = `data:image/png;base64,${result.encodedImage}`;
+      const imageDataUrl = `data:image/png;base64,${encodedImage}`;
       
       // 缓存 base64
       mediaBase64Cache.set(selectedImage.mediaId, imageDataUrl);
