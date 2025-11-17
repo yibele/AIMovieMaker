@@ -35,13 +35,44 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const isSingleSelection = imageElements.length === 1;
   const selectedImage = isSingleSelection ? imageElements[0] : null;
 
-  // 打开图片注释
-  const handleAnnotate = () => {
+  // 打开图片注释 - 先上传原图到 Blob，再打开编辑器
+  const handleAnnotate = async () => {
     if (!selectedImage?.src) {
       alert('当前图片暂无可编辑内容');
       return;
     }
-    setAnnotatorTarget(selectedImage);
+    
+    try {
+      console.log('📤 上传原图到 Vercel Blob...');
+      
+      // 直接发送图片 URL 给后端，让后端去下载（避免前端跨域）
+      const blobResponse = await fetch('/api/blob/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: selectedImage.src, // 直接传 URL
+          filename: `original-${Date.now()}.png`,
+        }),
+      });
+      
+      if (!blobResponse.ok) {
+        const errorData = await blobResponse.json();
+        throw new Error(errorData.error || 'Blob 上传失败');
+      }
+      
+      const blobData = await blobResponse.json();
+      console.log('✅ 原图上传成功:', blobData.url);
+      
+      // 使用 Blob URL 打开编辑器
+      setAnnotatorTarget({
+        ...selectedImage,
+        src: blobData.url, // 用 Blob URL 替换原图 URL
+      });
+      
+    } catch (error) {
+      console.error('❌ 上传原图失败:', error);
+      alert(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   // 注释完成 - 将标注图上传并进行图生图
@@ -59,11 +90,13 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     try {
       console.log('🖍️ 开始图片编辑流程:', result.promptText);
       
-      // 1. 上传标注后的图片，获取 mediaGenerationId
+      // 1. 将标注图的 DataURL 转为 base64
       const base64Data = annotatedImageDataUrl.split(',')[1];
+      
+      // 2. 上传标注后的图片到 Flow，获取 mediaGenerationId
       const { registerUploadedImage } = await import('@/lib/api-mock');
       
-      console.log('📤 上传标注图片...');
+      console.log('📤 上传标注图片到 Flow...');
       const uploadResult = await registerUploadedImage(base64Data);
       
       if (!uploadResult.mediaGenerationId) {

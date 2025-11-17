@@ -350,17 +350,20 @@ export default function ImageAnnotatorModal({
     }
 
     try {
-      // 生成合成图片（原图 + 标注）
+      // 生成合成图片（原图 + 标注），直接传递 DataURL
+      console.log('🎨 生成标注合成图...');
       const annotatedImageDataUrl = await generateAnnotatedImage();
 
+      // 直接将 DataURL 传递给回调，不需要上传到 Blob
       await onConfirm({
         annotations: payload,
         promptText: promptText.trim(),
       }, annotatedImageDataUrl);
+      
       onClose();
     } catch (error) {
-      console.error('生成标注图片失败:', error);
-      alert(`图片处理失败: ${error instanceof Error ? error.message : '未知错误'}\n\n可能原因：图片跨域限制`);
+      console.error('图片处理失败:', error);
+      alert(`图片处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
