@@ -32,6 +32,9 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const [annotatorTarget, setAnnotatorTarget] = useState<ImageElement | null>(null);
   const [isLoadingAnnotatorImage, setIsLoadingAnnotatorImage] = useState(false);
 
+  // mediaId -> base64 缓存，避免重复下载
+  const [mediaBase64Cache] = useState<Map<string, string>>(new Map());
+
   // 单选时的操作
   const isSingleSelection = imageElements.length === 1;
   const selectedImage = isSingleSelection ? imageElements[0] : null;
@@ -54,6 +57,18 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setIsLoadingAnnotatorImage(true);
     
     try {
+      // 检查缓存
+      if (mediaBase64Cache.has(selectedImage.mediaId)) {
+        console.log('✅ 使用缓存的图片 base64');
+        const cachedDataUrl = mediaBase64Cache.get(selectedImage.mediaId)!;
+        setAnnotatorTarget({
+          ...selectedImage,
+          src: cachedDataUrl,
+        });
+        setIsLoadingAnnotatorImage(false);
+        return;
+      }
+      
       console.log('📥 通过 Media API 获取原图 base64...');
       
       const { useCanvasStore } = await import('@/lib/store');
@@ -92,6 +107,10 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
       // 使用 base64 DataURL 更新目标
       const imageDataUrl = `data:image/png;base64,${encodedImage}`;
+      
+      // 缓存 base64
+      mediaBase64Cache.set(selectedImage.mediaId, imageDataUrl);
+      
       setAnnotatorTarget({
         ...selectedImage,
         src: imageDataUrl, // 用 base64 DataURL

@@ -167,16 +167,11 @@ export async function POST(request: NextRequest) {
           return null;
         }
 
-        const encodedImage =
-          generatedImage?.encodedImage ||
-          generatedImage?.base64Image ||
-          generatedImage?.imageBase64;
-        
         const fifeUrl = generatedImage?.fifeUrl;
 
-        // 行级注释：优先使用 fifeUrl，如果都没有才报错
-        if (!fifeUrl && !encodedImage) {
-          console.warn('⚠️ generatedImage 缺少 fifeUrl 和 encodedImage:', generatedImage);
+        // 只使用 fifeUrl，不返回 base64 以节省带宽
+        if (!fifeUrl) {
+          console.warn('⚠️ generatedImage 缺少 fifeUrl:', generatedImage);
           return null;
         }
 
@@ -190,7 +185,7 @@ export async function POST(request: NextRequest) {
           workflowId;
 
         return {
-          encodedImage,
+          // encodedImage: 不再返回 base64，节省 Fast Origin Transfer
           mediaId,
           mediaGenerationId: generatedImage?.mediaGenerationId,
           workflowId,
