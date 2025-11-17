@@ -181,12 +181,37 @@ export async function imageToImageFromInput(
   }
 
   try {
+    // 如果图片没有 mediaId，需要先上传（比如本地上传的图片）
+    let effectiveMediaId = selectedImage.mediaId || selectedImage.mediaGenerationId;
+    
+    if (!effectiveMediaId) {
+      console.log('⚠️ 图片缺少 mediaId，需要先上传...');
+      
+      // 如果图片有 base64，使用 base64 上传
+      let imageDataToUpload = selectedImage.base64 || selectedImage.src;
+      
+      // 如果是 data URL，提取 base64
+      if (imageDataToUpload.startsWith('data:')) {
+        imageDataToUpload = imageDataToUpload.split(',')[1];
+      }
+      
+      const { registerUploadedImage } = await import('./api-mock');
+      const uploadResult = await registerUploadedImage(imageDataToUpload);
+      
+      if (!uploadResult.mediaGenerationId) {
+        throw new Error('上传图片失败：未获取到 mediaGenerationId');
+      }
+      
+      effectiveMediaId = uploadResult.mediaGenerationId;
+      console.log('✅ 图片上传成功:', effectiveMediaId);
+    }
+    
     const result = await imageToImage(
       prompt,
       selectedImage.src,
       aspectRatio,
       '',
-      selectedImage.mediaId || selectedImage.mediaGenerationId,
+      effectiveMediaId,
       count
     );
 
