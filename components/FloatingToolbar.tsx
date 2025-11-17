@@ -30,6 +30,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const selectedElements = elements.filter((el) => selection.includes(el.id));
   const imageElements = selectedElements.filter((el) => el.type === 'image') as ImageElement[];
   const [annotatorTarget, setAnnotatorTarget] = useState<ImageElement | null>(null);
+  const [isLoadingAnnotatorImage, setIsLoadingAnnotatorImage] = useState(false);
 
   // 单选时的操作
   const isSingleSelection = imageElements.length === 1;
@@ -48,6 +49,10 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       return;
     }
     
+    // 立即打开 Modal，显示加载状态
+    setAnnotatorTarget(selectedImage);
+    setIsLoadingAnnotatorImage(true);
+    
     try {
       console.log('📥 通过 Media API 获取原图 base64...');
       
@@ -56,6 +61,8 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
       if (!apiConfig.apiKey) {
         alert('请先在设置中配置 API Key');
+        setAnnotatorTarget(null);
+        setIsLoadingAnnotatorImage(false);
         return;
       }
       
@@ -83,16 +90,19 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
       console.log('✅ 获取原图 base64 成功');
       
-      // 使用 base64 DataURL 打开编辑器
+      // 使用 base64 DataURL 更新目标
       const imageDataUrl = `data:image/png;base64,${encodedImage}`;
       setAnnotatorTarget({
         ...selectedImage,
         src: imageDataUrl, // 用 base64 DataURL
       });
+      setIsLoadingAnnotatorImage(false);
       
     } catch (error) {
       console.error('❌ 获取原图失败:', error);
       alert(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
+      setAnnotatorTarget(null);
+      setIsLoadingAnnotatorImage(false);
     }
   };
 
@@ -100,7 +110,8 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   const handleAnnotatorConfirm = async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
     if (!selectedImage) return;
     
-    setAnnotatorTarget(null);
+    // 保持 Modal 打开，不关闭
+    // setAnnotatorTarget(null);
     
     // 如果没有提示词，不做图生图
     if (!result.promptText || !result.promptText.trim()) {
@@ -111,22 +122,6 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     try {
       console.log('🖍️ 开始图片编辑流程:', result.promptText);
       
-      // 1. 将标注图的 DataURL 转为 base64
-      const base64Data = annotatedImageDataUrl.split(',')[1];
-      
-      // 2. 上传标注后的图片到 Flow，获取 mediaGenerationId
-      const { registerUploadedImage } = await import('@/lib/api-mock');
-      
-      console.log('📤 上传标注图片到 Flow...');
-      const uploadResult = await registerUploadedImage(base64Data);
-      
-      if (!uploadResult.mediaGenerationId) {
-        throw new Error('上传失败：未获取到 mediaGenerationId');
-      }
-      
-      console.log('✅ 标注图片上传成功:', uploadResult.mediaGenerationId);
-      
-      // 2. 使用标注图做图生图
       // 推断宽高比
       let aspectRatio: '16:9' | '9:16' | '1:1' = '16:9';
       if (selectedImage.size) {
@@ -153,7 +148,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         size.height = 512;
       }
       
-      // 创建 placeholder
+      // 立即创建 placeholder（在上传阶段就显示）
       const newImageId = `image-${Date.now()}`;
       const newImage: ImageElement = {
         id: newImageId,
@@ -186,6 +181,21 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           },
         ]);
       }
+      
+      // 1. 将标注图的 DataURL 转为 base64
+      const base64Data = annotatedImageDataUrl.split(',')[1];
+      
+      // 2. 上传标注后的图片到 Flow，获取 mediaGenerationId
+      const { registerUploadedImage } = await import('@/lib/api-mock');
+      
+      console.log('📤 上传标注图片到 Flow...');
+      const uploadResult = await registerUploadedImage(base64Data);
+      
+      if (!uploadResult.mediaGenerationId) {
+        throw new Error('上传失败：未获取到 mediaGenerationId');
+      }
+      
+      console.log('✅ 标注图片上传成功:', uploadResult.mediaGenerationId);
       
       // 3. 调用图生图 API
       console.log('🎨 使用标注图进行图生图...');
@@ -583,6 +593,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       <ImageAnnotatorModal
         open={Boolean(annotatorTarget)}
         imageSrc={annotatorTarget?.src || null}
+        isLoadingImage={isLoadingAnnotatorImage}
         onClose={handleAnnotatorClose}
         onConfirm={handleAnnotatorConfirm}
       />

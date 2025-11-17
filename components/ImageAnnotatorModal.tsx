@@ -65,6 +65,7 @@ export interface ImageAnnotatorResult {
 interface ImageAnnotatorModalProps {
   open: boolean;
   imageSrc: string | null;
+  isLoadingImage?: boolean; // 是否正在加载原图
   onClose: () => void;
   onConfirm?: (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => void | Promise<void>;
 }
@@ -100,6 +101,7 @@ const cursorMap: Record<ToolType, string> = {
 export default function ImageAnnotatorModal({
   open,
   imageSrc,
+  isLoadingImage = false,
   onClose,
   onConfirm,
 }: ImageAnnotatorModalProps) {
@@ -115,6 +117,7 @@ export default function ImageAnnotatorModal({
   const [isDrawing, setIsDrawing] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false); // 是否正在生成
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   // 监听图片加载，更新尺寸
@@ -349,6 +352,8 @@ export default function ImageAnnotatorModal({
       setIsDrawing(false);
     }
 
+    setIsGenerating(true); // 开始生成
+
     try {
       // 生成合成图片（原图 + 标注），直接传递 DataURL
       console.log('🎨 生成标注合成图...');
@@ -360,10 +365,17 @@ export default function ImageAnnotatorModal({
         promptText: promptText.trim(),
       }, annotatedImageDataUrl);
       
-      onClose();
+      // 不自动关闭！让用户可以继续编辑
+      // onClose();
+      
+      // 清空输入框，方便用户继续编辑
+      setPromptText('');
+      
     } catch (error) {
       console.error('图片处理失败:', error);
       alert(`图片处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsGenerating(false); // 结束生成
     }
   };
 
@@ -536,22 +548,38 @@ export default function ImageAnnotatorModal({
 
         <div className="flex flex-col gap-4 px-6 py-5 overflow-auto">
           <div className="relative w-fit mx-auto rounded-2xl border border-gray-200 bg-slate-50 overflow-hidden">
-            <img
-              ref={imgRef}
-              src={imageSrc}
-              alt="待编辑图片"
-              className="pointer-events-none select-none block max-h-[60vh]"
-            />
+            {/* 加载状态 */}
+            {isLoadingImage && (
+              <div className="flex items-center justify-center min-w-[400px] min-h-[300px]">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative h-12 w-12">
+                    <div className="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+                    <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                  </div>
+                  <p className="text-sm text-gray-600">正在加载图片...</p>
+                </div>
+              </div>
+            )}
+            
+            {/* 图片和标注 */}
+            {!isLoadingImage && imageSrc && (
+              <>
+                <img
+                  ref={imgRef}
+                  src={imageSrc}
+                  alt="待编辑图片"
+                  className="pointer-events-none select-none block max-h-[60vh]"
+                />
 
-            <svg
-              className="absolute inset-0 w-full h-full"
-              viewBox={`0 0 ${imgSize.width} ${imgSize.height}`}
-              style={{ cursor: cursorMap[activeTool] }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerLeave}
-            >
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  viewBox={`0 0 ${imgSize.width} ${imgSize.height}`}
+                  style={{ cursor: cursorMap[activeTool] }}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerLeave}
+                >
                 {displayAnnotations.map((annotation) => {
                   if (annotation.type === 'pen') {
                     const pathPoints = annotation.points
@@ -654,9 +682,9 @@ export default function ImageAnnotatorModal({
                   }
                   return null;
                 })}
-            </svg>
+                </svg>
 
-            {editingAnnotation && editingPosition ? (
+                {editingAnnotation && editingPosition ? (
               <input
                 ref={textAreaRef as any}
                 type="text"
@@ -682,9 +710,9 @@ export default function ImageAnnotatorModal({
                 placeholder="输入文字"
                 autoFocus
               />
-            ) : null}
+                ) : null}
 
-            <div className="pointer-events-none absolute inset-0 z-10">
+                <div className="pointer-events-none absolute inset-0 z-10">
               <div className="pointer-events-auto absolute left-4 top-4 flex gap-1.5 rounded-2xl bg-white/95 backdrop-blur-xl p-1.5 shadow-xl border border-gray-200/80">
                 {toolDefinitions.map((tool) => {
                   const Icon = tool.icon;
@@ -745,7 +773,9 @@ export default function ImageAnnotatorModal({
                   ))}
                 </div>
               </div>
-            </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex-shrink-0 relative">
@@ -753,16 +783,22 @@ export default function ImageAnnotatorModal({
               value={promptText}
               onChange={(event) => setPromptText(event.target.value)}
               placeholder="例如：请根据我圈起来的位置，替换为海滩上的吊床……"
-              className="w-full min-h-[80px] resize-none rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 pr-14 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-300 focus:ring-2 focus:ring-gray-200"
+              disabled={isLoadingImage || isGenerating}
+              className="w-full min-h-[80px] resize-none rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 pr-14 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleConfirm}
-              className="absolute right-3 top-1/2 -translate-y-1/2 group inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-800 text-white shadow-sm transition-all hover:bg-gray-900 hover:shadow-md active:scale-95"
-              title="完成编辑"
+              disabled={isLoadingImage || isGenerating || !promptText.trim()}
+              className="absolute right-3 top-1/2 -translate-y-1/2 group inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-800 text-white shadow-sm transition-all hover:bg-gray-900 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-800"
+              title={isGenerating ? "生成中..." : "完成编辑"}
             >
-              <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
+              {isGenerating ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              ) : (
+                <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
