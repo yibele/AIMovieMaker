@@ -289,13 +289,15 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setSelection([newImage.id]);
   };
 
-  // 下载图片
+  // 下载图片：直接在新标签打开图片地址，交由浏览器处理保存
   const handleDownload = () => {
     imageElements.forEach((img) => {
-      const link = document.createElement('a');
-      link.href = img.src;
-      link.download = `image-${img.id}.jpg`;
-      link.click();
+      if (!img?.src) return;
+      const newWindow = window.open(img.src, '_blank', 'noopener,noreferrer');
+      if (!newWindow) {
+        // 部分浏览器会拦截弹窗，这里做降级提示
+        alert('浏览器阻止了新窗口，请允许弹窗后再次尝试下载');
+      }
     });
   };
 
