@@ -754,7 +754,8 @@ export async function registerUploadedImage(
   };
 }
 
-// 多图融合编辑（runImageRecipe） // 行级注释说明函数用途
+// 多图融合编辑（runImageRecipe） - 直接调用 Google API，获取 base64
+// 绕过 Vercel 服务器，节省 Fast Origin Transfer
 export async function runImageRecipe(
   instruction: string,
   referenceImages: Array<{
@@ -775,6 +776,7 @@ export async function runImageRecipe(
   translatedPrompt?: string;
   images?: Array<{
     imageUrl: string;
+    base64?: string; // 新增：返回 base64
     mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
@@ -809,29 +811,29 @@ export async function runImageRecipe(
   }
   
   console.log(
-    '🧩 使用 Flow API 进行多图融合编辑:',
+    '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
     instruction,
     aspectRatio,
     `参考图数量: ${validReferences.length}`,
     `生成数量: ${count || apiConfig.generationCount || 1}`
   );
 
-  const result = await generateImageWithFlow({
-    prompt: instruction,
-    aspectRatio,
-    bearerToken: apiConfig.bearerToken,
-    projectId: apiConfig.projectId,
+  // 直接调用 Google API
+  const { generateImageDirectly } = await import('./direct-google-api');
+  
+  const result = await generateImageDirectly(
+    instruction,
+    apiConfig.bearerToken,
+    apiConfig.projectId,
     sessionId,
-    proxy: apiConfig.proxy,
+    aspectRatio,
+    validReferences,
     seed,
-    references: validReferences,
-    count: count ?? apiConfig.generationCount ?? 1, // 使用传入的 count 或配置的 generationCount
-    prefixPrompt: useCanvasStore.getState().currentPrefixPrompt, // 添加前置提示词
-  });
+    count ?? apiConfig.generationCount ?? 1,
+    useCanvasStore.getState().currentPrefixPrompt
+  );
+  
   const recipeContextUpdates: Partial<typeof apiConfig> = {};
-  if (result.workflowId && result.workflowId !== apiConfig.workflowId) {
-    recipeContextUpdates.workflowId = result.workflowId;
-  }
   if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
     recipeContextUpdates.sessionId = result.sessionId;
   }
@@ -839,14 +841,26 @@ export async function runImageRecipe(
     useCanvasStore.getState().setApiConfig(recipeContextUpdates);
   }
 
+  // 转换格式
+  const images = result.images.map(img => ({
+    imageUrl: img.fifeUrl || '',
+    base64: img.encodedImage, // 保存 base64！
+    mediaId: img.mediaId,
+    mediaGenerationId: img.mediaGenerationId,
+    workflowId: img.workflowId,
+    prompt: img.prompt,
+    seed: img.seed,
+    fifeUrl: img.fifeUrl,
+  }));
+
   return {
-    imageUrl: result.imageUrl,
+    imageUrl: images[0]?.imageUrl || '',
     promptId: generateId(),
-    mediaId: result.mediaId,
-    mediaGenerationId: result.mediaGenerationId,
-    workflowId: result.workflowId,
-    translatedPrompt: result.translatedPrompt,
-    images: result.images, // 返回所有生成的图片
+    mediaId: images[0]?.mediaId,
+    mediaGenerationId: images[0]?.mediaGenerationId,
+    workflowId: images[0]?.workflowId,
+    translatedPrompt: images[0]?.prompt,
+    images, // 返回所有生成的图片（包含 base64）
   };
 }
 
