@@ -244,9 +244,10 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         1
       );
       
-      // 更新图片内容
+      // 更新图片内容（包含 base64）
       updateElement(newImageId, {
         src: imageResult.imageUrl,
+        base64: imageResult.images?.[0]?.base64, // 保存 base64，用于后续编辑
         promptId: imageResult.promptId,
         mediaId: imageResult.mediaId,
         mediaGenerationId: imageResult.mediaGenerationId,

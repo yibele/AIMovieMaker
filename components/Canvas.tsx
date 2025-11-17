@@ -797,9 +797,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         // 使用文本节点的文字作为提示词生成图片（传入选中的比例）
         const result = await generateImage(sourceNode.text, aspectRatio);
         
-        // 更新图片节点，替换为真实图片
+        // 更新图片节点，替换为真实图片（包含 base64）
         updateElement(newImageId, {
           src: result.imageUrl,
+          base64: result.images?.[0]?.base64, // 保存 base64，用于后续编辑
           promptId: result.promptId,
           mediaId: result.mediaId, // 行级注释：保存 Flow mediaId 以便后续图生视频引用
           mediaGenerationId: result.mediaGenerationId, // 保存 Flow 返回的 mediaGenerationId，便于后续图生图 // 行级注释说明用途
