@@ -158,6 +158,7 @@ export async function generateImageDirectly(
       imageAspectRatio: normalizedAspect,
       prompt: finalPrompt,
       imageInputs,
+      returnEncodedImage: true, // 要求返回 base64 数据
     };
   });
 
