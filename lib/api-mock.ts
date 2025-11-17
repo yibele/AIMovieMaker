@@ -720,11 +720,18 @@ export async function registerUploadedImage(
   // 直接调用 Google API，不通过 Vercel 服务器
   const { uploadImageDirectly } = await import('./direct-google-api');
   
+  // 转换宽高比类型：FlowAspectRatioEnum -> '16:9' | '9:16' | '1:1'
+  const convertedAspectRatio =
+    flowAspectRatio === 'IMAGE_ASPECT_RATIO_PORTRAIT' ? '9:16' :
+    flowAspectRatio === 'IMAGE_ASPECT_RATIO_SQUARE' ? '1:1' :
+    flowAspectRatio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ? '16:9' :
+    undefined;
+
   const uploadResult = await uploadImageDirectly(
     imageBase64,
     apiConfig.bearerToken,
     sessionId,
-    flowAspectRatio
+    convertedAspectRatio
   );
 
   const uploadContextUpdates: Partial<typeof apiConfig> = {};
