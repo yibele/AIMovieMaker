@@ -843,7 +843,7 @@ export async function runImageRecipe(
 
   // 转换格式
   const images = result.images.map(img => ({
-    imageUrl: img.fifeUrl || '',
+    imageUrl: img.encodedImage ? `data:${img.mimeType || 'image/png'};base64,${img.encodedImage}` : (img.fifeUrl || ''), // 优先使用base64
     base64: img.encodedImage, // 保存 base64！
     mediaId: img.mediaId,
     mediaGenerationId: img.mediaGenerationId,
@@ -937,7 +937,7 @@ export async function imageToImage(
   
   // 转换格式
   const images = result.images.map(img => ({
-    imageUrl: img.fifeUrl || '',
+    imageUrl: img.encodedImage ? `data:${img.mimeType || 'image/png'};base64,${img.encodedImage}` : (img.fifeUrl || ''), // 优先使用base64
     base64: img.encodedImage, // 保存 base64！
     mediaId: img.mediaId,
     mediaGenerationId: img.mediaGenerationId,
@@ -946,7 +946,7 @@ export async function imageToImage(
     seed: img.seed,
     fifeUrl: img.fifeUrl,
   }));
-  
+
   return {
     imageUrl: images[0]?.imageUrl || '',
     promptId: generateId(),
