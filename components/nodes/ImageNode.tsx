@@ -173,45 +173,66 @@ function ImageNode({ data, selected, id }: NodeProps) {
         />
       </div>
 
-      {/* 行级注释：图生图输入框 - 在图片节点下方 */}
+      {/* 行级注释：根据图片来源显示不同的输入框 */}
       {showBaseImage && !isProcessing && (
-        <div 
-          className="absolute left-0 right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2 flex items-center gap-2"
-          style={{ 
-            top: '100%', 
-            marginTop: '12px',
-            zIndex: 10,
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <input
-            type="text"
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isGenerating) {
-                handleImageToImage();
-              }
-            }}
-            placeholder="输入提示词进行图生图..."
-            disabled={isGenerating}
-            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
-          />
-          <button
-            onClick={handleImageToImage}
-            disabled={isGenerating || !promptText.trim()}
-            className={`px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-all ${
-              isGenerating || !promptText.trim()
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-500'
-            }`}
-          >
-            <Sparkles className="w-3 h-3" />
-            {isGenerating ? '生成中...' : '生成'}
-          </button>
-        </div>
+        <>
+          {/* 行级注释：从文本节点生成的图片 - 只显示提示词（只读） */}
+          {imageData.generatedFrom?.type === 'text' && promptText && (
+            <div 
+              className="absolute left-0 right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2"
+              style={{ 
+                top: '100%', 
+                marginTop: '12px',
+                zIndex: 10,
+              }}
+            >
+              <div className="text-xs text-gray-600 truncate">
+                {promptText}
+              </div>
+            </div>
+          )}
+
+          {/* 行级注释：图生图占位符 - 显示输入框 + 生成按钮 */}
+          {imageData.generatedFrom?.type === 'image-to-image' && (
+            <div 
+              className="absolute left-0 right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2 flex items-center gap-2"
+              style={{ 
+                top: '100%', 
+                marginTop: '12px',
+                zIndex: 10,
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <input
+                type="text"
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isGenerating) {
+                    handleImageToImage();
+                  }
+                }}
+                placeholder="输入提示词进行图生图..."
+                disabled={isGenerating}
+                className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              />
+              <button
+                onClick={handleImageToImage}
+                disabled={isGenerating || !promptText.trim()}
+                className={`px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-all ${
+                  isGenerating || !promptText.trim()
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-500'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                {isGenerating ? '生成中...' : '生成'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   );
