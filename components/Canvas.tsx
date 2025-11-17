@@ -21,7 +21,7 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, ArrowRight } from 'lucide-react';
 
 import { useCanvasStore } from '@/lib/store';
 import ImageNode from './nodes/ImageNode';
@@ -52,12 +52,19 @@ const nodeTypes: NodeTypes = {
 const VIDEO_NODE_DEFAULT_SIZE = { width: 400, height: 300 };
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
 
+// 行级注释：图片连线阶段临时保存用户选择的比例和提示词
+type ImagePromptConfig = {
+  aspectRatio: '9:16' | '16:9' | '1:1';
+  prompt: string;
+};
+
 type ConnectionMenuState = {
   visible: boolean;
   position: { x: number; y: number };
   sourceNodeId: string | null;
   sourceNodeType: CanvasElement['type'] | null;
-  activeSubmenu: 'image' | 'video' | null;
+  activeSubmenu: 'image' | 'video' | 'imagePrompt' | null;
+  pendingImageConfig: ImagePromptConfig | null;
 };
 
 function CanvasContent({ projectId }: { projectId?: string }) {
@@ -74,6 +81,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     sourceNodeId: null,
     sourceNodeType: null,
     activeSubmenu: null,
+    pendingImageConfig: null,
   });
 
   // 连线菜单状态
@@ -141,6 +149,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     handleId?: string | null;
     didConnect: boolean;
   } | null>(null);
+  const promptMenuInputRef = useRef<HTMLInputElement | null>(null); // 行级注释：比例后提示词输入框引用
   const activeGenerationRef = useRef<Set<string>>(new Set());
 
   const maybeStartVideo = useCallback(
@@ -282,6 +291,13 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       useCanvasStore.setState({ triggerVideoGeneration: undefined });
     };
   }, [maybeStartVideo]);
+
+  useEffect(() => {
+    if (connectionMenu.activeSubmenu === 'imagePrompt' && promptMenuInputRef.current) {
+      promptMenuInputRef.current.focus(); // 行级注释：比例选择后自动聚焦提示词输入框
+      promptMenuInputRef.current.select();
+    }
+  }, [connectionMenu.activeSubmenu]);
 
   // 行级注释：注册从输入框生成图片的回调
   const handleGenerateFromInput = useCallback(
@@ -527,6 +543,18 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     });
   }, [nodes, setNodes]);
 
+  // 行级注释：移除指向已删除节点的连线
+  useEffect(() => {
+    // @ts-ignore
+    setEdges((currentEdges: any[]) =>
+      currentEdges.filter((edge: any) => {
+        const sourceExists = elements.some((el) => el.id === edge.source);
+        const targetExists = elements.some((el) => el.id === edge.target);
+        return sourceExists && targetExists;
+      })
+    );
+  }, [elements, setEdges]);
+
   // 拦截 onNodesChange，处理删除事件并同步到 store
   const handleNodesChange = useCallback(
     (changes: any[]) => {
@@ -597,6 +625,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         sourceNodeId: sourceNode.id,
         sourceNodeType: sourceNode.type as CanvasElement['type'],
         activeSubmenu: null,
+        pendingImageConfig: null,
       });
     },
     [elements, resetConnectionMenu]
@@ -640,6 +669,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           sourceNodeId: sourceNode.id,
           sourceNodeType: 'text',
           activeSubmenu: null,
+          pendingImageConfig: null,
         });
         return;
       }
@@ -675,6 +705,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           sourceNodeId: sourceNode.id,
           sourceNodeType: 'image',
           activeSubmenu: null,
+          pendingImageConfig: null,
         });
         return;
       }
@@ -687,40 +718,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     setConnectionMenu((prev) => ({
       ...prev,
       activeSubmenu: 'image',
+      pendingImageConfig: null,
     }));
-  }, []);
+  }, [setConnectionMenu]);
 
   const handleShowVideoSubmenu = useCallback(() => {
     setConnectionMenu((prev) => ({
       ...prev,
       activeSubmenu: 'video',
     }));
-  }, []);
-
-  // 处理选择生成图片（带比例参数）
-  const handleGenerateImage = useCallback(
-    async (aspectRatio: '9:16' | '16:9' | '1:1') => {
-      const sourceNodeId = connectionMenu.sourceNodeId;
-      const sourceNodeType = connectionMenu.sourceNodeType;
-      if (!sourceNodeId || !sourceNodeType) return;
-
-      const sourceNode = elements.find((el) => el.id === sourceNodeId);
-      if (!sourceNode) return;
-
-      // 行级注释：从文字节点生成图片（文生图）
-      if (sourceNodeType === 'text' && sourceNode.type === 'text') {
-        handleTextToImage(sourceNode as TextElement, aspectRatio);
-        return;
-      }
-
-      // 行级注释：从图片节点生成图片（图生图）
-      if (sourceNodeType === 'image' && sourceNode.type === 'image') {
-        handleImageToImage(sourceNode as ImageElement, aspectRatio);
-        return;
-      }
-    },
-    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements]
-  );
+  }, [setConnectionMenu]);
 
   // 行级注释：文生图处理函数
   const handleTextToImage = useCallback(
@@ -823,10 +830,47 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [addElement, updateElement, setEdges, resetConnectionMenu]
   );
 
+  // 处理选择生成图片（带比例参数）
+  const handleGenerateImage = useCallback(
+    async (aspectRatio: '9:16' | '16:9' | '1:1') => {
+      const sourceNodeId = connectionMenu.sourceNodeId;
+      const sourceNodeType = connectionMenu.sourceNodeType;
+      if (!sourceNodeId || !sourceNodeType) return;
+
+      const sourceNode = elements.find((el) => el.id === sourceNodeId);
+      if (!sourceNode) return;
+
+      // 行级注释：从文字节点生成图片（文生图）
+      if (sourceNodeType === 'text' && sourceNode.type === 'text') {
+        handleTextToImage(sourceNode as TextElement, aspectRatio);
+        return;
+      }
+
+      // 行级注释：从图片节点生成图片（图生图）
+      if (sourceNodeType === 'image' && sourceNode.type === 'image') {
+        setConnectionMenu((prev) => ({
+          ...prev,
+          activeSubmenu: 'imagePrompt',
+          pendingImageConfig: {
+            aspectRatio,
+            prompt: prev.pendingImageConfig?.prompt ?? '',
+          },
+        }));
+        return;
+      }
+    },
+    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements, handleTextToImage, setConnectionMenu]
+  );
+
   // 行级注释：图生图处理函数 - 创建占位符图片节点，等待用户输入提示词
   const handleImageToImage = useCallback(
-    async (sourceNode: ImageElement, aspectRatio: '9:16' | '16:9' | '1:1') => {
+    async (
+      sourceNode: ImageElement,
+      aspectRatio: '9:16' | '16:9' | '1:1',
+      initialPrompt?: string
+    ) => {
       resetConnectionMenu();
+      const trimmedPrompt = initialPrompt?.trim() ?? '';
 
       // 根据比例计算尺寸
       let width: number, height: number;
@@ -861,10 +905,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         src: '', // 空 src，显示等待状态
         position: targetPosition,
         size: { width, height },
+        pendingConnectionGeneration: true,
         generatedFrom: {
           type: 'image-to-image', // 标记为图生图
           sourceIds: [sourceNode.id],
-          prompt: '', // 等待用户输入
+          prompt: trimmedPrompt, // 行级注释：将菜单中的提示词同步到节点
         },
       };
       
@@ -884,10 +929,59 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         },
       ]);
 
-      console.log('✅ 已创建图生图占位符节点，等待用户在输入框输入提示词:', sourceNode.id, '比例:', aspectRatio);
+      console.log('✅ 已创建图生图占位符节点，比例:', aspectRatio, '提示词:', trimmedPrompt);
     },
     [addElement, setEdges, resetConnectionMenu]
   );
+
+  const handleImagePromptInputChange = useCallback(
+    (value: string) => {
+      setConnectionMenu((prev) => {
+        if (!prev.pendingImageConfig) {
+          return prev;
+        }
+        return {
+          ...prev,
+          pendingImageConfig: {
+            ...prev.pendingImageConfig,
+            prompt: value,
+          },
+        };
+      });
+    },
+    [setConnectionMenu]
+  );
+
+  const handleConfirmImagePrompt = useCallback(() => {
+    const config = connectionMenu.pendingImageConfig;
+    const sourceNodeId = connectionMenu.sourceNodeId;
+    if (!config || !sourceNodeId) {
+      return;
+    }
+
+    const promptText = config.prompt.trim();
+    if (!promptText) {
+      alert('请输入提示词');
+      return;
+    }
+
+    const sourceNode = elements.find(
+      (el) => el.id === sourceNodeId && el.type === 'image'
+    ) as ImageElement | undefined;
+
+    if (!sourceNode) {
+      resetConnectionMenu();
+      return;
+    }
+
+    handleImageToImage(sourceNode, config.aspectRatio, promptText);
+  }, [
+    connectionMenu.pendingImageConfig,
+    connectionMenu.sourceNodeId,
+    elements,
+    handleImageToImage,
+    resetConnectionMenu,
+  ]);
 
   // 处理选择生成视频
   const handleGenerateVideo = useCallback(
@@ -1194,6 +1288,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [elements, setEdges, updateElement]
   );
 
+  const pendingPromptDraft = connectionMenu.pendingImageConfig?.prompt ?? ''; // 行级注释：菜单中提示词草稿
+  const isPromptDraftReady = Boolean(pendingPromptDraft.trim()); // 行级注释：用于控制确认按钮状态
+
   return (
     <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50 relative">
       {/* 顶部导航 */}
@@ -1268,7 +1365,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             top: `${connectionMenu.position.y}px`,
           }}
         >
-          {connectionMenu.activeSubmenu === null ? (
+          {connectionMenu.activeSubmenu === null && (
             <div>
               <button
                 onClick={handleShowImageSubmenu}
@@ -1283,13 +1380,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
                 <div className="font-medium text-gray-900">视频</div>
               </button>
             </div>
-          ) : connectionMenu.activeSubmenu === 'image' ? (
+          )}
+
+          {connectionMenu.activeSubmenu === 'image' && (
             <div className="min-w-[140px]">
               <button
                 onClick={() =>
                   setConnectionMenu((prev) => ({
                     ...prev,
                     activeSubmenu: null,
+                    pendingImageConfig: null,
                   }))
                 }
                 className="w-full px-6 py-2 text-sm text-gray-500 hover:bg-gray-100 text-left"
@@ -1315,7 +1415,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
                 <div className="font-medium text-gray-900">方图 1:1</div>
               </button>
             </div>
-          ) : (
+          )}
+
+          {connectionMenu.activeSubmenu === 'video' && (
             <div className="min-w-[140px]">
               <button
                 onClick={() =>
@@ -1340,6 +1442,54 @@ function CanvasContent({ projectId }: { projectId?: string }) {
               >
                 <div className="font-medium text-gray-900">横屏 16:9</div>
               </button>
+            </div>
+          )}
+
+          {connectionMenu.activeSubmenu === 'imagePrompt' && (
+            <div className="w-[320px] p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-900">输入提示词</span>
+                {connectionMenu.pendingImageConfig?.aspectRatio && (
+                  <span className="text-xs text-gray-500">
+                    {connectionMenu.pendingImageConfig.aspectRatio}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={promptMenuInputRef}
+                  type="text"
+                  value={pendingPromptDraft}
+                  onChange={(e) => handleImagePromptInputChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleConfirmImagePrompt();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setConnectionMenu((prev) => ({
+                        ...prev,
+                        activeSubmenu: 'image',
+                      }));
+                    }
+                  }}
+                  placeholder="请先输入提示词..."
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleConfirmImagePrompt}
+                  disabled={!isPromptDraftReady}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                    isPromptDraftReady
+                      ? 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title="确认生成"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -24,6 +24,7 @@ export interface ImageElement extends CanvasElement {
   mediaGenerationId?: string; // Flow 返回的 mediaGenerationId，用于后续编辑 // 行级注释说明字段用途
   uploadState?: 'local' | 'syncing' | 'synced' | 'error'; // 上传到远端的同步状态 // 行级注释说明字段用途
   uploadMessage?: string; // 同步状态的提示信息（如错误原因） // 行级注释说明字段用途
+  pendingConnectionGeneration?: boolean; // 行级注释：连线菜单自动生成的占位符标记
   generatedFrom?: {
     type: 'text' | 'input' | 'image-to-image'; // 来源类型：文本节点、输入框、图生图
     sourceIds?: string[]; // 源节点 ID（文本节点或图片节点）
