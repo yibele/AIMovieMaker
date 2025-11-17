@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect } from 'react';
 import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
 import type { ImageElement } from '@/lib/types';
 import { useNodeResize } from '@/lib/node-resize-helpers';
@@ -28,6 +28,13 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const [promptText, setPromptText] = useState(imageData.generatedFrom?.prompt || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const updateElement = useCanvasStore((state) => state.updateElement);
+
+  // 行级注释：当节点来自文生图或其他来源时，保持提示词与数据同步
+  useEffect(() => {
+    if (imageData.generatedFrom?.type !== 'image-to-image') {
+      setPromptText(imageData.generatedFrom?.prompt || '');
+    }
+  }, [imageData.generatedFrom?.prompt, imageData.generatedFrom?.type]);
   
   // 行级注释：获取宽高比
   const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
@@ -177,7 +184,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       {showBaseImage && !isProcessing && (
         <>
           {/* 行级注释：从文本节点生成的图片 - 只显示提示词（只读） */}
-          {imageData.generatedFrom?.type === 'text' && promptText && (
+          {imageData.generatedFrom?.type === 'text' && imageData.generatedFrom?.prompt && (
             <div 
               className="absolute left-0 right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2"
               style={{ 
@@ -187,7 +194,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
               }}
             >
               <div className="text-xs text-gray-600 truncate">
-                {promptText}
+                {imageData.generatedFrom?.prompt}
               </div>
             </div>
           )}
