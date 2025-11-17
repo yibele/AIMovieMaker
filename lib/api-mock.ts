@@ -672,6 +672,7 @@ export async function generateImage(
 }
 
 // 上传图片并注册到 Flow，获取 mediaGenerationId 供后续图生图使用
+// 直接调用 Google API，不通过 Vercel 服务器，节省 Fast Origin Transfer
 export async function registerUploadedImage(
   imageBase64: string,
   flowAspectRatio?: FlowAspectRatioEnum
@@ -696,15 +697,17 @@ export async function registerUploadedImage(
     sessionId = context.sessionId;
   }
 
-  console.log('📝 使用 Flow API 上传用户图片');
+  console.log('📝 直接上传用户图片到 Google API（绕过 Vercel）');
 
-  const uploadResult = await uploadImageWithFlow({
+  // 直接调用 Google API，不通过 Vercel 服务器
+  const { uploadImageDirectly } = await import('./direct-google-api');
+  
+  const uploadResult = await uploadImageDirectly(
     imageBase64,
-    bearerToken: apiConfig.bearerToken,
+    apiConfig.bearerToken,
     sessionId,
-    proxy: apiConfig.proxy,
-    aspectRatio: flowAspectRatio,
-  });
+    flowAspectRatio
+  );
 
   const uploadContextUpdates: Partial<typeof apiConfig> = {};
   if (uploadResult.sessionId && uploadResult.sessionId !== apiConfig.sessionId) {
