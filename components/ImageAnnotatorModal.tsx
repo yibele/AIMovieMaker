@@ -66,7 +66,7 @@ interface ImageAnnotatorModalProps {
   open: boolean;
   imageSrc: string | null;
   onClose: () => void;
-  onConfirm?: (result: ImageAnnotatorResult) => void | Promise<void>;
+  onConfirm?: (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => void | Promise<void>;
 }
 
 const toolDefinitions: {
@@ -349,11 +349,122 @@ export default function ImageAnnotatorModal({
       setIsDrawing(false);
     }
 
-    await onConfirm({
-      annotations: payload,
-      promptText: promptText.trim(),
+    try {
+      // 生成合成图片（原图 + 标注）
+      const annotatedImageDataUrl = await generateAnnotatedImage();
+
+      await onConfirm({
+        annotations: payload,
+        promptText: promptText.trim(),
+      }, annotatedImageDataUrl);
+      onClose();
+    } catch (error) {
+      console.error('生成标注图片失败:', error);
+      alert(`图片处理失败: ${error instanceof Error ? error.message : '未知错误'}\n\n可能原因：图片跨域限制`);
+    }
+  };
+
+  // 生成标注后的合成图片
+  const generateAnnotatedImage = async (): Promise<string> => {
+    if (!imgRef.current || !imageSrc) {
+      throw new Error('图片未加载');
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('无法创建 Canvas 上下文');
+    }
+
+    const img = imgRef.current;
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    // 直接通过 fetch 加载图片，避免 CORS 污染问题
+    try {
+      console.log('🔄 正在加载图片...');
+      const response = await fetch(imageSrc);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const bitmap = await createImageBitmap(blob);
+      ctx.drawImage(bitmap, 0, 0);
+      console.log('✅ 图片加载成功');
+    } catch (fetchError) {
+      console.error('❌ 加载图片失败:', fetchError);
+      throw new Error(`无法加载图片: ${fetchError instanceof Error ? fetchError.message : '未知错误'}`);
+    }
+
+    // 绘制标注
+    const scaleX = img.naturalWidth / imgSize.width;
+    const scaleY = img.naturalHeight / imgSize.height;
+
+    annotations.forEach((annotation) => {
+      if (annotation.type === 'pen') {
+        ctx.strokeStyle = annotation.color;
+        ctx.lineWidth = 3 * Math.max(scaleX, scaleY);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        annotation.points.forEach((point, index) => {
+          const x = point.x * scaleX;
+          const y = point.y * scaleY;
+          if (index === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+      } else if (annotation.type === 'arrow') {
+        const startX = annotation.start.x * scaleX;
+        const startY = annotation.start.y * scaleY;
+        const endX = annotation.end.x * scaleX;
+        const endY = annotation.end.y * scaleY;
+
+        ctx.strokeStyle = annotation.color;
+        ctx.lineWidth = 3 * Math.max(scaleX, scaleY);
+        ctx.lineCap = 'round';
+
+        // 绘制箭头线
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // 绘制箭头头部
+        const angle = Math.atan2(endY - startY, endX - startX);
+        const arrowSize = 15 * Math.max(scaleX, scaleY);
+        ctx.beginPath();
+        ctx.moveTo(endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - arrowSize * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(endX, endY);
+        ctx.lineTo(endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - arrowSize * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+      } else if (annotation.type === 'rectangle') {
+        const x = Math.min(annotation.start.x, annotation.end.x) * scaleX;
+        const y = Math.min(annotation.start.y, annotation.end.y) * scaleY;
+        const width = Math.abs(annotation.end.x - annotation.start.x) * scaleX;
+        const height = Math.abs(annotation.end.y - annotation.start.y) * scaleY;
+
+        ctx.strokeStyle = annotation.color;
+        ctx.lineWidth = 2.5 * Math.max(scaleX, scaleY);
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, 8 * Math.max(scaleX, scaleY));
+        ctx.stroke();
+      } else if (annotation.type === 'text' && annotation.text) {
+        const x = annotation.position.x * scaleX;
+        const y = annotation.position.y * scaleY;
+
+        ctx.fillStyle = annotation.color;
+        ctx.font = `600 ${18 * Math.max(scaleX, scaleY)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(annotation.text, x, y);
+      }
     });
-    onClose();
+
+    return canvas.toDataURL('image/png');
   };
 
   const displayAnnotations = useMemo(() => {

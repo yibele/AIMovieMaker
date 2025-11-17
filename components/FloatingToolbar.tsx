@@ -44,10 +44,144 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setAnnotatorTarget(selectedImage);
   };
 
-  // 注释完成
-  const handleAnnotatorConfirm = async (result: ImageAnnotatorResult) => {
-    console.log('🖍️ 图片注释数据:', result);
+  // 注释完成 - 将标注图上传并进行图生图
+  const handleAnnotatorConfirm = async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
+    if (!selectedImage) return;
+    
     setAnnotatorTarget(null);
+    
+    // 如果没有提示词，不做图生图
+    if (!result.promptText || !result.promptText.trim()) {
+      console.log('✅ 图片标注完成，但未输入提示词，跳过图生图');
+      return;
+    }
+    
+    try {
+      console.log('🖍️ 开始图片编辑流程:', result.promptText);
+      
+      // 1. 上传标注后的图片，获取 mediaGenerationId
+      const base64Data = annotatedImageDataUrl.split(',')[1];
+      const { registerUploadedImage } = await import('@/lib/api-mock');
+      
+      console.log('📤 上传标注图片...');
+      const uploadResult = await registerUploadedImage(base64Data);
+      
+      if (!uploadResult.mediaGenerationId) {
+        throw new Error('上传失败：未获取到 mediaGenerationId');
+      }
+      
+      console.log('✅ 标注图片上传成功:', uploadResult.mediaGenerationId);
+      
+      // 2. 使用标注图做图生图
+      // 推断宽高比
+      let aspectRatio: '16:9' | '9:16' | '1:1' = '16:9';
+      if (selectedImage.size) {
+        const { width = 400, height = 300 } = selectedImage.size;
+        const ratio = width / height;
+        if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
+        else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+        else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
+      }
+      
+      // 计算新图片位置（在原图右侧）
+      const newPosition = {
+        x: selectedImage.position.x + (selectedImage.size?.width || 640) + 50,
+        y: selectedImage.position.y,
+      };
+      
+      // 创建新图片的尺寸
+      const size = { width: 640, height: 360 };
+      if (aspectRatio === '9:16') {
+        size.width = 360;
+        size.height = 640;
+      } else if (aspectRatio === '1:1') {
+        size.width = 512;
+        size.height = 512;
+      }
+      
+      // 创建 placeholder
+      const newImageId = `image-${Date.now()}`;
+      const newImage: ImageElement = {
+        id: newImageId,
+        type: 'image',
+        src: '',
+        position: newPosition,
+        size: size,
+        sourceImageIds: [selectedImage.id],
+        generatedFrom: {
+          type: 'image-to-image',
+          sourceIds: [selectedImage.id],
+          prompt: result.promptText,
+        },
+      };
+      
+      addElement(newImage);
+      
+      // 创建连线（连到原图，不连标注图）
+      if (setEdges) {
+        const edgeId = `edge-${selectedImage.id}-${newImageId}`;
+        setEdges((eds: any) => [
+          ...eds,
+          {
+            id: edgeId,
+            source: selectedImage.id,
+            target: newImageId,
+            type: 'default',
+            animated: true,
+            style: { stroke: '#3b82f6', strokeWidth: 1 },
+          },
+        ]);
+      }
+      
+      // 3. 调用图生图 API
+      console.log('🎨 使用标注图进行图生图...');
+      const { imageToImage } = await import('@/lib/api-mock');
+      
+      const imageResult = await imageToImage(
+        result.promptText,
+        annotatedImageDataUrl, // 传入标注图的 dataUrl
+        aspectRatio,
+        '',
+        uploadResult.mediaGenerationId, // 使用上传后的 mediaGenerationId
+        1
+      );
+      
+      // 更新图片内容
+      updateElement(newImageId, {
+        src: imageResult.imageUrl,
+        promptId: imageResult.promptId,
+        mediaId: imageResult.mediaId,
+        mediaGenerationId: imageResult.mediaGenerationId,
+        uploadState: 'synced',
+      } as Partial<ImageElement>);
+      
+      // 停止连线动画
+      if (setEdges) {
+        const edgeId = `edge-${selectedImage.id}-${newImageId}`;
+        setEdges((eds: any) =>
+          eds.map((edge: any) =>
+            edge.id === edgeId
+              ? { ...edge, animated: false }
+              : edge
+          )
+        );
+      }
+      
+      // 添加到历史记录
+      addPromptHistory({
+        promptId: imageResult.promptId,
+        promptText: result.promptText,
+        imageId: newImageId,
+        mode: 'edit',
+        createdAt: Date.now(),
+      });
+      
+      console.log('✅ 图片编辑完成！');
+      
+    } catch (error) {
+      console.error('❌ 图片编辑失败:', error);
+      alert(`图片编辑失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   // 关闭注释
