@@ -1,9 +1,12 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
 import type { ImageElement } from '@/lib/types';
 import { useNodeResize } from '@/lib/node-resize-helpers';
+import { useCanvasStore } from '@/lib/store';
+import { imageToImage } from '@/lib/api-mock';
+import { Sparkles } from 'lucide-react';
 
 // 行级注释：图片节点组件
 function ImageNode({ data, selected, id }: NodeProps) {
@@ -20,6 +23,66 @@ function ImageNode({ data, selected, id }: NodeProps) {
   
   // 行级注释：使用共享的 resize 逻辑
   const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
+  
+  // 行级注释：图生图的提示词输入框
+  const [promptText, setPromptText] = useState(imageData.generatedFrom?.prompt || '');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const updateElement = useCanvasStore((state) => state.updateElement);
+  
+  // 行级注释：获取宽高比
+  const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
+    const width = imageData.size?.width || 320;
+    const height = imageData.size?.height || 180;
+    const ratio = width / height;
+    if (Math.abs(ratio - 16/9) < 0.1) return '16:9';
+    if (Math.abs(ratio - 9/16) < 0.1) return '9:16';
+    return '1:1';
+  };
+  
+  // 行级注释：处理图生图
+  const handleImageToImage = useCallback(async () => {
+    if (!promptText.trim()) {
+      alert('请输入提示词');
+      return;
+    }
+    
+    if (!imageData.mediaId && !imageData.mediaGenerationId) {
+      alert('图片未上传到服务器，无法进行图生图');
+      return;
+    }
+    
+    setIsGenerating(true);
+    
+    try {
+      const aspectRatio = getAspectRatio();
+      const result = await imageToImage(
+        promptText,
+        imageData.src,
+        aspectRatio,
+        imageData.caption || '',
+        imageData.mediaId || imageData.mediaGenerationId,
+        1
+      );
+      
+      // 行级注释：更新当前图片节点
+      updateElement(id, {
+        src: result.imageUrl,
+        mediaId: result.mediaId,
+        mediaGenerationId: result.mediaGenerationId,
+        generatedFrom: {
+          ...imageData.generatedFrom,
+          prompt: promptText,
+        },
+      } as Partial<ImageElement>);
+      
+      console.log('✅ 图生图完成:', promptText);
+    } catch (error: any) {
+      console.error('❌ 图生图失败:', error);
+      alert(error?.message || '图生图失败，请重试');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [promptText, imageData, id, updateElement]);
   
   return (
     <>
@@ -109,6 +172,47 @@ function ImageNode({ data, selected, id }: NodeProps) {
           isConnectable={true}
         />
       </div>
+
+      {/* 行级注释：图生图输入框 - 在图片节点下方 */}
+      {showBaseImage && !isProcessing && (
+        <div 
+          className="absolute left-0 right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2 flex items-center gap-2"
+          style={{ 
+            top: '100%', 
+            marginTop: '12px',
+            zIndex: 10,
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <input
+            type="text"
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isGenerating) {
+                handleImageToImage();
+              }
+            }}
+            placeholder="输入提示词进行图生图..."
+            disabled={isGenerating}
+            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+          />
+          <button
+            onClick={handleImageToImage}
+            disabled={isGenerating || !promptText.trim()}
+            className={`px-3 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition-all ${
+              isGenerating || !promptText.trim()
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-500'
+            }`}
+          >
+            <Sparkles className="w-3 h-3" />
+            {isGenerating ? '生成中...' : '生成'}
+          </button>
+        </div>
+      )}
     </>
   );
 }
