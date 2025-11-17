@@ -662,18 +662,21 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       }
 
       if (startInfo.sourceType === 'image') {
-        const imageNode = elements.find((el) => el.id === startInfo.sourceId) as ImageElement | undefined;
-        if (!imageNode) {
+        const sourceNode = elements.find((el) => el.id === startInfo.sourceId) as ImageElement | undefined;
+        if (!sourceNode) {
+          resetConnectionMenu();
           return;
         }
 
-        const flowPosition = reactFlowInstance.screenToFlowPosition({
-          x: mouseEvent.clientX,
-          y: mouseEvent.clientY,
+        // 行级注释：图片节点拉线时也显示菜单，让用户选择生成图片还是视频
+        setConnectionMenu({
+          visible: true,
+          position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
+          sourceNodeId: sourceNode.id,
+          sourceNodeType: 'image',
+          activeSubmenu: null,
         });
-
-        createVideoNodeFromImage(imageNode, flowPosition, 'start-image', startInfo.handleId);
-        resetConnectionMenu();
+        return;
       }
     },
     [elements, createVideoNodeFromImage, createTextNodeForVideo, reactFlowInstance, resetConnectionMenu]
@@ -698,11 +701,30 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const handleGenerateImage = useCallback(
     async (aspectRatio: '9:16' | '16:9' | '1:1') => {
       const sourceNodeId = connectionMenu.sourceNodeId;
-      if (!sourceNodeId) return;
+      const sourceNodeType = connectionMenu.sourceNodeType;
+      if (!sourceNodeId || !sourceNodeType) return;
 
-      const sourceNode = elements.find((el) => el.id === sourceNodeId) as TextElement;
-      if (!sourceNode || sourceNode.type !== 'text') return;
+      const sourceNode = elements.find((el) => el.id === sourceNodeId);
+      if (!sourceNode) return;
 
+      // 行级注释：从文字节点生成图片（文生图）
+      if (sourceNodeType === 'text' && sourceNode.type === 'text') {
+        handleTextToImage(sourceNode as TextElement, aspectRatio);
+        return;
+      }
+
+      // 行级注释：从图片节点生成图片（图生图）
+      if (sourceNodeType === 'image' && sourceNode.type === 'image') {
+        handleImageToImage(sourceNode as ImageElement, aspectRatio);
+        return;
+      }
+    },
+    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements]
+  );
+
+  // 行级注释：文生图处理函数
+  const handleTextToImage = useCallback(
+    async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9' | '1:1') => {
       resetConnectionMenu();
 
       // 根据比例计算尺寸
@@ -798,18 +820,103 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         alert(errorMessage);
       }
     },
-    [connectionMenu.sourceNodeId, elements, addElement, updateElement, setEdges, resetConnectionMenu]
+    [addElement, updateElement, setEdges, resetConnectionMenu]
+  );
+
+  // 行级注释：图生图处理函数 - 创建占位符图片节点，等待用户输入提示词
+  const handleImageToImage = useCallback(
+    async (sourceNode: ImageElement, aspectRatio: '9:16' | '16:9' | '1:1') => {
+      resetConnectionMenu();
+
+      // 根据比例计算尺寸
+      let width: number, height: number;
+      switch (aspectRatio) {
+        case '9:16': // 竖图
+          width = 180;
+          height = 320;
+          break;
+        case '16:9': // 横图
+          width = 320;
+          height = 180;
+          break;
+        case '1:1': // 方图
+          width = 180;
+          height = 180;
+          break;
+      }
+
+      // 在源图片节点右侧位置
+      const targetPosition = {
+        x: sourceNode.position.x + (sourceNode.size?.width || 320) + 100,
+        y: sourceNode.position.y,
+      };
+
+      // 创建一个临时 ID
+      const newImageId = `image-${Date.now()}`;
+
+      // 行级注释：创建占位符图片节点，等待用户通过输入框输入提示词
+      const placeholderImage: ImageElement = {
+        id: newImageId,
+        type: 'image',
+        src: '', // 空 src，显示等待状态
+        position: targetPosition,
+        size: { width, height },
+        generatedFrom: {
+          type: 'image-to-image', // 标记为图生图
+          sourceIds: [sourceNode.id],
+          prompt: '', // 等待用户输入
+        },
+      };
+      
+      addElement(placeholderImage);
+
+      // 创建连线
+      // @ts-ignore
+      setEdges((eds: any) => [
+        ...eds,
+        {
+          id: `edge-${sourceNode.id}-${newImageId}`,
+          source: sourceNode.id,
+          target: newImageId,
+          type: 'default',
+          animated: false, // 图生图的连线不动画，因为需要等待用户输入
+          style: { stroke: '#3b82f6', strokeWidth: 1 },
+        },
+      ]);
+
+      console.log('✅ 已创建图生图占位符节点，等待用户在输入框输入提示词:', sourceNode.id, '比例:', aspectRatio);
+    },
+    [addElement, setEdges, resetConnectionMenu]
   );
 
   // 处理选择生成视频
   const handleGenerateVideo = useCallback(
     async (aspectRatio: '9:16' | '16:9') => {
       const sourceNodeId = connectionMenu.sourceNodeId;
-      if (!sourceNodeId) return;
+      const sourceNodeType = connectionMenu.sourceNodeType;
+      if (!sourceNodeId || !sourceNodeType) return;
 
-      const sourceNode = elements.find((el) => el.id === sourceNodeId) as TextElement;
-      if (!sourceNode || sourceNode.type !== 'text') return;
+      const sourceNode = elements.find((el) => el.id === sourceNodeId);
+      if (!sourceNode) return;
 
+      // 行级注释：从文字节点生成视频
+      if (sourceNodeType === 'text' && sourceNode.type === 'text') {
+        handleTextToVideo(sourceNode as TextElement, aspectRatio);
+        return;
+      }
+
+      // 行级注释：从图片节点生成视频
+      if (sourceNodeType === 'image' && sourceNode.type === 'image') {
+        handleImageToVideo(sourceNode as ImageElement, aspectRatio);
+        return;
+      }
+    },
+    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements]
+  );
+
+  // 行级注释：文生视频处理函数
+  const handleTextToVideo = useCallback(
+    async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9') => {
       resetConnectionMenu();
 
       let width: number;
@@ -912,7 +1019,35 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         alert('生成视频失败，请重试');
       }
     },
-    [connectionMenu.sourceNodeId, elements, addElement, updateElement, setEdges, resetConnectionMenu]
+    [addElement, updateElement, setEdges, resetConnectionMenu]
+  );
+
+  // 行级注释：图生视频处理函数
+  const handleImageToVideo = useCallback(
+    async (sourceNode: ImageElement, aspectRatio: '9:16' | '16:9') => {
+      resetConnectionMenu();
+
+      let width: number;
+      let height: number;
+      if (aspectRatio === '9:16') {
+        width = 270;
+        height = 480;
+      } else {
+        width = 480;
+        height = 270;
+      }
+
+      const flowPosition = {
+        x: sourceNode.position.x + (sourceNode.size?.width || 320) + 100,
+        y: sourceNode.position.y,
+      };
+
+      // 行级注释：直接调用现有的 createVideoNodeFromImage 函数
+      createVideoNodeFromImage(sourceNode, flowPosition, 'start-image', 'right');
+      
+      console.log('✅ 从图片节点创建视频节点:', sourceNode.id);
+    },
+    [createVideoNodeFromImage, resetConnectionMenu]
   );
 
   // 处理连线连接（生成视频）
