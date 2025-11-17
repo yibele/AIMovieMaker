@@ -282,18 +282,18 @@ function ImageNode({ data, selected, id }: NodeProps) {
               <div className="relative">
               <button
                 onClick={handleCopyPrompt}
-                className={`absolute -top-1.5 left-2 text-[8px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all transform active:scale-95 ${
+                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all transform active:scale-95 ${
                   isCopied
-                    ? 'text-green-400 bg-green-900 border-green-600'
+                    ? 'text-gray-400 bg-gray-600 border-gray-600'
                     : 'text-white bg-black border-gray-600 hover:bg-gray-800'
                 }`}
                 title={isCopied ? "已复制!" : "复制提示词"}
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
-              <div className="w-full border border-gray-400 rounded-lg px-3 py-2 pt-3">
+              <div className="w-full bg-white rounded-lg px-3 py-2 pt-2">
                 <p
-                  className="text-[10px] font-light text-gray-600 leading-relaxed text-left whitespace-pre-wrap break-words"
+                  className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
                   title={promptDisplayText}
                 >
                   {promptDisplayText}
