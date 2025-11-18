@@ -21,7 +21,6 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Image as ImageIcon, Video as VideoIcon, ArrowRight } from 'lucide-react';
 
 import { useCanvasStore } from '@/lib/store';
 import ImageNode from './nodes/ImageNode';
@@ -32,14 +31,18 @@ import CanvasNavigation from './CanvasNavigation';
 import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
+import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage } from '@/lib/api-mock';
+import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
   getPositionAboveInput,
   generateFromInput,
   imageToImageFromInput,
   multiImageRecipeFromInput,
 } from '@/lib/input-panel-generator';
+import { useConnectionMenu } from '@/hooks/canvas/useConnectionMenu';
+import { ConnectionMenuCallbacks } from '@/types/connection-menu';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -51,21 +54,6 @@ const nodeTypes: NodeTypes = {
 const VIDEO_NODE_DEFAULT_SIZE = { width: 400, height: 300 };
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
 
-// 行级注释：图片连线阶段临时保存用户选择的比例和提示词
-type ImagePromptConfig = {
-  aspectRatio: '9:16' | '16:9' | '1:1';
-  prompt: string;
-};
-
-type ConnectionMenuState = {
-  visible: boolean;
-  position: { x: number; y: number };
-  sourceNodeId: string | null;
-  sourceNodeType: CanvasElement['type'] | null;
-  activeSubmenu: 'image' | 'video' | 'imagePrompt' | null;
-  pendingImageConfig: ImagePromptConfig | null;
-};
-
 function CanvasContent({ projectId }: { projectId?: string }) {
   const elements = useCanvasStore((state) => state.elements);
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -74,22 +62,20 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const uiState = useCanvasStore((state) => state.uiState);
   const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
 
-  const createConnectionMenuState = (): ConnectionMenuState => ({
-    visible: false,
-    position: { x: 0, y: 0 },
-    sourceNodeId: null,
-    sourceNodeType: null,
-    activeSubmenu: null,
-    pendingImageConfig: null,
-  });
-
-  // 连线菜单状态
-  const [connectionMenu, setConnectionMenu] = useState<ConnectionMenuState>(
-    createConnectionMenuState
-  );
-  const resetConnectionMenu = useCallback(() => {
-    setConnectionMenu(createConnectionMenuState());
-  }, []);
+  // 行级注释：使用连线菜单 Hook 管理菜单状态
+  const {
+    connectionMenu,
+    promptMenuInputRef,
+    resetConnectionMenu,
+    showConnectionMenu,
+    showImageSubmenu,
+    showVideoSubmenu,
+    showImagePromptInput,
+    updateImagePrompt,
+    backToMain,
+    backToImageSubmenu,
+    prepareConnectionMenu,
+  } = useConnectionMenu();
 
   useEffect(() => {
     if (!projectId) {
@@ -104,7 +90,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     }));
     // 加载项目的前置提示词
     loadProjectPrefixPrompt(projectId);
-    // 移除自动加载项目素材，改为手动同步以避免页面卡顿
+    // 加载项目素材
+    loadMaterialsFromProject(projectId).catch((error) => {
+      console.error('同步项目素材失败:', error);
+    });
   }, [projectId, loadProjectPrefixPrompt]);
 
   // 将 store 中的元素转换为 React Flow 节点
@@ -145,7 +134,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     handleId?: string | null;
     didConnect: boolean;
   } | null>(null);
-  const promptMenuInputRef = useRef<HTMLInputElement | null>(null); // 行级注释：比例后提示词输入框引用
   const activeGenerationRef = useRef<Set<string>>(new Set());
 
   const maybeStartVideo = useCallback(
@@ -287,13 +275,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       useCanvasStore.setState({ triggerVideoGeneration: undefined });
     };
   }, [maybeStartVideo]);
-
-  useEffect(() => {
-    if (connectionMenu.activeSubmenu === 'imagePrompt' && promptMenuInputRef.current) {
-      promptMenuInputRef.current.focus(); // 行级注释：比例选择后自动聚焦提示词输入框
-      promptMenuInputRef.current.select();
-    }
-  }, [connectionMenu.activeSubmenu]);
 
   // 行级注释：注册从输入框生成图片的回调
   const handleGenerateFromInput = useCallback(
@@ -615,16 +596,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         didConnect: false,
       };
 
-      setConnectionMenu({
-        visible: false,
-        position: { x: 0, y: 0 },
-        sourceNodeId: sourceNode.id,
-        sourceNodeType: sourceNode.type as CanvasElement['type'],
-        activeSubmenu: null,
-        pendingImageConfig: null,
-      });
+      prepareConnectionMenu(sourceNode.id, sourceNode.type as CanvasElement['type']);
     },
-    [elements, resetConnectionMenu]
+    [elements, prepareConnectionMenu, resetConnectionMenu]
   );
 
   // 处理连线结束 - 显示选项菜单
@@ -659,14 +633,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           return;
         }
 
-        setConnectionMenu({
-          visible: true,
-          position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
-          sourceNodeId: sourceNode.id,
-          sourceNodeType: 'text',
-          activeSubmenu: null,
-          pendingImageConfig: null,
-        });
+        showConnectionMenu(
+          { x: mouseEvent.clientX, y: mouseEvent.clientY },
+          sourceNode.id,
+          'text'
+        );
         return;
       }
 
@@ -695,35 +666,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         }
 
         // 行级注释：图片节点拉线时也显示菜单，让用户选择生成图片还是视频
-        setConnectionMenu({
-          visible: true,
-          position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
-          sourceNodeId: sourceNode.id,
-          sourceNodeType: 'image',
-          activeSubmenu: null,
-          pendingImageConfig: null,
-        });
+        showConnectionMenu(
+          { x: mouseEvent.clientX, y: mouseEvent.clientY },
+          sourceNode.id,
+          'image'
+        );
         return;
       }
     },
-    [elements, createVideoNodeFromImage, createTextNodeForVideo, reactFlowInstance, resetConnectionMenu]
+    [elements, createTextNodeForVideo, reactFlowInstance, resetConnectionMenu, showConnectionMenu]
   );
-
-  // 显示图片比例或视频比例子菜单
-  const handleShowImageSubmenu = useCallback(() => {
-    setConnectionMenu((prev) => ({
-      ...prev,
-      activeSubmenu: 'image',
-      pendingImageConfig: null,
-    }));
-  }, [setConnectionMenu]);
-
-  const handleShowVideoSubmenu = useCallback(() => {
-    setConnectionMenu((prev) => ({
-      ...prev,
-      activeSubmenu: 'video',
-    }));
-  }, [setConnectionMenu]);
 
   // 行级注释：文生图处理函数
   const handleTextToImage = useCallback(
@@ -793,10 +745,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         // 使用文本节点的文字作为提示词生成图片（传入选中的比例）
         const result = await generateImage(sourceNode.text, aspectRatio);
         
-        // 更新图片节点，替换为真实图片（包含 base64）
+        // 更新图片节点，替换为真实图片
         updateElement(newImageId, {
           src: result.imageUrl,
-          base64: result.images?.[0]?.base64, // 保存 base64，用于后续编辑
           promptId: result.promptId,
           mediaId: result.mediaId, // 行级注释：保存 Flow mediaId 以便后续图生视频引用
           mediaGenerationId: result.mediaGenerationId, // 保存 Flow 返回的 mediaGenerationId，便于后续图生图 // 行级注释说明用途
@@ -845,18 +796,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       // 行级注释：从图片节点生成图片（图生图）
       if (sourceNodeType === 'image' && sourceNode.type === 'image') {
-        setConnectionMenu((prev) => ({
-          ...prev,
-          activeSubmenu: 'imagePrompt',
-          pendingImageConfig: {
-            aspectRatio,
-            prompt: prev.pendingImageConfig?.prompt ?? '',
-          },
-        }));
+        showImagePromptInput(aspectRatio);
         return;
       }
     },
-    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements, handleTextToImage, setConnectionMenu]
+    [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements, handleTextToImage, showImagePromptInput]
   );
 
   // 行级注释：图生图处理函数 - 创建占位符图片节点，等待用户输入提示词
@@ -931,22 +875,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [addElement, setEdges, resetConnectionMenu]
   );
 
+  // 行级注释：图生图提示词输入变化处理（现在由 Hook 管理）
   const handleImagePromptInputChange = useCallback(
     (value: string) => {
-      setConnectionMenu((prev) => {
-        if (!prev.pendingImageConfig) {
-          return prev;
-        }
-        return {
-          ...prev,
-          pendingImageConfig: {
-            ...prev.pendingImageConfig,
-            prompt: value,
-          },
-        };
-      });
+      updateImagePrompt(value);
     },
-    [setConnectionMenu]
+    [updateImagePrompt]
   );
 
   const handleConfirmImagePrompt = useCallback(() => {
@@ -1285,9 +1219,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [elements, setEdges, updateElement]
   );
 
-  const pendingPromptDraft = connectionMenu.pendingImageConfig?.prompt ?? ''; // 行级注释：菜单中提示词草稿
-  const isPromptDraftReady = Boolean(pendingPromptDraft.trim()); // 行级注释：用于控制确认按钮状态
-
   return (
     <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50 relative">
       {/* 顶部导航 */}
@@ -1353,152 +1284,22 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         <AIInputPanel />
       </ReactFlow>
 
-      {/* 连线选项菜单 */}
-      {connectionMenu.visible && (
-        <div
-          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden"
-          style={{
-            left: `${connectionMenu.position.x}px`,
-            top: `${connectionMenu.position.y}px`,
-          }}
-        >
-          {connectionMenu.activeSubmenu === null && (
-            <div>
-              <button
-                onClick={handleShowImageSubmenu}
-                className="w-full px-8 py-2 flex items-center justify-between hover:bg-blue-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">图片</div>
-              </button>
-              <button
-                onClick={handleShowVideoSubmenu}
-                className="w-full px-8 py-2 flex items-center justify-between hover:bg-purple-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">视频</div>
-              </button>
-            </div>
-          )}
-
-          {connectionMenu.activeSubmenu === 'image' && (
-            <div className="min-w-[140px]">
-              <button
-                onClick={() =>
-                  setConnectionMenu((prev) => ({
-                    ...prev,
-                    activeSubmenu: null,
-                    pendingImageConfig: null,
-                  }))
-                }
-                className="w-full px-6 py-2 text-sm text-gray-500 hover:bg-gray-100 text-left"
-              >
-                ← 返回
-              </button>
-              <button
-                onClick={() => handleGenerateImage('9:16')}
-                className="w-full px-6 py-2 hover:bg-blue-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">竖图 9:16</div>
-              </button>
-              <button
-                onClick={() => handleGenerateImage('16:9')}
-                className="w-full px-6 py-2 hover:bg-blue-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">横图 16:9</div>
-              </button>
-              <button
-                onClick={() => handleGenerateImage('1:1')}
-                className="w-full px-6 py-2 hover:bg-blue-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">方图 1:1</div>
-              </button>
-            </div>
-          )}
-
-          {connectionMenu.activeSubmenu === 'video' && (
-            <div className="min-w-[140px]">
-              <button
-                onClick={() =>
-                  setConnectionMenu((prev) => ({
-                    ...prev,
-                    activeSubmenu: null,
-                  }))
-                }
-                className="w-full px-6 py-2 text-sm text-gray-500 hover:bg-gray-100 text-left"
-              >
-                ← 返回
-              </button>
-              <button
-                onClick={() => handleGenerateVideo('9:16')}
-                className="w-full px-6 py-2 hover:bg-purple-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">竖屏 9:16</div>
-              </button>
-              <button
-                onClick={() => handleGenerateVideo('16:9')}
-                className="w-full px-6 py-2 hover:bg-purple-50 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">横屏 16:9</div>
-              </button>
-            </div>
-          )}
-
-          {connectionMenu.activeSubmenu === 'imagePrompt' && (
-            <div className="w-[320px] p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-900">输入提示词</span>
-                {connectionMenu.pendingImageConfig?.aspectRatio && (
-                  <span className="text-xs text-gray-500">
-                    {connectionMenu.pendingImageConfig.aspectRatio}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  ref={promptMenuInputRef}
-                  type="text"
-                  value={pendingPromptDraft}
-                  onChange={(e) => handleImagePromptInputChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleConfirmImagePrompt();
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      setConnectionMenu((prev) => ({
-                        ...prev,
-                        activeSubmenu: 'image',
-                      }));
-                    }
-                  }}
-                  placeholder="请先输入提示词..."
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={handleConfirmImagePrompt}
-                  disabled={!isPromptDraftReady}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                    isPromptDraftReady
-                      ? 'bg-blue-600 text-white hover:bg-blue-500'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                  title="确认生成"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 点击外部关闭菜单 */}
-      {connectionMenu.visible && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={resetConnectionMenu}
-        />
-      )}
+      {/* 行级注释：连线选项菜单组件 */}
+      <ConnectionMenuRoot
+        state={connectionMenu}
+        callbacks={{
+          onShowImageSubmenu: showImageSubmenu,
+          onShowVideoSubmenu: showVideoSubmenu,
+          onGenerateImage: handleGenerateImage,
+          onGenerateVideo: handleGenerateVideo,
+          onImagePromptInputChange: handleImagePromptInputChange,
+          onConfirmImagePrompt: handleConfirmImagePrompt,
+          onBackToMain: backToMain,
+          onBackToImageSubmenu: backToImageSubmenu,
+          onClose: resetConnectionMenu,
+        }}
+        promptInputRef={promptMenuInputRef}
+      />
     </div>
   );
 }

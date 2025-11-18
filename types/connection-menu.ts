@@ -1,0 +1,31 @@
+import { CanvasElement } from '@/lib/types';
+
+// 行级注释：图片连线阶段临时保存用户选择的比例和提示词
+export type ImagePromptConfig = {
+  aspectRatio: '9:16' | '16:9' | '1:1';
+  prompt: string;
+};
+
+// 行级注释：连线菜单的状态类型
+export type ConnectionMenuState = {
+  visible: boolean;
+  position: { x: number; y: number };
+  sourceNodeId: string | null;
+  sourceNodeType: CanvasElement['type'] | null;
+  activeSubmenu: 'image' | 'video' | 'imagePrompt' | null;
+  pendingImageConfig: ImagePromptConfig | null;
+};
+
+// 行级注释：连线菜单的操作回调类型
+export type ConnectionMenuCallbacks = {
+  onShowImageSubmenu: () => void;
+  onShowVideoSubmenu: () => void;
+  onGenerateImage: (aspectRatio: '9:16' | '16:9' | '1:1') => void;
+  onGenerateVideo: (aspectRatio: '9:16' | '16:9') => void;
+  onImagePromptInputChange: (value: string) => void;
+  onConfirmImagePrompt: () => void;
+  onBackToMain: () => void;
+  onBackToImageSubmenu: () => void;
+  onClose: () => void;
+};
+
