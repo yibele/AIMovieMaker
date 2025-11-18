@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
+import {
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+} from '@/lib/api-route-helpers';
 
 /**
  * 删除项目接口
@@ -42,35 +46,25 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: 'https://labs.google/fx/api/trpc/project.deleteProject',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: cookie,
-        Accept: '*/*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/fx/tools/flow',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 30000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'application/json',
+      Cookie: cookie,
+      Accept: '*/*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/fx/tools/flow',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      'https://labs.google/fx/api/trpc/project.deleteProject',
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 删除项目接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 30000;
 
     const response = await axios(axiosConfig);
 
@@ -89,24 +83,7 @@ export async function POST(request: NextRequest) {
       message: success ? '项目删除成功' : '项目删除失败',
     });
   } catch (error: any) {
-    console.error('❌ Flow 删除项目错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error('API 错误响应数据:', JSON.stringify(error.response.data, null, 2));
-
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 删除项目');
   }
 }
 

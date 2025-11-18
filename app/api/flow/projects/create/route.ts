@@ -41,35 +41,25 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: 'https://labs.google/fx/api/trpc/project.createProject',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: cookie,
-        Accept: '*/*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/fx/tools/flow',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 30000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'application/json',
+      Cookie: cookie,
+      Accept: '*/*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/fx/tools/flow',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      'https://labs.google/fx/api/trpc/project.createProject',
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 创建项目接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 30000;
 
     const response = await axios(axiosConfig);
 
@@ -91,27 +81,7 @@ export async function POST(request: NextRequest) {
       project: normalizedProject,
     });
   } catch (error: any) {
-    console.error('❌ Flow 创建项目错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error(
-        'API 错误响应数据:',
-        JSON.stringify(error.response.data, null, 2)
-      );
-
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 创建项目');
   }
 }
 

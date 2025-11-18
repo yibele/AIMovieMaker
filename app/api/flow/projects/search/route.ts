@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
+import {
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+} from '@/lib/api-route-helpers';
+
 
 /**
  * 搜索用户项目列表接口
@@ -49,34 +54,24 @@ export async function GET(request: NextRequest) {
       proxy: proxy ? '已配置' : '未配置',
     });
 
-    const axiosConfig: any = {
-      method: 'GET',
-      url: `https://labs.google/fx/api/trpc/project.searchUserProjects?input=${queryString}`,
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: cookie,
-        Accept: '*/*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/fx/tools/flow',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      timeout: 30000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'application/json',
+      Cookie: cookie,
+      Accept: '*/*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/fx/tools/flow',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy || undefined);
+    const axiosConfig = createProxiedAxiosConfig(
+      `https://labs.google/fx/api/trpc/project.searchUserProjects?input=${queryString}`,
+      'GET',
+      headers,
+      proxy || undefined
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 搜索项目接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 30000;
 
     const response = await axios(axiosConfig);
 
@@ -102,24 +97,7 @@ export async function GET(request: NextRequest) {
       cursor: data?.result?.data?.json?.result?.cursor,
     });
   } catch (error: any) {
-    console.error('❌ Flow 搜索项目错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error('API 错误响应数据:', JSON.stringify(error.response.data, null, 2));
-
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 搜索项目');
   }
 }
 
