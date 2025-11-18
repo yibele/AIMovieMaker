@@ -43,6 +43,9 @@ import {
 } from '@/lib/input-panel-generator';
 import { useConnectionMenu } from '@/hooks/canvas/useConnectionMenu';
 import { ConnectionMenuCallbacks } from '@/types/connection-menu';
+import { useTextToImage } from '@/hooks/canvas/useTextToImage';
+import { useImageToImage } from '@/hooks/canvas/useImageToImage';
+import { ImageAspectRatio } from '@/types/image-generation';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -62,6 +65,22 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const uiState = useCanvasStore((state) => state.uiState);
   const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
 
+  // 行级注释：React Flow 节点和边缘状态（需要在 Hooks 之前声明）
+  const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
+    id: el.id,
+    type: el.type,
+    position: el.position,
+    data: el as any,
+    draggable: true,
+    style: el.size ? {
+      width: el.size.width,
+      height: el.size.height,
+    } : undefined,
+  })));
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const reactFlowInstance = useReactFlow();
+
   // 行级注释：使用连线菜单 Hook 管理菜单状态
   const {
     connectionMenu,
@@ -76,6 +95,20 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     backToImageSubmenu,
     prepareConnectionMenu,
   } = useConnectionMenu();
+
+  // 行级注释：使用图片生成 Hooks
+  const { handleTextToImage } = useTextToImage({
+    addElement,
+    updateElement,
+    setEdges,
+    resetConnectionMenu,
+  });
+
+  const { handleImageToImage } = useImageToImage({
+    addElement,
+    setEdges,
+    resetConnectionMenu,
+  });
 
   useEffect(() => {
     if (!projectId) {
@@ -96,37 +129,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     });
   }, [projectId, loadProjectPrefixPrompt]);
 
-  // 将 store 中的元素转换为 React Flow 节点
-  // @ts-ignore - React Flow 类型推断问题
-  const nodes: Node[] = useMemo(() => {
-    return elements.map((el: CanvasElement) => ({
-      id: el.id,
-      type: el.type,
-      position: el.position,
-      data: el,
-      draggable: true,
-      // 添加 style 设置初始尺寸，让 NodeResizer 可以实时调整
-      style: el.size ? {
-        width: el.size.width,
-        height: el.size.height,
-      } : undefined,
-    }));
-  }, [elements]);
-
-  const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
-    id: el.id,
-    type: el.type,
-    position: el.position,
-    data: el as any,
-    draggable: true,
-    style: el.size ? {
-      width: el.size.width,
-      height: el.size.height,
-    } : undefined,
-  })));
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-
-  const reactFlowInstance = useReactFlow();
   const reactFlowWrapperRef = useRef<HTMLDivElement | null>(null);
   const connectionStartRef = useRef<{
     sourceId: string;
@@ -504,6 +506,22 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [addElement, setEdges, updateElement]
   );
 
+  // 行级注释：将 store 中的元素转换为 React Flow 节点
+  // @ts-ignore - React Flow 类型推断问题
+  const nodes: Node[] = useMemo(() => {
+    return elements.map((el: CanvasElement) => ({
+      id: el.id,
+      type: el.type,
+      position: el.position,
+      data: el,
+      draggable: true,
+      style: el.size ? {
+        width: el.size.width,
+        height: el.size.height,
+      } : undefined,
+    }));
+  }, [elements]);
+
   // 同步 store 的元素到 React Flow 节点，保留选中状态
   useEffect(() => {
     // @ts-ignore
@@ -677,110 +695,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [elements, createTextNodeForVideo, reactFlowInstance, resetConnectionMenu, showConnectionMenu]
   );
 
-  // 行级注释：文生图处理函数
-  const handleTextToImage = useCallback(
-    async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9' | '1:1') => {
-      resetConnectionMenu();
-
-      // 根据比例计算尺寸
-      let width: number, height: number;
-      switch (aspectRatio) {
-        case '9:16': // 竖图
-          width = 180;
-          height = 320;
-          break;
-        case '16:9': // 横图
-          width = 320;
-          height = 180;
-          break;
-        case '1:1': // 方图
-          width = 180;
-          height = 180;
-          break;
-      }
-
-      // 在文本节点右侧位置
-      const targetPosition = {
-        x: sourceNode.position.x + (sourceNode.size?.width || 200) + 100,
-        y: sourceNode.position.y,
-      };
-
-      // 创建一个临时 ID
-      const newImageId = `image-${Date.now()}`;
-
-      // 立即创建占位符图片节点（生成中状态）
-      const placeholderImage: ImageElement = {
-        id: newImageId,
-        type: 'image',
-        src: '', // 空 src，触发"加载中"显示
-        position: targetPosition,
-        size: { width, height },
-        generatedFrom: {
-          type: 'text', // 从文本节点生成
-          sourceIds: [sourceNode.id],
-          prompt: sourceNode.text,
-        },
-      };
-      
-      addElement(placeholderImage);
-
-      // 创建连线
-      // @ts-ignore
-      setEdges((eds: any) => [
-        ...eds,
-        {
-          id: `edge-${sourceNode.id}-${newImageId}`,
-          source: sourceNode.id,
-          target: newImageId,
-          type: 'default',
-          animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 1 },
-        },
-      ]);
-
-      // 关闭菜单
-      resetConnectionMenu();
-
-      try {
-        // 使用文本节点的文字作为提示词生成图片（传入选中的比例）
-        const result = await generateImage(sourceNode.text, aspectRatio);
-        
-        // 更新图片节点，替换为真实图片
-        updateElement(newImageId, {
-          src: result.imageUrl,
-          promptId: result.promptId,
-          mediaId: result.mediaId, // 行级注释：保存 Flow mediaId 以便后续图生视频引用
-          mediaGenerationId: result.mediaGenerationId, // 保存 Flow 返回的 mediaGenerationId，便于后续图生图 // 行级注释说明用途
-        } as Partial<ImageElement>);
-        
-        // 停止连线动画（生成完成后变为普通线）
-        // @ts-ignore
-        setEdges((eds: any) => 
-          eds.map((edge: any) => 
-            edge.id === `edge-${sourceNode.id}-${newImageId}` 
-              ? { ...edge, animated: false }
-              : edge
-          )
-        );
-        
-        console.log('✅ 从文本节点生成图片:', sourceNode.text, '比例:', aspectRatio);
-      } catch (error: any) {
-        console.error('❌ 生成图片失败:', error);
-        // 删除失败的占位符和连线
-        useCanvasStore.getState().deleteElement(newImageId);
-        // @ts-ignore
-        setEdges((eds: any) => eds.filter((edge: any) => edge.id !== `edge-${sourceNode.id}-${newImageId}`));
-        // 显示详细的错误信息
-        const errorMessage = error?.message || '生成图片失败，请重试';
-        alert(errorMessage);
-      }
-    },
-    [addElement, updateElement, setEdges, resetConnectionMenu]
-  );
-
   // 处理选择生成图片（带比例参数）
   const handleGenerateImage = useCallback(
-    async (aspectRatio: '9:16' | '16:9' | '1:1') => {
+    async (aspectRatio: ImageAspectRatio) => {
       const sourceNodeId = connectionMenu.sourceNodeId;
       const sourceNodeType = connectionMenu.sourceNodeType;
       if (!sourceNodeId || !sourceNodeType) return;
@@ -801,78 +718,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       }
     },
     [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements, handleTextToImage, showImagePromptInput]
-  );
-
-  // 行级注释：图生图处理函数 - 创建占位符图片节点，等待用户输入提示词
-  const handleImageToImage = useCallback(
-    async (
-      sourceNode: ImageElement,
-      aspectRatio: '9:16' | '16:9' | '1:1',
-      initialPrompt?: string
-    ) => {
-      resetConnectionMenu();
-      const trimmedPrompt = initialPrompt?.trim() ?? '';
-
-      // 根据比例计算尺寸
-      let width: number, height: number;
-      switch (aspectRatio) {
-        case '9:16': // 竖图
-          width = 180;
-          height = 320;
-          break;
-        case '16:9': // 横图
-          width = 320;
-          height = 180;
-          break;
-        case '1:1': // 方图
-          width = 180;
-          height = 180;
-          break;
-      }
-
-      // 在源图片节点右侧位置
-      const targetPosition = {
-        x: sourceNode.position.x + (sourceNode.size?.width || 320) + 100,
-        y: sourceNode.position.y,
-      };
-
-      // 创建一个临时 ID
-      const newImageId = `image-${Date.now()}`;
-
-      // 行级注释：创建占位符图片节点，等待用户通过输入框输入提示词
-      const placeholderImage: ImageElement = {
-        id: newImageId,
-        type: 'image',
-        src: '', // 空 src，显示等待状态
-        position: targetPosition,
-        size: { width, height },
-        pendingConnectionGeneration: true,
-        generatedFrom: {
-          type: 'image-to-image', // 标记为图生图
-          sourceIds: [sourceNode.id],
-          prompt: trimmedPrompt, // 行级注释：将菜单中的提示词同步到节点
-        },
-      };
-      
-      addElement(placeholderImage);
-
-      // 创建连线
-      // @ts-ignore
-      setEdges((eds: any) => [
-        ...eds,
-        {
-          id: `edge-${sourceNode.id}-${newImageId}`,
-          source: sourceNode.id,
-          target: newImageId,
-          type: 'default',
-          animated: false, // 图生图的连线不动画，因为需要等待用户输入
-          style: { stroke: '#3b82f6', strokeWidth: 1 },
-        },
-      ]);
-
-      console.log('✅ 已创建图生图占位符节点，比例:', aspectRatio, '提示词:', trimmedPrompt);
-    },
-    [addElement, setEdges, resetConnectionMenu]
   );
 
   // 行级注释：图生图提示词输入变化处理（现在由 Hook 管理）
