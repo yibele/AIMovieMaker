@@ -24,7 +24,7 @@
   "license": "ISC",
   "description": "AIGC 画布创作工具 - 基于Google Flow和Whisk API的创意应用",
   "dependencies": {
-      "@tailwindcss/postcss": "^4.1.17",
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.3",
     "@types/react-dom": "^19.2.2",
