@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
+import {
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+} from '@/lib/api-route-helpers';
 
 /**
  * 创建项目接口
@@ -16,14 +20,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { cookie, projectTitle, proxy } = body;
 
-    // 校验 Cookie
-    if (!cookie) {
-      return NextResponse.json({ error: '缺少 Cookie' }, { status: 400 });
-    }
-
-    // 校验项目标题
-    if (!projectTitle || typeof projectTitle !== 'string') {
-      return NextResponse.json({ error: '缺少项目标题' }, { status: 400 });
+    // 验证必需参数
+    const validation = validateRequiredParams(
+      { cookie, projectTitle },
+      ['cookie', 'projectTitle']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
     console.log('🆕 调用 Flow 创建项目接口', {

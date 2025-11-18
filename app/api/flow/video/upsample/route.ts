@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
-
-// 视频比例映射
-const videoAspectRatioMap: Record<string, string> = {
-  '16:9': 'VIDEO_ASPECT_RATIO_LANDSCAPE',
-  '9:16': 'VIDEO_ASPECT_RATIO_PORTRAIT',
-};
-
-function normalizeVideoAspectRatio(aspectRatio: string): string {
-  if (!aspectRatio) {
-    return 'VIDEO_ASPECT_RATIO_LANDSCAPE'; // 默认横屏
-  }
-  const normalized = videoAspectRatioMap[aspectRatio];
-  if (normalized) {
-    return normalized;
-  }
-  if (
-    aspectRatio === 'VIDEO_ASPECT_RATIO_LANDSCAPE' ||
-    aspectRatio === 'VIDEO_ASPECT_RATIO_PORTRAIT'
-  ) {
-    return aspectRatio;
-  }
-  return 'VIDEO_ASPECT_RATIO_LANDSCAPE';
-}
+import {
+  normalizeVideoAspectRatio,
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+  generateWorkflowId,
+} from '@/lib/api-route-helpers';
 
 /**
  * 视频超清放大接口（1080p）
@@ -52,25 +35,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 验证必需参数
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
-    }
-
-    if (!mediaId || typeof mediaId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少视频媒体 ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!sceneId || typeof sceneId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少场景 ID' },
-        { status: 400 }
-      );
+    const validation = validateRequiredParams(
+      { bearerToken, mediaId, sceneId },
+      ['bearerToken', 'mediaId', 'sceneId']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
     const normalizedAspect = normalizeVideoAspectRatio(aspectRatio);
@@ -109,35 +79,25 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 完整 Payload:', JSON.stringify(payload, null, 2));
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoUpsampleVideo',
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-        Authorization: `Bearer ${bearerToken}`,
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/',
-        Accept: '*/*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 60000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Authorization: `Bearer ${bearerToken}`,
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/',
+      Accept: '*/*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoUpsampleVideo',
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 视频超清接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 60000;
 
     const response = await axios(axiosConfig);
 
@@ -166,24 +126,7 @@ export async function POST(request: NextRequest) {
       message: '视频超清任务已创建，请使用 /api/flow/video/status 查询进度',
     });
   } catch (error: any) {
-    console.error('❌ Flow 视频超清错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error('API 错误响应数据:', JSON.stringify(error.response.data, null, 2));
-
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 视频超清错误');
   }
 }
 

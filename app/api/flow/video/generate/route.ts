@@ -1,31 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
-
-// 视频比例映射
-const videoAspectRatioMap: Record<string, string> = {
-  '16:9': 'VIDEO_ASPECT_RATIO_LANDSCAPE',
-  '9:16': 'VIDEO_ASPECT_RATIO_PORTRAIT',
-  '1:1': 'VIDEO_ASPECT_RATIO_SQUARE',
-};
-
-function normalizeVideoAspectRatio(aspectRatio: string): string {
-  if (!aspectRatio) {
-    return 'VIDEO_ASPECT_RATIO_PORTRAIT'; // 默认竖屏
-  }
-  const normalized = videoAspectRatioMap[aspectRatio];
-  if (normalized) {
-    return normalized;
-  }
-  if (
-    aspectRatio === 'VIDEO_ASPECT_RATIO_LANDSCAPE' ||
-    aspectRatio === 'VIDEO_ASPECT_RATIO_PORTRAIT' ||
-    aspectRatio === 'VIDEO_ASPECT_RATIO_SQUARE'
-  ) {
-    return aspectRatio;
-  }
-  return 'VIDEO_ASPECT_RATIO_PORTRAIT';
-}
+import {
+  normalizeVideoAspectRatio,
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+} from '@/lib/api-route-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,32 +21,13 @@ export async function POST(request: NextRequest) {
       sceneId, // 用于追踪视频生成任务
     } = body;
 
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
-    }
-
-    if (!projectId || typeof projectId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Project ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Session ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!prompt || typeof prompt !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Prompt 指令' },
-        { status: 400 }
-      );
+    // 验证必需参数
+    const validation = validateRequiredParams(
+      { bearerToken, projectId, sessionId, prompt },
+      ['bearerToken', 'projectId', 'sessionId', 'prompt']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
     const normalizedAspect = normalizeVideoAspectRatio(aspectRatio);
@@ -129,33 +90,23 @@ export async function POST(request: NextRequest) {
     
     console.log('📤 完整 Payload:', JSON.stringify(payload, null, 2));
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoText',
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-        Authorization: `Bearer ${bearerToken}`,
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 60000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Authorization: `Bearer ${bearerToken}`,
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoText',
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 视频生成接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 60000;
 
     const response = await axios(axiosConfig);
 
@@ -183,25 +134,7 @@ export async function POST(request: NextRequest) {
       remainingCredits: data.remainingCredits,
     });
   } catch (error: any) {
-    console.error('❌ Flow 视频生成代理错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应状态码:', error.response.status);
-      console.error('API 错误响应数据:', JSON.stringify(error.response.data, null, 2));
-      console.error('API 错误响应头:', error.response.headers);
-
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 视频生成代理');
   }
 }
 

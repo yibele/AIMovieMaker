@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 body {
   margin: 0;
@@ -188,41 +186,6 @@ body {
 }
 
 /* Loading 动效 - 高端珍珠光泽 */
-@keyframes loading-shimmer {
-  0% {
-    transform: translateX(-150%) translateY(-150%) rotate(0deg);
-  }
-  100% {
-    transform: translateX(150%) translateY(150%) rotate(0deg);
-  }
-}
-
-@keyframes loading-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.92;
-  }
-}
-
-@keyframes loading-gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes loading-breathe {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.005);
-  }
-}
 
 .loading-glow {
   position: relative;
@@ -331,18 +294,7 @@ body {
   );
 }
 
-/* 行级注释：图片工具栏弹入动画 */
-@keyframes toolbar-pop {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px) scale(0.94);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
-}
-
+/* 图片工具栏弹入动画类 */
 .image-toolbar-pop {
   animation: toolbar-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: top center;

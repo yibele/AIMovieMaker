@@ -1,52 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
-
-const videoAspectRatioMap: Record<string, string> = {
-  '16:9': 'VIDEO_ASPECT_RATIO_LANDSCAPE',
-  '9:16': 'VIDEO_ASPECT_RATIO_PORTRAIT',
-  '1:1': 'VIDEO_ASPECT_RATIO_SQUARE',
-}; // 行级注释：支持常用比例与 Flow 枚举互转
+import {
+  normalizeVideoAspectRatio,
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+  generateWorkflowId,
+  generateSessionId,
+} from '@/lib/api-route-helpers';
 
 const i2vModelMap: Record<string, string> = {
-  VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast', // 行级注释：横屏模型
-  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait', // 行级注释：竖屏模型（修正：移除 _fl 后缀）
-  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait', // 行级注释：方形场景使用竖屏模型
+  VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast',
+  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait',
+  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait',
 };
 
 const i2vStartEndModelMap: Record<string, string> = {
-  VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast_fl', // 行级注释：横屏首尾帧模型，具备 prompt 重写配置
-  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：竖屏首尾帧模型
-  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait_fl', // 行级注释：方形首尾帧沿用竖屏
+  VIDEO_ASPECT_RATIO_LANDSCAPE: 'veo_3_1_i2v_s_fast_fl',
+  VIDEO_ASPECT_RATIO_PORTRAIT: 'veo_3_1_i2v_s_fast_portrait_fl',
+  VIDEO_ASPECT_RATIO_SQUARE: 'veo_3_1_i2v_s_fast_portrait_fl',
 };
-
-function normalizeAspectRatio(aspectRatio?: string): string {
-  if (!aspectRatio) {
-    return 'VIDEO_ASPECT_RATIO_PORTRAIT'; // 行级注释：默认竖屏
-  }
-  const normalized = videoAspectRatioMap[aspectRatio];
-  if (normalized) {
-    return normalized;
-  }
-  if (
-    aspectRatio === 'VIDEO_ASPECT_RATIO_LANDSCAPE' ||
-    aspectRatio === 'VIDEO_ASPECT_RATIO_PORTRAIT' ||
-    aspectRatio === 'VIDEO_ASPECT_RATIO_SQUARE'
-  ) {
-    return aspectRatio;
-  }
-  return 'VIDEO_ASPECT_RATIO_PORTRAIT';
-}
-
-function resolveSceneId(sceneId?: string): string {
-  if (sceneId && sceneId.trim()) {
-    return sceneId.trim();
-  }
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,35 +37,16 @@ export async function POST(request: NextRequest) {
       endMediaId,
     } = body;
 
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
+    // 验证必需参数
+    const validation = validateRequiredParams(
+      { bearerToken, projectId, sessionId, startMediaId },
+      ['bearerToken', 'projectId', 'sessionId', 'startMediaId']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
-    if (!projectId || typeof projectId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Project ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!sessionId || typeof sessionId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少 Session ID' },
-        { status: 400 }
-      );
-    }
-
-    if (!startMediaId || typeof startMediaId !== 'string') {
-      return NextResponse.json(
-        { error: '缺少首帧 mediaId' },
-        { status: 400 }
-      );
-    }
-
-    const normalizedAspect = normalizeAspectRatio(aspectRatio);
+    const normalizedAspect = normalizeVideoAspectRatio(aspectRatio);
     const trimmedProjectId = projectId.trim();
     const trimmedSessionId = sessionId.trim();
     const requestPrompt = typeof prompt === 'string' ? prompt : '';
@@ -109,7 +63,7 @@ export async function POST(request: NextRequest) {
     const startEndModelKey =
       i2vStartEndModelMap[normalizedAspect] ?? startEndModelFallback; // 行级注释：首尾帧模式模型
     const modelKey = hasEndImage ? startEndModelKey : baseModelKey; // 行级注释：根据模式选择模型
-    const resolvedSceneId = resolveSceneId(sceneId);
+    const resolvedSceneId = sceneId && sceneId.trim() ? sceneId.trim() : generateWorkflowId();
     const requestSeed =
       typeof seed === 'number'
         ? seed
@@ -166,33 +120,23 @@ export async function POST(request: NextRequest) {
 
     console.log('🎯 使用端点:', hasEndImage ? '首尾帧' : '仅首帧', apiEndpoint);
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: apiEndpoint,
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-        Authorization: `Bearer ${bearerToken}`,
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 60000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Authorization: `Bearer ${bearerToken}`,
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      apiEndpoint,
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 图生视频接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 60000;
 
     const response = await axios(axiosConfig);
 
@@ -230,25 +174,7 @@ export async function POST(request: NextRequest) {
       remainingCredits: data.remainingCredits,
     });
   } catch (error: any) {
-    console.error('❌ Flow 图生视频代理错误:', error);
-
-    if (error.response) {
-      console.error(
-        'API 错误响应数据:',
-        JSON.stringify(error.response.data, null, 2)
-      );
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 图生视频代理');
   }
 }
 

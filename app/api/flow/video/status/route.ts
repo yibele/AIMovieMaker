@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { resolveProxyAgent } from '@/lib/proxy-agent';
+import {
+  handleApiError,
+  validateRequiredParams,
+  createProxiedAxiosConfig,
+} from '@/lib/api-route-helpers';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { operations, bearerToken, proxy } = body;
 
-    if (!bearerToken) {
-      return NextResponse.json(
-        { error: '缺少 Bearer Token' },
-        { status: 400 }
-      );
+    // 验证必需参数
+    const validation = validateRequiredParams(
+      { bearerToken, operations },
+      ['bearerToken', 'operations']
+    );
+    if (!validation.valid) {
+      return validation.error!;
     }
 
-    if (!operations || !Array.isArray(operations) || operations.length === 0) {
+    if (!Array.isArray(operations) || operations.length === 0) {
       return NextResponse.json(
-        { error: '缺少 operations 参数' },
+        { error: 'operations 必须是非空数组' },
         { status: 400 }
       );
     }
@@ -30,33 +36,23 @@ export async function POST(request: NextRequest) {
       proxy: proxy ? '已配置' : '未配置',
     });
 
-    const axiosConfig: any = {
-      method: 'POST',
-      url: 'https://aisandbox-pa.googleapis.com/v1/video:batchCheckAsyncVideoGenerationStatus',
-      headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-        Authorization: `Bearer ${bearerToken}`,
-        Origin: 'https://labs.google',
-        Referer: 'https://labs.google/',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-      data: payload,
-      timeout: 30000,
-      proxy: false,
+    const headers = {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Authorization: `Bearer ${bearerToken}`,
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     };
 
-    const { agent, proxyUrl: resolvedProxyUrl, proxyType } =
-      resolveProxyAgent(proxy);
+    const axiosConfig = createProxiedAxiosConfig(
+      'https://aisandbox-pa.googleapis.com/v1/video:batchCheckAsyncVideoGenerationStatus',
+      'POST',
+      headers,
+      proxy,
+      payload
+    );
 
-    if (agent) {
-      axiosConfig.httpsAgent = agent;
-      axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理查询 Flow 视频状态', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
-    }
+    axiosConfig.timeout = 30000;
 
     const response = await axios(axiosConfig);
 
@@ -78,22 +74,7 @@ export async function POST(request: NextRequest) {
       remainingCredits: data.remainingCredits,
     });
   } catch (error: any) {
-    console.error('❌ Flow 视频状态查询错误:', error);
-
-    if (error.response) {
-      console.error('API 错误响应:', JSON.stringify(error.response.data, null, 2));
-      return NextResponse.json(error.response.data, {
-        status: error.response.status,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        error: error.message || '服务器错误',
-        details: error.code || error.cause?.message,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Flow 视频状态查询');
   }
 }
 
