@@ -91,7 +91,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       const { useCanvasStore } = await import('@/lib/store');
       const apiConfig = useCanvasStore.getState().apiConfig;
 
-      if (!apiConfig.apiKey || !apiConfig.bearerToken) {
+      if ( !apiConfig.bearerToken) {
         toast.error('请先在设置中配置 API Key 和 Bearer Token');
         setAnnotatorTarget(null);
         setIsLoadingAnnotatorImage(false);
@@ -114,8 +114,10 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
       const mediaData = await mediaResponse.json();
       
-      // 提取 base64 数据
-      const encodedImage = mediaData?.image?.encodedImage;
+      // 提取 base64 数据 - 检查多个可能的路径
+      const encodedImage = mediaData?.image?.encodedImage ||
+                         mediaData?.userUploadedImage?.image ||
+                         mediaData?.userUploadedImage?.encodedImage;
       if (!encodedImage) {
         throw new Error('未获取到图片数据');
       }
