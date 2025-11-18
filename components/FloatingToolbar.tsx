@@ -9,6 +9,7 @@ import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-gene
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
 import { useState } from 'react';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
+import { toast } from 'sonner';
 
 interface FloatingToolbarProps {
   setEdges?: (edges: any) => void;
@@ -42,17 +43,17 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   // 打开图片注释 - 优先使用已有的 base64，无需再次下载
   const handleAnnotate = async () => {
     if (!selectedImage?.src) {
-      alert('当前图片暂无可编辑内容');
+      toast.error('当前图片暂无可编辑内容');
       return;
     }
-    
+
     // 如果图片已有 base64，直接使用（新生成的图片都有 base64）
     if (selectedImage.base64) {
       console.log('✅ 使用图片自带的 base64');
       const imageDataUrl = selectedImage.base64.startsWith('data:')
         ? selectedImage.base64
         : `data:image/png;base64,${selectedImage.base64}`;
-      
+
       setAnnotatorTarget({
         ...selectedImage,
         src: imageDataUrl,
@@ -60,22 +61,23 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       setIsLoadingAnnotatorImage(false);
       return;
     }
-    
-    // 如果没有 mediaId，无法获取 base64
-    if (!selectedImage.mediaId) {
-      alert('当前图片缺少 mediaId，无法编辑');
+
+    // 检查是否有有效的 mediaId 或 mediaGenerationId
+    const effectiveMediaId = selectedImage.mediaId || selectedImage.mediaGenerationId;
+    if (!effectiveMediaId) {
+      toast.error('当前图片缺少 mediaId 或 mediaGenerationId，无法编辑');
       return;
     }
     
     // 立即打开 Modal，显示加载状态
     setAnnotatorTarget(selectedImage);
     setIsLoadingAnnotatorImage(true);
-    
+
     try {
       // 检查缓存
-      if (mediaBase64Cache.has(selectedImage.mediaId)) {
+      if (mediaBase64Cache.has(effectiveMediaId)) {
         console.log('✅ 使用缓存的图片 base64');
-        const cachedDataUrl = mediaBase64Cache.get(selectedImage.mediaId)!;
+        const cachedDataUrl = mediaBase64Cache.get(effectiveMediaId)!;
         setAnnotatorTarget({
           ...selectedImage,
           src: cachedDataUrl,
@@ -88,17 +90,17 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
       const { useCanvasStore } = await import('@/lib/store');
       const apiConfig = useCanvasStore.getState().apiConfig;
-      
+
       if (!apiConfig.apiKey || !apiConfig.bearerToken) {
-        alert('请先在设置中配置 API Key 和 Bearer Token');
+        toast.error('请先在设置中配置 API Key 和 Bearer Token');
         setAnnotatorTarget(null);
         setIsLoadingAnnotatorImage(false);
         return;
       }
-      
+
       // 通过后端代理调用（避免 API Key Referrer 限制）
       const mediaResponse = await fetch(
-        `/api/flow/media/${selectedImage.mediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+        `/api/flow/media/${effectiveMediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
         {
           headers: apiConfig.bearerToken ? {
             'Authorization': `Bearer ${apiConfig.bearerToken}`
@@ -124,7 +126,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       const imageDataUrl = `data:image/png;base64,${encodedImage}`;
       
       // 缓存 base64
-      mediaBase64Cache.set(selectedImage.mediaId, imageDataUrl);
+      mediaBase64Cache.set(effectiveMediaId, imageDataUrl);
       
       setAnnotatorTarget({
         ...selectedImage,
@@ -134,7 +136,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
     } catch (error) {
       console.error('❌ 获取原图失败:', error);
-      alert(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
+      toast.error(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
       setAnnotatorTarget(null);
       setIsLoadingAnnotatorImage(false);
     }
@@ -279,7 +281,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       
     } catch (error) {
       console.error('❌ 图片编辑失败:', error);
-      alert(`图片编辑失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      toast.error(`图片编辑失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
@@ -324,14 +326,14 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
                              selectedImage.generatedFrom?.sourceIds?.[0];
 
         if (!sourceImageId) {
-          alert('找不到原始图片，无法再次生成');
+          toast.error('找不到原始图片，无法再次生成');
           return;
         }
 
         const sourceImage = elements.find(el => el.id === sourceImageId && el.type === 'image') as ImageElement;
 
         if (!sourceImage) {
-          alert('原始图片已被删除，无法再次生成');
+          toast.error('原始图片已被删除，无法再次生成');
           return;
         }
 
@@ -484,7 +486,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       }
     } catch (error) {
       console.error('再次生成失败:', error);
-      alert('生成失败，请重试');
+      toast.error('生成失败，请重试');
     }
   };
 
@@ -521,7 +523,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       });
     } catch (error) {
       console.error('生成类似图片失败:', error);
-      alert('生成失败，请重试');
+      toast.error('生成失败，请重试');
     }
   };
 
