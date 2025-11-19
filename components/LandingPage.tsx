@@ -119,8 +119,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
     const nodes: FloatingNode[] = [
         {
             id: 1,
-            xPct: 10,
-            yPct: 15,
+            xPct: 28,
+            yPct: 25,
             depth: -20,
             align: 'left',
             delay: '0.8s',
@@ -141,8 +141,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
         },
         {
             id: 2,
-            xPct: 85,
-            yPct: 20,
+            xPct: 72,
+            yPct: 25,
             depth: 15,
             align: 'right',
             delay: '1.2s',
@@ -163,8 +163,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
         },
         {
             id: 3,
-            xPct: 88,
-            yPct: 80,
+            xPct: 72,
+            yPct: 75,
             depth: -30,
             align: 'right',
             delay: '1s',
@@ -188,7 +188,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
         },
         {
             id: 4,
-            xPct: 15,
+            xPct: 28,
             yPct: 75,
             depth: 25,
             align: 'left',
@@ -209,6 +209,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
                                 <div className="w-[85%] h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )
+        },
+        {
+            id: 5,
+            xPct: 18,
+            yPct: 50,
+            depth: 20,
+            align: 'left',
+            delay: '1.6s',
+            content: (
+                <div className="bg-emerald-50/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-emerald-100 rotate-[4deg] w-52 animate-float pointer-events-auto hover:rotate-0 hover:scale-105 transition-all duration-500">
+                    <div className="flex items-center space-x-2 mb-3">
+                        <MessageCircle className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-bold text-emerald-800">Collaborators</span>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-white/50 p-2 rounded-xl">
+                        <div className="relative">
+                            <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div className="flex-1">
+                            <div className="h-2 w-20 bg-emerald-200/50 rounded mb-1"></div>
+                            <div className="h-2 w-12 bg-emerald-200/30 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            )
+        },
+        {
+            id: 6,
+            xPct: 82,
+            yPct: 50,
+            depth: -25,
+            align: 'right',
+            delay: '1.8s',
+            content: (
+                <div className="bg-violet-50/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-violet-100 rotate-[-3deg] w-48 animate-float-slow pointer-events-auto hover:rotate-0 hover:scale-105 transition-all duration-500">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-violet-800">Performance</span>
+                        <Zap className="w-4 h-4 text-violet-600" />
+                    </div>
+                    <div className="flex items-end space-x-1 h-12">
+                        <div className="w-1/5 bg-violet-200 rounded-t-md h-[40%]"></div>
+                        <div className="w-1/5 bg-violet-300 rounded-t-md h-[60%]"></div>
+                        <div className="w-1/5 bg-violet-400 rounded-t-md h-[30%]"></div>
+                        <div className="w-1/5 bg-violet-500 rounded-t-md h-[80%]"></div>
+                        <div className="w-1/5 bg-violet-600 rounded-t-md h-[100%]"></div>
                     </div>
                 </div>
             )
@@ -243,11 +292,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
     // curve < 0 : bends left
     // We use this to create a "tension" effect towards the center of the screen
     const connections = [
-        { startId: 1, endId: 2, curve: 0.25 },  // Top: Bend Down
-        { startId: 2, endId: 3, curve: 0.25 },  // Right: Bend Left
-        { startId: 3, endId: 4, curve: 0.25 },  // Bottom: Bend Up
-        { startId: 4, endId: 1, curve: 0.25 },  // Left: Bend Right
-        { startId: 1, endId: 3, curve: -0.15 }, // Cross: Slight inverse bend to avoid center text
+        { startId: 1, endId: 2, curve: 0.2 },
+        { startId: 2, endId: 6, curve: 0.15 },
+        { startId: 6, endId: 3, curve: 0.2 },
+        { startId: 3, endId: 4, curve: 0.2 },
+        { startId: 4, endId: 5, curve: 0.15 },
+        { startId: 5, endId: 1, curve: 0.2 },
+        { startId: 5, endId: 6, curve: -0.1 }, // Cross connection
     ];
 
     return (
