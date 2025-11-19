@@ -1,27 +1,51 @@
 'use client';
 
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { LandingPage } from '@/components/LandingPage';
+import { LoginModal } from '@/components/LoginModal';
 import ProjectsHome from '@/components/ProjectsHome';
+import { ViewMode } from '@/types/morpheus';
 
-// 动态导入 Canvas 组件（避免 SSR 问题）
-// AIInputPanel 和 Toolbar 已移到 Canvas 内部，以便使用 useReactFlow hook
-const Canvas = dynamic(() => import('@/components/Canvas'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-gray-50">
-      <div className="text-gray-500">加载中...</div>
-    </div>
-  ),
-});
+// Dynamically import Canvas to avoid SSR issues if needed, 
+// though currently we are managing the flow at a higher level.
+const Canvas = dynamic(() => import('@/components/Canvas'), { ssr: false });
 
 export default function Home() {
-  // 暂时直接显示项目首页
-  // 后续会根据路由来决定显示首页还是画布
+  const [view, setView] = useState<ViewMode>(ViewMode.LANDING);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleLoginClick = () => {
+    setIsLoginModalOpen(true);
+  };
+
+  const handleLoginSuccess = () => {
+    setIsLoginModalOpen(false);
+    setView(ViewMode.DASHBOARD);
+  };
+
+  const handleLogout = () => {
+    setView(ViewMode.LANDING);
+  };
+
   return (
-    <main className="w-screen h-screen overflow-hidden relative">
-      {/* 项目首页 */}
-      <ProjectsHome />
-    </main>
+    <div className="font-sans antialiased text-slate-900 bg-slate-50 min-h-screen">
+      {view === ViewMode.LANDING && (
+        <LandingPage
+          onGetStarted={handleLoginClick}
+          onLoginClick={handleLoginClick}
+        />
+      )}
+
+      {view === ViewMode.DASHBOARD && (
+        <ProjectsHome onLogout={handleLogout} />
+      )}
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </div>
   );
 }
-

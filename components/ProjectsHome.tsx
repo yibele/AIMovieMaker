@@ -2,17 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  FolderOpen,
-  Plus,
-  RefreshCw,
-  Settings,
-  Trash2,
-  Palette,
-} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCanvasStore } from '@/lib/store';
 import SettingsPanel from '@/components/SettingsPanel';
+import { DashboardView } from './DashboardView';
+import { Project } from '../types/morpheus';
 
 // Flow 项目返回结构
 interface FlowProject {
@@ -25,7 +19,7 @@ interface FlowProject {
 }
 
 // 页面展示所需的项目结构
-interface ProjectCard {
+interface LocalProjectCard {
   id: string;
   title: string;
   thumbnailUrl?: string;
@@ -36,7 +30,7 @@ interface ProjectCard {
 
 // 缓存数据结构
 interface CachedProjectsData {
-  projects: ProjectCard[];
+  projects: LocalProjectCard[];
   timestamp: number;
   cursor?: string;
   thumbnailCache?: Record<string, string>; // 缓存缩略图 URL
@@ -98,7 +92,7 @@ const getCachedProjects = (): CachedProjectsData | null => {
   }
 };
 
-const setCachedProjects = (projects: ProjectCard[], cursor?: string): void => {
+const setCachedProjects = (projects: LocalProjectCard[], cursor?: string): void => {
   if (typeof window === 'undefined') return;
 
   try {
@@ -210,7 +204,7 @@ const buildThumbnailUrl = async (
 };
 
 // 将 Flow 原始数据映射为卡片数据
-const mapFlowProjectToCard = (project: FlowProject, existingProjects?: ProjectCard[]): ProjectCard => {
+const mapFlowProjectToCard = (project: FlowProject, existingProjects?: LocalProjectCard[]): LocalProjectCard => {
   // 查找是否已有该项目（保留现有的缩略图）
   const existingProject = existingProjects?.find(p => p.id === project.projectId);
 
@@ -232,34 +226,23 @@ const mapFlowProjectToCard = (project: FlowProject, existingProjects?: ProjectCa
   };
 };
 
-// 统一的时间展示格式
-const formatDisplayTime = (value: string) => {
-  try {
-    return new Date(value).toLocaleString('zh-CN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  } catch {
-    return value;
-  }
-};
+interface ProjectsHomeProps {
+  onLogout?: () => void;
+}
 
-export default function ProjectsHome() {
+export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
   const router = useRouter();
   const apiConfig = useCanvasStore((state) => state.apiConfig); // 读取 API 配置
   const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen); // 设置面板控制
 
-  const [projects, setProjects] = useState<ProjectCard[]>([]); // 项目列表
+  const [projects, setProjects] = useState<LocalProjectCard[]>([]); // 项目列表
   const [cursor, setCursor] = useState<string | null>(null); // 下一页游标
   const [isLoading, setIsLoading] = useState(false); // 列表加载态
   const [isCreating, setIsCreating] = useState(false); // 创建按钮加载态
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // 错误提示
   const [isHydrated, setIsHydrated] = useState(false); // 客户端渲染完成
   const [isRefreshing, setIsRefreshing] = useState(false); // 后台刷新状态
-  
+
   useEffect(() => {
     setIsHydrated(true); // 仅在客户端设置为 true
 
@@ -273,7 +256,6 @@ export default function ProjectsHome() {
 
   const cookieConfigured = Boolean(apiConfig.cookie?.trim());
   const hasCookie = isHydrated && cookieConfigured; // 仅在客户端判断 Cookie
-  // const hasBearerToken = Boolean(apiConfig.bearerToken?.trim()); // TODO: 未来可能需要，暂时未使用
 
   const fetchProjects = useCallback(async (forceRefresh = false) => {
     if (!hasCookie) {
@@ -436,7 +418,7 @@ export default function ProjectsHome() {
     return false;
   }, [apiConfig.cookie, isHydrated, setIsSettingsOpen]);
 
-  const handleCreateProject = useCallback(async () => {
+  const handleCreateProject = useCallback(async (prompt?: string) => {
     if (!ensureApiConfig()) {
       return; // 没有配置则直接退出
     }
@@ -447,7 +429,7 @@ export default function ProjectsHome() {
     try {
       const payload: Record<string, string> = {
         cookie: apiConfig.cookie,
-        projectTitle: formatProjectTitle(),
+        projectTitle: prompt || formatProjectTitle(), // Use prompt as title if available
       }; // 创建请求体
 
       if (apiConfig.proxy) {
@@ -508,290 +490,26 @@ export default function ProjectsHome() {
     }
   }, [apiConfig.cookie, apiConfig.proxy, ensureApiConfig, fetchProjects]);
 
-  const handleDeleteProject = useCallback(
-    async (projectId: string, projectTitle: string) => {
-      if (!ensureApiConfig()) {
-        return; // 没有配置则退出
-      }
-
-      const confirmed = window.confirm(`确认删除项目「${projectTitle}」吗？`); // 二次确认
-      if (!confirmed) {
-        return; // 用户取消
-      }
-
-      // 乐观更新：立即从列表中移除
-      const updatedProjects = projects.filter((project) => project.id !== projectId);
-
-      // 立即更新 UI
-      setProjects(updatedProjects);
-
-      // 立即更新缓存
-      setCachedProjects(updatedProjects);
-
-      // 后台发送删除请求
-      try {
-        const payload: Record<string, string> = {
-          cookie: apiConfig.cookie,
-          projectId,
-        }; // 删除请求体
-
-        if (apiConfig.proxy) {
-          payload.proxy = apiConfig.proxy; // 透传代理
-        }
-
-        const response = await fetch('/api/flow/projects/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }); // 调用删除接口
-
-        const data = await response.json(); // 解析结果
-
-        // 即使删除失败，也不恢复 UI（已删除的项目不应该再显示）
-        if (!response.ok || !data?.success) {
-          console.error('删除请求失败:', data?.error || data?.message || '删除项目失败');
-          // 可以选择显示一个非阻塞的错误提示
-          // 但不恢复 UI，因为用户已经确认删除
-        }
-      } catch (error) {
-        console.error('删除请求出错:', error);
-        // 同样不恢复 UI，但记录错误
-      }
-    },
-    [projects, apiConfig.cookie, apiConfig.proxy, ensureApiConfig]
-  );
-
-  const skeletons = useMemo(() => Array.from({ length: 6 }), []); // 骨架屏占位
-  const shouldShowEmptyState =
-    !isLoading && projects.length === 0 && hasCookie; // 是否展示空状态
-  const shouldShowConfigAlert = isHydrated && !cookieConfigured; // 是否展示配置提示
+  // Map LocalProjectCard to Morpheus Project type
+  const morpheusProjects: Project[] = useMemo(() => {
+    return projects.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: `${p.sceneCount} scenes`,
+      imageUrl: p.thumbnailUrl || '',
+      createdAt: new Date(p.createdAt),
+      type: 'image'
+    }));
+  }, [projects]);
 
   return (
     <div className="w-screen h-screen overflow-auto relative">
       <SettingsPanel />
-      {/* 简单的浅灰色背景 */}
-      <div className="min-h-screen bg-gray-100">
-        {/* 顶部操作条 */}
-        <div className="w-full bg-gray-100">
-          <div className="w-full px-8 pt-10 pb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
-                Projects
-              </p>
-              <h2 className="text-2xl font-semibold text-gray-900">
-                我的 Flow 项目
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-                title="设置"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => fetchProjects(true)} // 强制刷新
-                disabled={!hasCookie || isLoading}
-                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-900 text-white shadow hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                title="刷新"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* 配置提示 */}
-          {shouldShowConfigAlert && (
-            <div className="w-full px-8 pb-4">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-amber-900 shadow-sm">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold">尚未配置 Flow API</p>
-                    <p className="text-sm text-amber-800/90">
-                      请先填写 Cookie、Bearer Token 以及代理（可选），然后保存配置。
-                    </p>
-                    {!apiConfig.bearerToken && (
-                      <p className="text-xs text-amber-700 mt-1">
-                        注意：Bearer Token 是加载项目缩略图所必需的
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-amber-700 transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                    打开设置
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        {/* 巨大的 Banner - 视频背景 */}
-        <div className="px-8">
-          <div className="relative w-full h-[420px] overflow-hidden rounded-[24px]">
-            {/* 背景视频 - 循环播放 */}
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover rounded-[24px]"
-            >
-              <source
-                src="https://www.gstatic.com/aitestkitchen/website/flow/banners/flow31_bg_05905f5a.mp4"
-                type="video/mp4"
-              />
-            </video>
-
-            
-            {/* 渐变遮罩层 - 让文字更清晰 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-[24px]" />
-
-            {/* Banner 内容 */}
-            <div className="relative h-full flex flex-col items-start justify-center px-8">
-              <div className="max-w-3xl">
-                {/* 标题 */}
-                <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 leading-tight tracking-[0.03em] drop-shadow-2xl">
-                  <span className="capitalize">Morpheus</span>{' '}
-                  <span className="text-3xl md:text-4xl font-medium tracking-[0.06em]">Studio</span>
-                </h1>
-
-                {/* 副标题 */}
-                <p className="text-xl md:text-2xl text-white/95 leading-relaxed font-medium drop-shadow-lg mb-1">
-                  创意无限可能，视觉触手可及
-                </p>
-                {/* 英文广告语 */}
-                <p className="text-sm md:text-base text-white/75 leading-relaxed tracking-[0.1em] font-light drop-shadow-md">
-                  Where Creativity Meets Visual Excellence
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 项目列表区域 */}
-        <div className="w-full px-8 py-12">
-          {/* 项目网格 */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {isLoading && projects.length === 0
-              ? skeletons.map((_, index) => (
-                  <div
-                    key={index}
-                    className="aspect-[4/3] rounded-2xl bg-white shadow-sm"
-                  >
-                    <div className="h-[70%] animate-pulse rounded-2xl rounded-b-none bg-gray-200" />
-                    <div className="h-[30%] space-y-2 rounded-2xl rounded-t-none bg-white px-4 py-4">
-                      <div className="h-4 w-3/4 rounded bg-gray-200" />
-                      <div className="h-3 w-1/2 rounded bg-gray-100" />
-                    </div>
-                  </div>
-                ))
-              : projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="group aspect-[4/3] cursor-pointer overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
-                    onClick={() => handleOpenProject(project.id)}
-                  >
-                    {/* 项目缩略图 */}
-                    <div className="relative h-[70%] w-full overflow-hidden bg-gray-200">
-                      {project.thumbnailUrl ? (
-                        <img
-                          src={project.thumbnailUrl}
-                          alt={project.title}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                          <FolderOpen
-                            className="h-12 w-12 text-gray-400"
-                            strokeWidth={1.5}
-                          />
-                        </div>
-                      )}
-
-                      <button
-                        className="absolute right-4 top-4 inline-flex items-center justify-center rounded-full bg-black/50 p-2 text-white opacity-0 backdrop-blur-md transition-all duration-200 hover:bg-black/70 group-hover:opacity-100"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteProject(project.id, project.title);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 hover:scale-110 transition-transform" />
-                      </button>
-                    </div>
-
-                    {/* 项目信息 */}
-                    <div className="flex h-[30%] flex-col justify-center gap-1 px-4 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold text-gray-900">
-                          {project.title}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        {formatDisplayTime(project.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-          </div>
-
-          {/* 空状态提示 */}
-          {shouldShowEmptyState && (
-            <div className="mt-12 text-center">
-              <div className="inline-block rounded-2xl bg-white px-8 py-6 shadow">
-                <FolderOpen
-                  className="mx-auto mb-3 h-12 w-12 text-gray-400"
-                  strokeWidth={1.5}
-                />
-                <p className="mb-1 text-base font-medium text-gray-700">
-                  还没有项目
-                </p>
-                <p className="text-sm text-gray-500">
-                  点击下方按钮创建你的第一个 Flow 项目
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 底部间距 */}
-        <div className="h-32" />
-      </div>
-
-      {/* 更新通知 */}
-      
-      {/* 底部中间悬浮的新建项目按钮 - 大卡片式毛玻璃 */}
-      <div className="fixed bottom-12 left-1/2 z-50 -translate-x-1/2">
-        <button
-          onClick={handleCreateProject}
-          disabled={isCreating || !hasCookie}
-          className="group flex h-[132px] w-[250px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/60 bg-white/50 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white/60 hover:shadow-3xl active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {/* 加号图标 */}
-          <Plus
-            className={`h-8 w-8 text-gray-600 ${isCreating ? 'hidden' : ''}`}
-            strokeWidth={2}
-          />
-          {isCreating && (
-            <RefreshCw className="h-6 w-6 text-gray-600 animate-spin" />
-          )}
-
-          {/* 文字 */}
-          <span className="text-base font-medium text-gray-700">
-            {isCreating ? '创建中...' : '新建项目'}
-          </span>
-          {!hasCookie && (
-            <span className="text-xs text-gray-500">
-              请先配置 Cookie 才能创建项目
-            </span>
-          )}
-        </button>
-      </div>
+      <DashboardView
+        projects={morpheusProjects}
+        onCreateProject={handleCreateProject}
+        onLogout={onLogout || (() => { })}
+      />
     </div>
   );
 }
