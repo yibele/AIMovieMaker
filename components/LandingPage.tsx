@@ -288,17 +288,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
     };
 
     // Connections definitions with curvature
-    // curve > 0 : bends right (relative to start->end direction)
-    // curve < 0 : bends left
-    // We use this to create a "tension" effect towards the center of the screen
+    // curve: controls the amplitude of the wave (S-shape)
     const connections = [
-        { startId: 1, endId: 2, curve: 0.2 },
-        { startId: 2, endId: 6, curve: 0.15 },
-        { startId: 6, endId: 3, curve: 0.2 },
-        { startId: 3, endId: 4, curve: 0.2 },
-        { startId: 4, endId: 5, curve: 0.15 },
-        { startId: 5, endId: 1, curve: 0.2 },
-        { startId: 5, endId: 6, curve: -0.1 }, // Cross connection
+        { startId: 1, endId: 2, curve: 0.3 },
+        { startId: 2, endId: 6, curve: -0.3 },
+        { startId: 6, endId: 3, curve: 0.3 },
+        { startId: 3, endId: 4, curve: -0.3 },
+        { startId: 4, endId: 5, curve: 0.3 },
+        { startId: 5, endId: 1, curve: -0.3 },
+        { startId: 5, endId: 6, curve: 0.4 }, // Cross connection
     ];
 
     return (
@@ -385,40 +383,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
                             // Check if this connection touches the hovered node
                             const isActive = hoveredNodeId === conn.startId || hoveredNodeId === conn.endId;
 
-                            // Calculate Quadratic Bezier Control Point
+                            // Calculate Midpoint and Control Points for "Wave" effect
                             const dx = p2.x - p1.x;
                             const dy = p2.y - p1.y;
                             const dist = Math.sqrt(dx * dx + dy * dy);
 
                             if (dist < 0.01 || isNaN(dist)) return null;
 
+                            // Geometric center
                             const midX = (p1.x + p2.x) / 2;
                             const midY = (p1.y + p2.y) / 2;
 
-                            // Calculate normal vector (-dy, dx) to bend the line
+                            // Normal vector
                             const normX = -dy / dist;
                             const normY = dx / dist;
 
-                            // Apply curvature factor
-                            const cpX = midX + normX * dist * conn.curve;
-                            const cpY = midY + normY * dist * conn.curve;
+                            // Control Points for S-Curve
+                            // CP1 pulls first half one way, CP2 pulls second half the other way
+                            const amplitude = dist * conn.curve;
+
+                            const cp1x = (p1.x + midX) / 2 + normX * amplitude;
+                            const cp1y = (p1.y + midY) / 2 + normY * amplitude;
+
+                            const cp2x = (midX + p2.x) / 2 - normX * amplitude;
+                            const cp2y = (midY + p2.y) / 2 - normY * amplitude;
 
                             return (
                                 <g key={`${conn.startId}-${conn.endId}`} className="transition-all duration-500">
                                     <path
-                                        d={`M ${p1.x} ${p1.y} Q ${cpX} ${cpY} ${p2.x} ${p2.y}`}
+                                        d={`M ${p1.x} ${p1.y} Q ${cp1x} ${cp1y} ${midX} ${midY} Q ${cp2x} ${cp2y} ${p2.x} ${p2.y}`}
                                         fill="none"
                                         stroke={isActive ? "url(#lineGradientActive)" : "url(#lineGradient)"}
                                         strokeWidth={isActive ? "2.5" : "1.5"}
                                         strokeDasharray="8 8"
                                         className={isActive ? "animate-dash-draw-fast" : "animate-dash-draw"}
                                     />
+                                    {/* Start Dot */}
                                     <circle
                                         cx={p1.x} cy={p1.y}
                                         r={isActive ? "5" : "3"}
                                         fill={isActive ? "#db2777" : "#a78bfa"}
                                         className="transition-all duration-300"
                                     />
+                                    {/* Middle Dot (The "Point" in Point-to-Point-to-Point) */}
+                                    <circle
+                                        cx={midX} cy={midY}
+                                        r={isActive ? "4" : "2"}
+                                        fill={isActive ? "#db2777" : "#c4b5fd"}
+                                        className="transition-all duration-300 opacity-80"
+                                    />
+                                    {/* End Dot */}
                                     <circle
                                         cx={p2.x} cy={p2.y}
                                         r={isActive ? "5" : "3"}
