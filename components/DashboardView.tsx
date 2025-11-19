@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
 import { Settings, Plus, Search, Bell, LogOut, RefreshCw } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
+import { supabase } from '@/lib/supabaseClient';
 
 interface DashboardViewProps {
     projects: Project[];
@@ -12,11 +13,23 @@ interface DashboardViewProps {
     onProjectClick?: (projectId: string) => void;
     isLoading?: boolean;
     onLogout: () => void;
+    authStatus: 'valid' | 'missing' | 'expired';
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, onProjectClick, isLoading, onLogout }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, onProjectClick, isLoading, onLogout, authStatus }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
+    const [avatarUrl, setAvatarUrl] = useState<string>('');
+
+    useEffect(() => {
+        const getUserProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.user_metadata?.avatar_url) {
+                setAvatarUrl(user.user_metadata.avatar_url);
+            }
+        };
+        getUserProfile();
+    }, []);
 
     return (
         <div className="min-h-screen bg-dot-pattern text-slate-900 font-sans pb-24 animate-in fade-in duration-500">
@@ -43,8 +56,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                         </button>
 
                         <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 p-0.5">
-                            <div className="h-full w-full rounded-full bg-white p-0.5">
-                                <img src="https://i.pravatar.cc/150?u=1" alt="User" className="rounded-full w-full h-full object-cover" />
+                            <div className="h-full w-full rounded-full bg-white p-0.5 overflow-hidden">
+                                <img
+                                    src={avatarUrl || "https://i.pravatar.cc/150?u=1"}
+                                    alt="User"
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
                         </div>
 
@@ -94,17 +111,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                 {/* Projects Grid with Waterfall Animation */}
                 {projects.length === 0 ? (
                     <div className="text-center py-32 bg-white/50 border border-dashed border-slate-300 rounded-3xl animate-fade-in-up">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Plus className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-slate-900">No projects yet</h3>
-                        <p className="text-slate-500 mb-6">Start your first creative session.</p>
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="text-violet-600 font-medium hover:underline"
-                        >
-                            Create a project
-                        </button>
+                        {authStatus === 'valid' ? (
+                            <>
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Plus className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-900">No projects yet</h3>
+                                <p className="text-slate-500 mb-6">Start your first creative session.</p>
+                                <button
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                    className="text-violet-600 font-medium hover:underline"
+                                >
+                                    Create a project
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Settings className="w-8 h-8 text-orange-400" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                    {authStatus === 'missing' ? 'API Configuration Required' : 'Session Expired'}
+                                </h3>
+                                <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                                    {authStatus === 'missing'
+                                        ? 'To start creating videos, you need to configure your Flow API Cookie and Token.'
+                                        : 'Your authorization has expired. Please update your API Cookie and Token to continue.'}
+                                </p>
+                                <div className="flex flex-col items-center gap-3">
+                                    <button
+                                        onClick={() => setIsSettingsOpen(true)}
+                                        className="bg-slate-900 text-white px-6 py-2.5 rounded-xl hover:bg-violet-600 transition-all"
+                                    >
+                                        Configure API
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

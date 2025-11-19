@@ -242,6 +242,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // 错误提示
   const [isHydrated, setIsHydrated] = useState(false); // 客户端渲染完成
   const [isRefreshing, setIsRefreshing] = useState(false); // 后台刷新状态
+  const [authStatus, setAuthStatus] = useState<'valid' | 'missing' | 'expired'>('valid');
 
   useEffect(() => {
     setIsHydrated(true); // 仅在客户端设置为 true
@@ -257,9 +258,20 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
   const cookieConfigured = Boolean(apiConfig.cookie?.trim());
   const hasCookie = isHydrated && cookieConfigured; // 仅在客户端判断 Cookie
 
+  useEffect(() => {
+    if (isHydrated) {
+      if (!cookieConfigured) {
+        setAuthStatus('missing');
+      } else if (authStatus === 'missing') {
+        setAuthStatus('valid');
+      }
+    }
+  }, [isHydrated, cookieConfigured]);
+
   const fetchProjects = useCallback(async (forceRefresh = false) => {
     if (!hasCookie) {
       setProjects([]); // 清空项目列表
+      setAuthStatus('missing');
       return;
     }
 
@@ -301,6 +313,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
 
       // 更新项目列表
       setProjects(normalizedProjects);
+      setAuthStatus('valid');
       setCursor(data?.cursor ?? null); // 保存下一页游标
 
       // 缓存新数据
@@ -326,6 +339,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
 
         // 检查是否是401错误（token或cookie过期）
         if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期')) {
+          setAuthStatus('expired');
           toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置', {
             duration: 8000,
           });
@@ -512,6 +526,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
         onProjectClick={handleOpenProject}
         isLoading={isLoading || isRefreshing}
         onLogout={onLogout || (() => { })}
+        authStatus={authStatus}
       />
     </div>
   );
