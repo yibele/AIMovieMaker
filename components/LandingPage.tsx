@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Sparkles, Palette, Type, Image as ImageIcon, Move3d, Check, Star, Quote, Zap, Crown, Infinity, Twitter, Github, Linkedin, Globe, MessageCircle } from 'lucide-react';
+import { ParticleField } from './ParticleField';
 
 interface LandingPageProps {
     onGetStarted: () => void;
@@ -353,6 +354,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
 
             {/* --- HERO SECTION --- */}
             <div className="relative w-screen h-screen flex flex-col items-center justify-center z-10 pb-20 perspective-[1000px]">
+
+                {/* Antigravity Particle Field */}
+                <ParticleField />
 
                 {/* DYNAMIC CONNECTOR LINES (SVG OVERLAY) */}
                 {/* Only visible on md+ screens where nodes are visible */}
