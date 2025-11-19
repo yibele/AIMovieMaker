@@ -2,7 +2,7 @@ export interface Project {
     id: string;
     title: string;
     description: string;
-    imageUrl: string;
+    imageUrl?: string;
     createdAt: Date;
     type: 'image' | 'text' | 'video';
 }

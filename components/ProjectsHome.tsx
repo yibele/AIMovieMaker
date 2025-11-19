@@ -134,7 +134,7 @@ const fetchThumbnailUrl = async (
 
   try {
     const params = new URLSearchParams({
-      key: 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY', // 从你的 headers 中获取的 API key
+      key: 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY', // Flow API key
       clientContext: 'PINHOLE',
       returnUriOnly: 'true'
     });
@@ -160,7 +160,7 @@ const fetchThumbnailUrl = async (
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error('Failed to fetch media details:', response.status);
+      console.error(`Failed to fetch media details for ${mediaKey}:`, response.status);
       // 缓存失败的记录，避免重复请求
       mediaUrlCache.set(`${mediaKey}_failed`, 'true');
       return undefined;
@@ -496,7 +496,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
       id: p.id,
       title: p.title,
       description: `${p.sceneCount} scenes`,
-      imageUrl: p.thumbnailUrl || '',
+      imageUrl: p.thumbnailUrl || undefined,
       createdAt: new Date(p.createdAt),
       type: 'image'
     }));
@@ -509,6 +509,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
         projects={morpheusProjects}
         onCreateProject={handleCreateProject}
         onRefreshProjects={() => fetchProjects(true)}
+        onProjectClick={handleOpenProject}
         isLoading={isLoading || isRefreshing}
         onLogout={onLogout || (() => { })}
       />

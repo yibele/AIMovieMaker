@@ -423,7 +423,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
                                 top: `${node.yPct}%`,
                                 left: node.align === 'left' ? `${node.xPct}%` : 'auto',
                                 right: node.align === 'right' ? `${100 - node.xPct}%` : 'auto',
-                                left: `${node.xPct}%`,
                                 animationDelay: node.delay
                             }}
                         >

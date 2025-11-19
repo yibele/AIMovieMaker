@@ -9,11 +9,12 @@ interface DashboardViewProps {
     projects: Project[];
     onCreateProject: (prompt: string) => Promise<void>;
     onRefreshProjects: () => Promise<void>;
+    onProjectClick?: (projectId: string) => void;
     isLoading?: boolean;
     onLogout: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, isLoading, onLogout }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, onProjectClick, isLoading, onLogout }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
 
@@ -113,7 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                                 className="opacity-0 animate-fade-in-up"
                                 style={{ animationDelay: `${index * 100}ms` }}
                             >
-                                <ProjectCard project={project} />
+                                <ProjectCard project={project} onProjectClick={onProjectClick} />
                             </div>
                         ))}
                     </div>
