@@ -2,16 +2,20 @@ import React, { useState } from 'react';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
-import { Settings, Plus, Search, Bell, LogOut } from 'lucide-react';
+import { Settings, Plus, Search, Bell, LogOut, RefreshCw } from 'lucide-react';
+import { useCanvasStore } from '@/lib/store';
 
 interface DashboardViewProps {
     projects: Project[];
     onCreateProject: (prompt: string) => Promise<void>;
+    onRefreshProjects: () => Promise<void>;
+    isLoading?: boolean;
     onLogout: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onLogout }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, isLoading, onLogout }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
 
     return (
         <div className="min-h-screen bg-dot-pattern text-slate-900 font-sans pb-24 animate-in fade-in duration-500">
@@ -61,8 +65,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                     </div>
 
                     <div className="flex items-center space-x-3">
-                        <button className="p-2.5 text-slate-500 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-white transition-all">
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="p-2.5 text-slate-500 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-white transition-all"
+                            title="Settings"
+                        >
                             <Settings className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={onRefreshProjects}
+                            disabled={isLoading}
+                            className="p-2.5 text-slate-500 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Refresh Projects"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                         </button>
                         <button
                             onClick={() => setIsCreateModalOpen(true)}

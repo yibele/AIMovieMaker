@@ -392,7 +392,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
 
                     <h1 className="text-7xl md:text-9xl font-extrabold tracking-tighter text-slate-900 mb-8 leading-[0.9] opacity-0 animate-blur-in-up min-h-[1.8em]" style={{ animationDelay: '0.2s' }}>
                         Think it.<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-500 to-purple-600 animate-shimmer bg-[length:200%_100%] inline-block w-[320px] md:w-[500px] text-left">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-500 to-purple-600 animate-shimmer bg-[length:200%_100%] inline-block w-[320px] md:w-[500px] text-center">
                             {displayText}
                             <span className="inline-block w-1 h-[0.8em] bg-violet-500 ml-2 align-middle animate-cursor-blink"></span>
                         </span>

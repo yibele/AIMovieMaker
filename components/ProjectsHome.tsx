@@ -508,6 +508,8 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
       <DashboardView
         projects={morpheusProjects}
         onCreateProject={handleCreateProject}
+        onRefreshProjects={() => fetchProjects(true)}
+        isLoading={isLoading || isRefreshing}
         onLogout={onLogout || (() => { })}
       />
     </div>
