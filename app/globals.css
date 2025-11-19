@@ -8,6 +8,26 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-y: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Ensure landing page can scroll */
+.bg-dot-pattern {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
 }
 
 /* xyflow theme - 极简风格 */

@@ -251,10 +251,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
     ];
 
     return (
-        <div className="bg-dot-pattern relative selection:bg-violet-200 overflow-x-hidden">
+        <div className="relative bg-dot-pattern selection:bg-violet-200" style={{ minHeight: '200vh' }}>
 
             {/* Film Grain Texture Overlay */}
-            <div className="bg-noise"></div>
+            <div className="bg-noise fixed inset-0"></div>
 
             {/* Ambient Background Glows */}
             <div className="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-200/40 rounded-full blur-[120px] animate-pulse-slow pointer-events-none z-0" />
