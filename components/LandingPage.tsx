@@ -315,8 +315,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
                 <nav className="flex items-center bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-slate-200/20 rounded-full p-1.5 pr-2 ring-1 ring-slate-900/5">
 
                     {/* Logo Area */}
+
                     <div className="flex items-center space-x-2 pl-5 pr-6 border-r border-slate-200/50">
-                        <Sparkles className="w-4 h-4 text-violet-600" />
+                        {/* <img src="" alt="Morpheus" className="w-8 h-8 object-contain" /> */}
                         <span className="text-sm font-bold text-slate-800 tracking-tight">Morpheus</span>
                     </div>
 
