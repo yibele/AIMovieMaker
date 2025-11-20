@@ -38,6 +38,18 @@ function VideoNode({ data, selected, id }: NodeProps) {
     videoData.status !== 'queued';
   const generateButtonLabel =
     videoData.status === 'ready' || videoData.status === 'error' ? '重新生成' : '生成视频';
+  
+  // 行级注释：检查是否支持超清（只有 16:9 横屏支持）
+  const canUpscale = useMemo(() => {
+    if (!videoData.src || !videoData.mediaGenerationId) return false;
+    
+    const width = videoData.size?.width || 640;
+    const height = videoData.size?.height || 360;
+    const ratio = width / height;
+    
+    // 行级注释：只有 16:9 横屏视频支持超清（竖屏 9:16 和方形 1:1 不支持）
+    return Math.abs(ratio - 16/9) < 0.1;
+  }, [videoData.src, videoData.mediaGenerationId, videoData.size]);
 
   // 处理视频点击 - 播放/暂停
   const handleVideoClick = () => {
@@ -292,6 +304,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
       return;
     }
 
+    // 行级注释：检查视频宽高比，只有 16:9 横屏支持超清
+    const width = videoData.size?.width || 640;
+    const height = videoData.size?.height || 360;
+    const ratio = width / height;
+    
+    if (Math.abs(ratio - 16/9) >= 0.1) {
+      alert('超清放大仅支持 16:9 横屏视频！\n竖屏（9:16）和方形（1:1）视频暂不支持超清功能。');
+      return;
+    }
+
     try {
       console.log('🎬 开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
 
@@ -476,12 +498,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
             onClick={() => handleDownload()}
           />
 
-          {/* 超清放大 - 只在有视频源时可用 */}
+          {/* 超清放大 - 只有 16:9 横屏视频支持 */}
           <ToolbarButton
             icon={<Sparkles className="w-3 h-3" />}
             label="超清放大"
-            title="超清放大"
-            disabled={!videoData.src}
+            title={canUpscale ? "超清放大 (1080p)" : "超清放大仅支持 16:9 横屏视频"}
+            disabled={!canUpscale}
             onClick={() => handleUpscale()}
           />
 
