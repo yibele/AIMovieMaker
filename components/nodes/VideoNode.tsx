@@ -669,13 +669,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 <img
                   src={videoData.thumbnail}
                   alt="视频封面"
-                  className="absolute inset-0 w-full h-full object-contain"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
               )}
               <video
                 ref={videoRef}
                 src={videoData.src}
-                className={`w-full h-full object-contain ${isPlaying ? 'block' : 'hidden'}`}
+                className={`w-full h-full object-cover ${isPlaying ? 'block' : 'hidden'}`}
                 loop
                 playsInline
                 onEnded={() => setIsPlaying(false)}
