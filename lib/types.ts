@@ -60,8 +60,8 @@ export interface VideoElement extends CanvasElement {
   promptText?: string; // 视频生成使用的提示词 // 行级注释说明字段用途
   readyForGeneration?: boolean; // 当前是否满足生成条件（提示词 + 首尾帧至少一个） // 行级注释说明字段用途
   generatedFrom?: {
-    type: 'text' | 'image' | 'image-to-image';
-    sourceIds: string[]; // 源节点 ID（文本/图片）
+    type: 'text' | 'image' | 'image-to-image' | 'upsample'; // 行级注释：upsample 表示超清放大
+    sourceIds: string[]; // 源节点 ID（文本/图片/视频）
     prompt?: string;
   };
 }

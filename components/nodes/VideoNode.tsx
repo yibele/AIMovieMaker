@@ -367,7 +367,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         size: size,
         promptText: '超清放大：' + (videoData.promptText || '视频'),
         generatedFrom: {
-          type: 'image',
+          type: 'upsample', // 行级注释：标记为超清放大类型
           sourceIds: [id],
           prompt: '超清放大',
         },
@@ -583,40 +583,57 @@ function VideoNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* 输入连接点 - 首帧 / 提示词 / 尾帧（左侧竖排） */}
-        <Handle
-          id="start-image"
-          type="target"
-          position={Position.Left}
-          className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-300 !border-2 !border-white !rounded-full shadow-sm"
-          style={{ left: '-6px', top: '44%' ,zIndex:'30'}}
-          isConnectable={true}
-          title="首帧图片" // 行级注释：提供鼠标悬浮提示
-        >
-           <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
-        </Handle>
-        <Handle
-          id="prompt-text"
-          type="target"
-          position={Position.Left}
-          className="!flex !items-center !justify-center !w-6 !h-6 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
-          style={{ left: '-6px', top: '50%' ,zIndex:'30'}}
-          isConnectable={true}
-          title="提示词文本" // 行级注释：提示该连接点接受文字
-        >
-          <Type className="w-3 h-3 text-white" strokeWidth={2.5} />{/* 行级注释：使用文字图标替代手写 T */}
-        </Handle>
-        <Handle
-          id="end-image"
-          type="target"
-          position={Position.Left}
-          className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-700 !border-2 !border-white !rounded-full shadow-sm"
-          style={{ left: '-6px', top: '56%' ,zIndex:'30'}}
-          isConnectable={true}
-          title="尾帧图片" // 行级注释：说明该连接点用于尾帧
-        >
-          <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />{/* 行级注释：复用图片图标表示尾帧 */}
-        </Handle>
+        {/* 行级注释：根据视频类型显示不同的输入连接点 */}
+        {videoData.generatedFrom?.type === 'upsample' ? (
+          // 行级注释：超清放大视频 - 只显示一个输入点
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="!flex !items-center !justify-center !w-5 !h-5 !bg-purple-500 !border-2 !border-white !rounded-full shadow-sm"
+            style={{ left: '-6px', top: '50%', zIndex: '30' }}
+            isConnectable={true}
+            title="原始视频"
+          >
+            <Sparkles className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+          </Handle>
+        ) : (
+          // 行级注释：普通视频 - 显示三个输入点（首帧/提示词/尾帧）
+          <>
+            <Handle
+              id="start-image"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-300 !border-2 !border-white !rounded-full shadow-sm"
+              style={{ left: '-6px', top: '44%', zIndex: '30' }}
+              isConnectable={true}
+              title="首帧图片"
+            >
+              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+            </Handle>
+            <Handle
+              id="prompt-text"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-6 !h-6 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+              style={{ left: '-6px', top: '50%', zIndex: '30' }}
+              isConnectable={true}
+              title="提示词文本"
+            >
+              <Type className="w-3 h-3 text-white" strokeWidth={2.5} />
+            </Handle>
+            <Handle
+              id="end-image"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-700 !border-2 !border-white !rounded-full shadow-sm"
+              style={{ left: '-6px', top: '56%', zIndex: '30' }}
+              isConnectable={true}
+              title="尾帧图片"
+            >
+              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+            </Handle>
+          </>
+        )}
 
         <div
           className={`absolute inset-0 rounded-xl overflow-hidden ${
