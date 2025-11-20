@@ -345,6 +345,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
       // 行级注释：调用超清 API
       const { generateVideoUpsample, pollFlowVideoOperation } = await import('@/lib/api-mock');
+      const apiConfig = useCanvasStore.getState().apiConfig;
 
       const result = await generateVideoUpsample(
         videoData.mediaGenerationId,
@@ -359,7 +360,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
       } as any);
 
       // 行级注释：开始轮询视频生成状态
-      pollFlowVideoOperation(result.operationName, result.sceneId)
+      pollFlowVideoOperation(
+        result.operationName,
+        apiConfig.bearerToken,
+        result.sceneId,
+        apiConfig.proxy
+      )
         .then((videoResult) => {
           console.log('✅ 超清视频生成完成:', videoResult);
 

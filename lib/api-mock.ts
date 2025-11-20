@@ -397,7 +397,7 @@ function extractFlowVideoData(operation: any): FlowVideoResult | null {
   };
 }
 
-async function pollFlowVideoOperation(
+export async function pollFlowVideoOperation(
   operationName: string,
   bearerToken: string,
   sceneId?: string,
