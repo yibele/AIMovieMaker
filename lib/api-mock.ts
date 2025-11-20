@@ -400,40 +400,100 @@ function extractFlowVideoData(operation: any): FlowVideoResult | null {
 async function pollFlowVideoOperation(
   operationName: string,
   bearerToken: string,
-  sceneId?: string
+  sceneId?: string,
+  proxy?: string
 ): Promise<FlowVideoResult> {
-  // 行级注释：直接调用 Google API 轮询，不走后端
-  const { checkVideoStatusDirectly } = await import('./direct-google-api');
-
+  // 行级注释：视频状态查询走后端，避免 CORS 问题
   for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
     console.log(`🔁 视频生成轮询第 ${attempt} 次`);
     
-    const statusResult = await checkVideoStatusDirectly(
-      operationName,
-      bearerToken,
-      sceneId
-    );
+    try {
+      const response = await fetch('/api/flow/video/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operations: [{
+            operation: { name: operationName },
+            ...(sceneId ? { sceneId } : {}),
+            status: 'MEDIA_GENERATION_STATUS_PENDING',
+          }],
+          bearerToken,
+          proxy,
+        }),
+      });
 
-    const status = statusResult.status;
-    console.log('📦 Flow 视频状态:', status);
-
-    if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
-      if (!statusResult.videoUrl) {
-        throw new Error('Flow 返回缺少视频地址');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ 状态查询失败:', response.status, errorData);
+        throw new Error(`Status check failed: ${response.status}`);
       }
-      return {
-        videoUrl: statusResult.videoUrl,
-        thumbnailUrl: statusResult.thumbnailUrl || '',
-        duration: statusResult.duration || 0,
-        mediaGenerationId: statusResult.mediaGenerationId,
-      };
+
+      const data = await response.json();
+      const operations = data.operations || [];
+      
+      if (operations.length === 0) {
+        throw new Error('No operations in response');
+      }
+
+      const operation = operations[0];
+      const status = operation?.status;
+      console.log('📦 Flow 视频状态:', status);
+
+      // 行级注释：失败状态 - 立即抛出错误
+      if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
+        const operationInner = operation?.operation;
+        const metadata = operationInner?.metadata || operation?.metadata;
+        const errorMessage = operation?.error || metadata?.error || 'Flow 视频生成失败';
+        throw new Error(errorMessage);
+      }
+
+      // 行级注释：成功状态 - 解析并返回视频数据
+      if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
+        console.log('🎉 视频生成成功，开始解析数据...');
+        console.log('📦 完整 operation 数据:', JSON.stringify(operation, null, 2));
+        
+        // 解析视频数据 - 根据文档，视频数据在 operation.operation.metadata.video
+        const operationInner = operation?.operation;
+        const metadata = operationInner?.metadata || operation?.metadata;
+        const videoData = metadata?.video || operation?.video;
+        
+        console.log('📦 metadata:', metadata ? '存在' : '不存在');
+        console.log('📦 videoData:', videoData ? '存在' : '不存在');
+        
+        if (videoData) {
+          console.log('📦 videoData.fifeUrl:', videoData.fifeUrl);
+          console.log('📦 videoData.servingBaseUri:', videoData.servingBaseUri);
+        }
+        
+        const videoUrl = videoData?.fifeUrl || videoData?.videoUrl || '';
+        if (!videoUrl) {
+          console.error('❌ 找不到视频 URL，完整数据:', JSON.stringify(operation, null, 2));
+          throw new Error('Flow 返回缺少视频地址');
+        }
+        
+        const result = {
+          videoUrl,
+          thumbnailUrl: videoData?.servingBaseUri || videoData?.thumbnailUrl || '',
+          duration: videoData?.durationSeconds || 0,
+          mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
+        };
+        
+        console.log('✅ 视频数据解析成功:', result);
+        return result;
+      }
+
+      // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
+      console.log('⏳ 视频还在生成中，等待下次轮询...');
+      
+    } catch (error: any) {
+      console.error(`❌ 轮询第 ${attempt} 次出错:`, error);
+      console.error('错误详情:', error.message, error.stack);
+      
+      // 行级注释：直接抛出错误，不要继续轮询了
+      throw error;
     }
 
-    if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
-      const errorMessage = statusResult.error || 'Flow 视频生成失败';
-      throw new Error(errorMessage);
-    }
-
+    // 行级注释：等待后进行下一次轮询
     await delay(VIDEO_POLL_INTERVAL_MS);
   }
 
@@ -928,7 +988,8 @@ export async function generateVideoFromText(
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
-    generationTask.sceneId
+    generationTask.sceneId,
+    apiConfig.proxy
   );
 
   console.log('🎞️ 文生视频生成完成:', videoResult);
@@ -1060,7 +1121,8 @@ export async function generateVideoFromImages(
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
-    generationTask.sceneId
+    generationTask.sceneId,
+    apiConfig.proxy
   );
 
   console.log('🎞️ 图生视频生成完成:', videoResult);
