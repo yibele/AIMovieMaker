@@ -762,10 +762,10 @@ export async function runImageRecipe(
     useCanvasStore.getState().setApiConfig(recipeContextUpdates);
   }
 
-  // 转换格式
+  // 转换格式 - 行级注释：多图融合使用 fifeUrl，保留 base64 供编辑用
   const images = result.images.map(img => ({
-    imageUrl: img.encodedImage ? `data:${img.mimeType || 'image/png'};base64,${img.encodedImage}` : (img.fifeUrl || ''), // 优先使用base64
-    base64: img.encodedImage, // 保存 base64！
+    imageUrl: img.fifeUrl || '', // 行级注释：使用 Google URL 而非 base64，性能更好
+    base64: img.encodedImage, // 行级注释：保存 base64 供图片编辑使用
     mediaId: img.mediaId,
     mediaGenerationId: img.mediaGenerationId,
     workflowId: img.workflowId,
@@ -781,7 +781,7 @@ export async function runImageRecipe(
     mediaGenerationId: images[0]?.mediaGenerationId,
     workflowId: images[0]?.workflowId,
     translatedPrompt: images[0]?.prompt,
-    images, // 返回所有生成的图片（包含 base64）
+    images, // 返回所有生成的图片（包含 fifeUrl 和 base64）
   };
 }
 
@@ -859,10 +859,10 @@ export async function imageToImage(
     useCanvasStore.getState().setApiConfig(editContextUpdates);
   }
 
-  // 转换格式
+  // 转换格式 - 行级注释：图生图使用 fifeUrl，保留 base64 供编辑用
   const images = result.images.map(img => ({
-    imageUrl: img.encodedImage ? `data:${img.mimeType || 'image/png'};base64,${img.encodedImage}` : (img.fifeUrl || ''), // 优先使用base64
-    base64: img.encodedImage, // 保存 base64！
+    imageUrl: img.fifeUrl || '', // 行级注释：使用 Google URL 而非 base64，性能更好
+    base64: img.encodedImage, // 行级注释：保存 base64 供图片编辑使用
     mediaId: img.mediaId,
     mediaGenerationId: img.mediaGenerationId,
     workflowId: img.workflowId,
@@ -878,7 +878,7 @@ export async function imageToImage(
     mediaGenerationId: images[0]?.mediaGenerationId,
     workflowId: images[0]?.workflowId,
     translatedPrompt: images[0]?.prompt,
-    images, // 返回所有生成的图片（包含 base64）
+    images, // 返回所有生成的图片（包含 fifeUrl 和 base64）
   };
 }
 
