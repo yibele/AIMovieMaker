@@ -2,10 +2,34 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Sparkles, Palette, Type, Image as ImageIcon, Move3d, Check, Star, Quote, Zap, Crown, Infinity, Twitter, Github, Linkedin, Globe, MessageCircle } from 'lucide-react';
 import { ParticleField } from './ParticleField';
 
+import { supabase } from '@/lib/supabaseClient';
+
 interface LandingPageProps {
     onGetStarted: () => void;
     onLoginClick: () => void;
 }
+
+interface PlanFeature {
+    text: string;
+    icon: string;
+}
+
+interface Plan {
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    interval_label: string;
+    features: PlanFeature[];
+    badge?: string;
+    discount_label?: string;
+    button_text: string;
+    tier: 'basic' | 'popular' | 'premium' | 'standard';
+}
+
+const iconMap: Record<string, React.ElementType> = {
+    Zap, Check, Move3d, Infinity, Star, Palette
+};
 
 // Define the structure for our floating nodes
 interface FloatingNode {
@@ -30,8 +54,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
     const [isDeleting, setIsDeleting] = useState(false);
     const [loopNum, setLoopNum] = useState(0);
     const [typingSpeed, setTypingSpeed] = useState(150);
+    const [plans, setPlans] = useState<Plan[]>([]);
 
     const words = ["Mix it.", "Dream it.", "Ship it.", "Scale it."];
+
+    useEffect(() => {
+        const fetchPlans = async () => {
+            const { data, error } = await supabase
+                .from('plans')
+                .select('*')
+                .order('sort_order', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching plans:', error);
+            } else if (data) {
+                setPlans(data);
+            }
+        };
+
+        fetchPlans();
+    }, []);
 
     useEffect(() => {
         const handleType = () => {
@@ -520,107 +562,126 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                        {plans.map((plan, index) => {
+                            const isPremium = plan.tier === 'premium';
+                            const isPopular = plan.tier === 'popular';
+                            const isStandard = plan.tier === 'standard';
 
-                        {/* Plan 1: Monthly */}
-                        <div className="reveal-on-scroll" data-delay="0">
-                            <div className="relative h-full p-8 bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl hover:shadow-2xl hover:-translate-y-3 transition-all duration-500 group z-10">
-                                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-50"></div>
-                                <h3 className="text-lg font-semibold text-slate-500 mb-2">Monthly</h3>
-                                <div className="flex items-baseline mb-6">
-                                    <span className="text-4xl font-bold text-slate-900">$9.99</span>
-                                    <span className="ml-1 text-slate-400">/mo</span>
-                                </div>
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex items-center text-sm text-slate-600 font-medium"><Zap className="w-4 h-4 mr-3 text-violet-500 flex-shrink-0" /> 100 Credits</div>
-                                    <div className="flex items-center text-sm text-slate-600"><Check className="w-4 h-4 mr-3 text-slate-300 flex-shrink-0" /> Standard Speed</div>
-                                    <div className="flex items-center text-sm text-slate-600"><Check className="w-4 h-4 mr-3 text-slate-300 flex-shrink-0" /> 2 Concurrent Jobs</div>
-                                </div>
-                                <button onClick={onLoginClick} className="w-full py-3.5 rounded-xl bg-slate-100 text-slate-900 font-bold hover:bg-slate-200 transition-colors">Get Started</button>
-                            </div>
-                        </div>
+                            // Dynamic classes based on tier
+                            let cardClasses = "relative h-full p-8 backdrop-blur-xl rounded-[2rem] border shadow-xl transition-all duration-500 group z-10";
+                            let buttonClasses = "w-full py-3.5 rounded-xl font-bold transition-colors";
+                            let priceColor = "text-slate-900";
+                            let titleColor = "text-slate-500";
+                            let iconColor = "text-violet-500";
+                            let checkColor = "text-slate-300";
 
-                        {/* Plan 2: Quarterly */}
-                        <div className="reveal-on-scroll" data-delay="100">
-                            <div className="relative h-full p-8 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl hover:shadow-2xl hover:shadow-blue-100 hover:-translate-y-3 transition-all duration-500 group z-10">
-                                <div className="absolute -top-3 right-6 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full">POPULAR</div>
-                                <h3 className="text-lg font-semibold text-blue-600 mb-2">Quarterly</h3>
-                                <div className="flex items-baseline mb-6">
-                                    <span className="text-4xl font-bold text-slate-900">$19.99</span>
-                                    <span className="ml-1 text-slate-400">/3mo</span>
-                                </div>
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex items-center text-sm text-slate-700 font-medium"><Move3d className="w-4 h-4 mr-3 text-blue-500 flex-shrink-0" /> 400 Credits</div>
-                                    <div className="flex items-center text-sm text-slate-700"><Check className="w-4 h-4 mr-3 text-blue-300 flex-shrink-0" /> Fast Speed</div>
-                                    <div className="flex items-center text-sm text-slate-700"><Check className="w-4 h-4 mr-3 text-blue-300 flex-shrink-0" /> Priority Support</div>
-                                </div>
-                                <button onClick={onLoginClick} className="w-full py-3.5 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-colors border border-blue-100">Upgrade Flow</button>
-                            </div>
-                        </div>
+                            if (isPremium) {
+                                // Premium styling handled separately in render structure below due to complexity
+                            } else if (isPopular) {
+                                cardClasses += " bg-white/80 border-white hover:shadow-2xl hover:shadow-blue-100 hover:-translate-y-3";
+                                buttonClasses += " bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100";
+                                titleColor = "text-blue-600";
+                                iconColor = "text-blue-500";
+                                checkColor = "text-blue-300";
+                            } else if (isStandard) {
+                                cardClasses += " bg-white/70 border-white hover:shadow-2xl hover:shadow-pink-100 hover:-translate-y-3";
+                                buttonClasses += " bg-white border border-pink-200 text-pink-700 hover:bg-pink-50";
+                                titleColor = "text-pink-600";
+                                iconColor = "text-pink-500";
+                                checkColor = "text-pink-300";
+                            } else {
+                                // Basic
+                                cardClasses += " bg-white/70 border-white hover:shadow-2xl hover:-translate-y-3";
+                                buttonClasses += " bg-slate-100 text-slate-900 hover:bg-slate-200";
+                            }
 
-                        {/* Plan 3: Yearly (Best Value - HERO) */}
-                        <div className="reveal-on-scroll lg:-mt-12 lg:mb-4" data-delay="200">
-                            <div className="relative p-1 rounded-[2.2rem] bg-gradient-to-b from-violet-400 via-fuchsia-500 to-indigo-600 shadow-2xl shadow-violet-200 hover:shadow-[0_20px_60px_rgba(139,92,246,0.4)] hover:-translate-y-4 transition-all duration-500 z-20 group overflow-hidden">
+                            if (isPremium) {
+                                return (
+                                    <div key={plan.id} className="reveal-on-scroll lg:-mt-12 lg:mb-4" data-delay={index * 100}>
+                                        <div className="relative p-1 rounded-[2.2rem] bg-gradient-to-b from-violet-400 via-fuchsia-500 to-indigo-600 shadow-2xl shadow-violet-200 hover:shadow-[0_20px_60px_rgba(139,92,246,0.4)] hover:-translate-y-4 transition-all duration-500 z-20 group overflow-hidden">
+                                            {/* Sheen Effect Overlay */}
+                                            <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-[2.2rem]">
+                                                <div className="absolute top-0 bottom-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-sheen"></div>
+                                            </div>
 
-                                {/* Sheen Effect Overlay */}
-                                <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-[2.2rem]">
-                                    <div className="absolute top-0 bottom-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-sheen"></div>
-                                </div>
+                                            {plan.badge && (
+                                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap ring-4 ring-white z-40">
+                                                    <Crown className="w-3 h-3 text-yellow-400" /> {plan.badge}
+                                                </div>
+                                            )}
 
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap ring-4 ring-white z-40">
-                                    <Crown className="w-3 h-3 text-yellow-400" /> BEST VALUE
-                                </div>
-                                <div className="h-full p-8 bg-white rounded-[2rem] relative overflow-hidden">
-                                    {/* Animated Mesh Gradient Background for the card content */}
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-violet-100/50 via-transparent to-transparent"></div>
+                                            <div className="h-full p-8 bg-white rounded-[2rem] relative overflow-hidden">
+                                                {/* Animated Mesh Gradient Background */}
+                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-violet-100/50 via-transparent to-transparent"></div>
 
-                                    <div className="relative z-10">
-                                        <h3 className="text-lg font-bold text-violet-600 mb-2 flex items-center gap-2">Yearly <span className="text-[10px] bg-violet-100 px-2 py-0.5 rounded-full text-violet-700">SAVE 50%</span></h3>
+                                                <div className="relative z-10">
+                                                    <h3 className="text-lg font-bold text-violet-600 mb-2 flex items-center gap-2">
+                                                        {plan.name}
+                                                        {plan.discount_label && (
+                                                            <span className="text-[10px] bg-violet-100 px-2 py-0.5 rounded-full text-violet-700">{plan.discount_label}</span>
+                                                        )}
+                                                    </h3>
+                                                    <div className="flex items-baseline mb-6">
+                                                        <span className="text-5xl font-extrabold text-slate-900 tracking-tight">{plan.currency}{plan.price}</span>
+                                                        <span className="ml-1 text-slate-400 font-medium">{plan.interval_label}</span>
+                                                    </div>
+
+                                                    <div className="space-y-4 mb-8">
+                                                        {plan.features.map((feature, i) => {
+                                                            const Icon = iconMap[feature.icon] || Check;
+                                                            return (
+                                                                <div key={i} className="flex items-center text-sm text-slate-900 font-bold">
+                                                                    <div className={`w-6 h-6 rounded-full ${i === 0 ? 'bg-violet-100 text-violet-600' : i === 1 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center mr-3`}>
+                                                                        <Icon className="w-3 h-3" />
+                                                                    </div>
+                                                                    {feature.text}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <button onClick={onLoginClick} className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-lg shadow-lg shadow-slate-900/20 hover:bg-violet-600 hover:shadow-violet-500/30 transition-all duration-300 transform active:scale-95 relative overflow-hidden">
+                                                        <span className="relative z-10">{plan.button_text}</span>
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div key={plan.id} className="reveal-on-scroll" data-delay={index * 100}>
+                                    <div className={cardClasses}>
+                                        {plan.tier === 'basic' && (
+                                            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-50"></div>
+                                        )}
+                                        {plan.badge && (
+                                            <div className="absolute -top-3 right-6 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full">{plan.badge}</div>
+                                        )}
+                                        <h3 className={`text-lg font-semibold mb-2 ${titleColor}`}>{plan.name}</h3>
                                         <div className="flex items-baseline mb-6">
-                                            <span className="text-5xl font-extrabold text-slate-900 tracking-tight">$59.99</span>
-                                            <span className="ml-1 text-slate-400 font-medium">/yr</span>
+                                            <span className="text-4xl font-bold text-slate-900">{plan.currency}{plan.price}</span>
+                                            <span className="ml-1 text-slate-400">{plan.interval_label}</span>
                                         </div>
-
                                         <div className="space-y-4 mb-8">
-                                            <div className="flex items-center text-sm text-slate-900 font-bold">
-                                                <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center mr-3 text-violet-600"><Infinity className="w-3 h-3" /></div>
-                                                Unlimited Credits
-                                            </div>
-                                            <div className="flex items-center text-sm text-slate-700">
-                                                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mr-3 text-green-600"><Zap className="w-3 h-3" /></div>
-                                                Turbo Mode (4x Faster)
-                                            </div>
-                                            <div className="flex items-center text-sm text-slate-700">
-                                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600"><Star className="w-3 h-3" /></div>
-                                                Early Access to New Models
-                                            </div>
+                                            {plan.features.map((feature, i) => {
+                                                const Icon = iconMap[feature.icon] || Check;
+                                                const isFirst = i === 0;
+                                                return (
+                                                    <div key={i} className={`flex items-center text-sm ${isFirst ? 'font-medium text-slate-700' : 'text-slate-600'}`}>
+                                                        <Icon className={`w-4 h-4 mr-3 flex-shrink-0 ${isFirst ? iconColor : checkColor}`} />
+                                                        {feature.text}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-
-                                        <button onClick={onLoginClick} className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-lg shadow-lg shadow-slate-900/20 hover:bg-violet-600 hover:shadow-violet-500/30 transition-all duration-300 transform active:scale-95 relative overflow-hidden">
-                                            <span className="relative z-10">Go Unlimited</span>
-                                            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        </button>
+                                        <button onClick={onLoginClick} className={buttonClasses}>{plan.button_text}</button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Plan 4: Semiannual */}
-                        <div className="reveal-on-scroll" data-delay="300">
-                            <div className="relative h-full p-8 bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white shadow-xl hover:shadow-2xl hover:shadow-pink-100 hover:-translate-y-3 transition-all duration-500 group z-10">
-                                <h3 className="text-lg font-semibold text-pink-600 mb-2">Semiannual</h3>
-                                <div className="flex items-baseline mb-6">
-                                    <span className="text-4xl font-bold text-slate-900">$34.99</span>
-                                    <span className="ml-1 text-slate-400">/6mo</span>
-                                </div>
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex items-center text-sm text-slate-700 font-medium"><Palette className="w-4 h-4 mr-3 text-pink-500 flex-shrink-0" /> 1000 Credits</div>
-                                    <div className="flex items-center text-sm text-slate-700"><Check className="w-4 h-4 mr-3 text-pink-300 flex-shrink-0" /> Commercial License</div>
-                                    <div className="flex items-center text-sm text-slate-700"><Check className="w-4 h-4 mr-3 text-pink-300 flex-shrink-0" /> Private Mode</div>
-                                </div>
-                                <button onClick={onLoginClick} className="w-full py-3.5 rounded-xl bg-white border border-pink-200 text-pink-700 font-bold hover:bg-pink-50 transition-colors">Select Plan</button>
-                            </div>
-                        </div>
-
+                            );
+                        })}
                     </div>
                 </div>
             </section>
