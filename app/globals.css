@@ -314,7 +314,48 @@ html {
   );
 }
 
-/* 图片工具栏弹入动画类 */
+/* Loading 动画关键帧 */
+@keyframes loading-shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%);
+  }
+}
+
+@keyframes loading-gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes loading-breathe {
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.005);
+  }
+}
+
+/* 图片工具栏弹入动画 */
+@keyframes toolbar-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .image-toolbar-pop {
   animation: toolbar-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: top center;
