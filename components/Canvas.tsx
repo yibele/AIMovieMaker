@@ -1103,7 +1103,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         onConnectEnd={handleConnectEnd}
         nodeTypes={nodeTypes}
         fitView
-        selectNodesOnDrag={true}
+        selectNodesOnDrag={false}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag
         panOnScroll

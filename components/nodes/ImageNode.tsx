@@ -221,7 +221,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         <div className="absolute inset-0 rounded-xl overflow-hidden">
           {isProcessing ? (
             <div className="flex h-full w-full items-center justify-center bg-white">
-              <div className="loading-glow w-[85%] h-[85%] rounded-xl" data-variant="compact" />
+              <div className="loading-glow w-full h-full rounded-2xl" />
             </div>
           ) : showBaseImage ? (
             <img
