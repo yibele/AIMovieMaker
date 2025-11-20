@@ -126,6 +126,25 @@ export default function SettingsPanel() {
                   className="w-full h-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
                 />
               </div>
+
+              {/* Project ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Project ID
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  placeholder="02ac868b-925f-40c1-9187-a688bd03a84d"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  从 Flow 工具的 URL 中获取项目 ID，视频生成必需
+                </p>
+              </div>
+
               {/* 代理设置 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
