@@ -663,3 +663,95 @@ export async function checkVideoStatusDirectly(
   }
 }
 
+// 行级注释：视频超清放大（1080p）- 直接调用 Google API
+export async function generateVideoUpsampleDirectly(
+  originalMediaId: string,
+  bearerToken: string,
+  sessionId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  seed?: number,
+  sceneId?: string
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  const url = 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoUpsampleVideo';
+
+  // 行级注释：转换宽高比格式
+  const videoAspectRatio =
+    aspectRatio === '16:9'
+      ? 'VIDEO_ASPECT_RATIO_LANDSCAPE'
+      : aspectRatio === '9:16'
+      ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
+      : 'VIDEO_ASPECT_RATIO_SQUARE';
+
+  // 行级注释：生成场景 ID
+  const finalSceneId = sceneId || crypto.randomUUID();
+
+  // 行级注释：生成随机种子
+  const finalSeed = seed ?? Math.floor(Math.random() * 100000);
+
+  const payload = {
+    requests: [
+      {
+        aspectRatio: videoAspectRatio,
+        seed: finalSeed,
+        videoInput: {
+          mediaId: originalMediaId,
+        },
+        videoModelKey: 'veo_2_1080p_upsampler_8s', // 行级注释：固定使用 1080p 超清模型
+        metadata: {
+          sceneId: finalSceneId,
+        },
+      },
+    ],
+    clientContext: {
+      sessionId: sessionId,
+    },
+  };
+
+  console.log('🎬 发起视频超清请求:', {
+    url,
+    originalMediaId: originalMediaId.substring(0, 30) + '...',
+    aspectRatio: videoAspectRatio,
+    seed: finalSeed,
+    sceneId: finalSceneId,
+  });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      'Authorization': `Bearer ${bearerToken}`,
+      'Origin': 'https://labs.google',
+      'Referer': 'https://labs.google/',
+      'Accept': '*/*',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`视频超清请求失败: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  console.log('✅ 视频超清请求成功:', data);
+
+  const operation = data.operations?.[0];
+  if (!operation) {
+    throw new Error('视频超清响应缺少 operation 字段');
+  }
+
+  return {
+    operationName: operation.operation?.name || '',
+    sceneId: operation.sceneId || finalSceneId,
+    status: operation.status || 'MEDIA_GENERATION_STATUS_PENDING',
+    remainingCredits: data.remainingCredits,
+  };
+}
+

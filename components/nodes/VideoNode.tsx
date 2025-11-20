@@ -285,14 +285,111 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.src, videoData.mediaGenerationId, id]);
 
-  // 处理超清放大
-  const handleUpscale = useCallback(() => {
-    if (videoData.src && videoData.mediaGenerationId) {
-      // TODO: 实现超清放大功能
-      console.log('开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
-      alert('超清放大功能开发中...');
+  // 行级注释：处理超清放大 - 创建新视频节点并生成超清版本
+  const handleUpscale = useCallback(async () => {
+    if (!videoData.src || !videoData.mediaGenerationId) {
+      alert('无法超清放大：缺少视频源或 mediaGenerationId');
+      return;
     }
-  }, [videoData.src, videoData.mediaGenerationId]);
+
+    try {
+      console.log('🎬 开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
+
+      // 行级注释：获取原视频的宽高比
+      const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
+        const width = videoData.size?.width || 640;
+        const height = videoData.size?.height || 360;
+        const ratio = width / height;
+        if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
+        if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
+        return '1:1';
+      };
+
+      const aspectRatio = getAspectRatio();
+
+      // 行级注释：计算新视频节点位置（在原视频右侧）
+      const newPosition = {
+        x: videoData.position.x + (videoData.size?.width || 640) + 50,
+        y: videoData.position.y,
+      };
+
+      // 行级注释：创建新视频节点尺寸（与原视频相同）
+      const size = videoData.size || { width: 640, height: 360 };
+
+      // 行级注释：创建新的超清视频节点（placeholder）
+      const newVideoId = `video-${Date.now()}`;
+      const newVideo: import('@/lib/types').VideoElement = {
+        id: newVideoId,
+        type: 'video',
+        src: '',
+        thumbnail: '',
+        duration: 0,
+        status: 'generating',
+        progress: 0,
+        position: newPosition,
+        size: size,
+        promptText: '超清放大：' + (videoData.promptText || '视频'),
+        generatedFrom: {
+          type: 'image',
+          sourceIds: [id],
+          prompt: '超清放大',
+        },
+      };
+
+      // 行级注释：添加节点到画布
+      updateElement(id, {} as any); // 行级注释：触发 re-render
+      const addElement = useCanvasStore.getState().addElement;
+      addElement(newVideo);
+
+      console.log('✅ 创建超清视频 placeholder:', newVideoId);
+
+      // 行级注释：调用超清 API
+      const { generateVideoUpsample, pollFlowVideoOperation } = await import('@/lib/api-mock');
+
+      const result = await generateVideoUpsample(
+        videoData.mediaGenerationId,
+        aspectRatio
+      );
+
+      console.log('✅ 超清请求已发起:', result);
+
+      // 行级注释：更新节点状态为 queued
+      updateElement(newVideoId, {
+        status: 'queued',
+      } as any);
+
+      // 行级注释：开始轮询视频生成状态
+      pollFlowVideoOperation(result.operationName, result.sceneId)
+        .then((videoResult) => {
+          console.log('✅ 超清视频生成完成:', videoResult);
+
+          // 行级注释：更新节点为完成状态
+          updateElement(newVideoId, {
+            src: videoResult.videoUrl,
+            thumbnail: videoResult.thumbnailUrl,
+            duration: videoResult.duration,
+            mediaGenerationId: videoResult.mediaGenerationId,
+            status: 'ready',
+            progress: 100,
+          } as any);
+        })
+        .catch((error) => {
+          console.error('❌ 超清视频生成失败:', error);
+
+          // 行级注释：更新节点为错误状态
+          updateElement(newVideoId, {
+            status: 'error',
+            progress: 0,
+          } as any);
+
+          alert(`超清放大失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        });
+
+    } catch (error) {
+      console.error('❌ 超清放大失败:', error);
+      alert(`超清放大失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }, [videoData.src, videoData.mediaGenerationId, videoData.size, videoData.position, videoData.promptText, id, updateElement]);
 
   // 处理删除
   const handleDelete = useCallback(() => {

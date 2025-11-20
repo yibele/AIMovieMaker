@@ -1195,3 +1195,48 @@ export async function generateByMode(
   }
 }
 
+// 行级注释：视频超清放大（1080p）- 直接调用 Google API
+export async function generateVideoUpsample(
+  originalMediaId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  seed?: number
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  const apiConfig = useCanvasStore.getState().apiConfig;
+  const sessionId = apiConfig.sessionId;
+
+  if (!apiConfig.bearerToken) {
+    throw new Error('缺少 Bearer Token');
+  }
+
+  if (!originalMediaId || !originalMediaId.trim()) {
+    throw new Error('缺少原始视频的 mediaId');
+  }
+
+  console.log('🎬 直接调用 Google API 视频超清（绕过 Vercel）:', originalMediaId, aspectRatio);
+
+  // 行级注释：直接调用 Google API
+  const { generateVideoUpsampleDirectly } = await import('./direct-google-api');
+
+  const result = await generateVideoUpsampleDirectly(
+    originalMediaId,
+    apiConfig.bearerToken,
+    sessionId,
+    aspectRatio,
+    seed
+  );
+
+  // 行级注释：更新积分
+  if (result.remainingCredits !== undefined) {
+    useCanvasStore.getState().setCredits(result.remainingCredits);
+  }
+
+  console.log('✅ 视频超清请求成功:', result);
+
+  return result;
+}
+
