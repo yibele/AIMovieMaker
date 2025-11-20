@@ -546,24 +546,61 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setSelection([newImage.id]);
   };
 
-// 行级注释：下载图片 - 直接从 Google URL 下载，不走 Vercel 流量
+// 行级注释：下载图片 - 优先使用 base64（瞬时下载，0 网络流量）
   const handleDownload = async () => {
     // 行级注释：支持批量下载
     for (const img of imageElements) {
       if (!img?.src) continue;
       
       try {
-        console.log('🚀 开始下载图片:', img.src);
+        console.log('🚀 开始下载图片:', img.id);
         
-        // 行级注释：直接 fetch Google URL，浏览器处理，不经过 Vercel
-        const response = await fetch(img.src);
-        if (!response.ok) {
-          throw new Error(`下载失败: ${response.status}`);
+        let blob: Blob;
+        
+        // 行级注释：优先使用 base64（AI 生成的图片都有 base64）
+        if (img.base64) {
+          console.log('✅ 使用 base64 直接下载（瞬时，0 流量）');
+          
+          // 行级注释：处理 base64 格式
+          const dataUrl = img.base64.startsWith('data:') 
+            ? img.base64 
+            : `data:image/png;base64,${img.base64}`;
+          
+          // 行级注释：将 base64 转为 Blob
+          const base64Data = dataUrl.split(',')[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: 'image/png' });
+          
+        } else if (img.src.startsWith('data:')) {
+          // 行级注释：src 是 base64（用户上传的图片）
+          console.log('✅ 使用 src (base64) 直接下载（瞬时，0 流量）');
+          
+          const base64Data = img.src.split(',')[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: 'image/png' });
+          
+        } else {
+          // 行级注释：兜底方案 - fetch Google URL
+          console.log('⚠️ 无 base64，从 URL 下载:', img.src);
+          
+          const response = await fetch(img.src);
+          if (!response.ok) {
+            throw new Error(`下载失败: ${response.status}`);
+          }
+          blob = await response.blob();
         }
         
-        // 行级注释：创建 Blob
-        const blob = await response.blob();
-        console.log('✅ 图片下载完成，大小:', blob.size, 'bytes');
+        console.log('✅ 图片准备完成，大小:', blob.size, 'bytes');
         
         // 行级注释：创建下载链接
         const url = window.URL.createObjectURL(blob);
