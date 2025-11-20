@@ -325,8 +325,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const VIDEO_POLL_INTERVAL_MS = 5000; // 行级注释：视频状态轮询间隔
-const VIDEO_MAX_ATTEMPTS = 60; // 行级注释：最多轮询 5 分钟
+const VIDEO_POLL_INTERVAL_MS = 10000; // 行级注释：视频状态轮询间隔（10秒）
+const VIDEO_MAX_ATTEMPTS = 60; // 行级注释：最多轮询 10 分钟
 
 function inferVideoAspectRatio(
   startImage?: ImageElement,
