@@ -253,6 +253,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
         {/* 输出连接点（右侧） - 用于连接到视频节点 */}
         <Handle
+          id="right"
           type="source"
           position={Position.Right}
           className="!flex !items-center !justify-center !w-3.5 !h-3.5 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
