@@ -254,3 +254,327 @@ export async function generateImageDirectly(
   }
 }
 
+/**
+ * 直接调用 Google Flow API 生成视频（文生视频）
+ * 不通过 Vercel 服务器，节省成本和提高速度
+ */
+export async function generateVideoTextDirectly(
+  prompt: string,
+  bearerToken: string,
+  projectId: string,
+  sessionId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  seed?: number,
+  sceneId?: string
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 规范化视频宽高比
+  const normalizedAspect = aspectRatio === '9:16'
+    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
+    : aspectRatio === '1:1'
+    ? 'VIDEO_ASPECT_RATIO_SQUARE'
+    : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
+
+  // 选择视频模型
+  const videoModelKey = aspectRatio === '9:16' 
+    ? 'veo_3_1_t2v_fast_portrait' 
+    : 'veo_3_1_t2v_fast';
+
+  const requestSeed = typeof seed === 'number' 
+    ? seed 
+    : Math.floor(Math.random() * 100_000);
+
+  const generatedSceneId = sceneId && sceneId.trim() 
+    ? sceneId.trim() 
+    : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  const payload = {
+    clientContext: {
+      sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier: 'PAYGATE_TIER_ONE',
+    },
+    requests: [
+      {
+        aspectRatio: normalizedAspect,
+        seed: requestSeed,
+        textInput: {
+          prompt: prompt.trim(),
+        },
+        videoModelKey,
+        metadata: {
+          sceneId: generatedSceneId,
+        },
+      },
+    ],
+  };
+
+  console.log('🎬 直接调用 Google Flow API 生成视频（文生视频）...', {
+    aspectRatio: normalizedAspect,
+    videoModelKey,
+    sceneId: generatedSceneId,
+  });
+
+  try {
+    const response = await fetch(
+      'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoText',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+          'Authorization': `Bearer ${bearerToken}`,
+          'Origin': 'https://labs.google',
+          'Referer': 'https://labs.google/',
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ 文生视频失败:', errorData);
+      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ 文生视频任务已提交（直接调用）');
+
+    const operations = data.operations || [];
+    if (operations.length === 0) {
+      throw new Error('No operations in response');
+    }
+
+    const operation = operations[0];
+
+    return {
+      operationName: operation?.operation?.name || '',
+      sceneId: operation?.sceneId || generatedSceneId,
+      status: operation?.status || 'MEDIA_GENERATION_STATUS_PENDING',
+      remainingCredits: data.remainingCredits,
+    };
+  } catch (error) {
+    console.error('❌ 直接生成视频（文生视频）失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 直接调用 Google Flow API 生成视频（图生视频）
+ * 支持仅首帧或首尾帧模式
+ */
+export async function generateVideoImageDirectly(
+  prompt: string,
+  bearerToken: string,
+  projectId: string,
+  sessionId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  startMediaId: string,
+  endMediaId?: string,
+  seed?: number,
+  sceneId?: string
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 规范化视频宽高比
+  const normalizedAspect = aspectRatio === '9:16'
+    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
+    : aspectRatio === '1:1'
+    ? 'VIDEO_ASPECT_RATIO_SQUARE'
+    : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
+
+  const hasEndImage = Boolean(endMediaId && endMediaId.trim());
+
+  // 选择视频模型
+  let videoModelKey: string;
+  if (hasEndImage) {
+    // 首尾帧模式
+    videoModelKey = aspectRatio === '9:16'
+      ? 'veo_3_1_i2v_s_fast_portrait_fl'
+      : 'veo_3_1_i2v_s_fast_fl';
+  } else {
+    // 仅首帧模式
+    videoModelKey = aspectRatio === '9:16'
+      ? 'veo_3_1_i2v_s_fast_portrait'
+      : 'veo_3_1_i2v_s_fast';
+  }
+
+  const requestSeed = typeof seed === 'number' 
+    ? seed 
+    : Math.floor(Math.random() * 100_000);
+
+  const generatedSceneId = sceneId && sceneId.trim() 
+    ? sceneId.trim() 
+    : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  // 构建请求对象
+  const requestObject: any = {
+    aspectRatio: normalizedAspect,
+    seed: requestSeed,
+    textInput: {
+      prompt: prompt.trim(),
+    },
+    videoModelKey,
+    startImage: {
+      mediaId: startMediaId.trim(),
+    },
+    metadata: {
+      sceneId: generatedSceneId,
+    },
+  };
+
+  // 只有当有尾帧时才添加 endImage 字段
+  if (hasEndImage) {
+    requestObject.endImage = {
+      mediaId: endMediaId!.trim(),
+    };
+  }
+
+  const payload = {
+    clientContext: {
+      sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier: 'PAYGATE_TIER_ONE',
+    },
+    requests: [requestObject],
+  };
+
+  // 选择端点
+  const apiEndpoint = hasEndImage
+    ? 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage'
+    : 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage';
+
+  console.log('🎬 直接调用 Google Flow API 生成视频（图生视频）...', {
+    mode: hasEndImage ? '首尾帧' : '仅首帧',
+    aspectRatio: normalizedAspect,
+    videoModelKey,
+    sceneId: generatedSceneId,
+  });
+
+  try {
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        'Authorization': `Bearer ${bearerToken}`,
+        'Origin': 'https://labs.google',
+        'Referer': 'https://labs.google/',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ 图生视频失败:', errorData);
+      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ 图生视频任务已提交（直接调用）');
+
+    const operations = data.operations || [];
+    if (operations.length === 0) {
+      throw new Error('No operations in response');
+    }
+
+    const operation = operations[0];
+
+    return {
+      operationName: operation?.operation?.name || '',
+      sceneId: operation?.sceneId || generatedSceneId,
+      status: operation?.status || 'MEDIA_GENERATION_STATUS_PENDING',
+      remainingCredits: data.remainingCredits,
+    };
+  } catch (error) {
+    console.error('❌ 直接生成视频（图生视频）失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 直接调用 Google Flow API 查询视频生成状态
+ */
+export async function checkVideoStatusDirectly(
+  operationName: string,
+  bearerToken: string,
+  sceneId?: string
+): Promise<{
+  status: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  duration?: number;
+  mediaGenerationId?: string;
+  error?: string;
+}> {
+  const payload = {
+    operations: [
+      {
+        operation: {
+          name: operationName,
+        },
+        ...(sceneId ? { sceneId } : {}),
+        status: 'MEDIA_GENERATION_STATUS_PENDING',
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(
+      'https://aisandbox-pa.googleapis.com/v1/video:batchCheckAsyncVideoGenerationStatus',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+          'Authorization': `Bearer ${bearerToken}`,
+          'Origin': 'https://labs.google',
+          'Referer': 'https://labs.google/',
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Status check failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const operations = data.operations || [];
+    
+    if (operations.length === 0) {
+      throw new Error('No operations in response');
+    }
+
+    const operation = operations[0];
+    const status = operation?.status || 'UNKNOWN';
+
+    // 解析视频数据
+    const metadata = operation?.metadata || operation?.operation?.metadata;
+    const videoData = operation?.video || metadata?.video;
+
+    return {
+      status,
+      videoUrl: videoData?.fifeUrl || videoData?.videoUrl || '',
+      thumbnailUrl: videoData?.servingBaseUri || videoData?.thumbnailUrl || '',
+      duration: videoData?.durationSeconds || 0,
+      mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
+      error: operation?.error || metadata?.error,
+    };
+  } catch (error) {
+    console.error('❌ 查询视频状态失败:', error);
+    throw error;
+  }
+}
+

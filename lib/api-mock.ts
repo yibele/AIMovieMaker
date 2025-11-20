@@ -118,164 +118,6 @@ async function uploadImageWithFlow(params: {
   };
 }
 
-async function generateVideoWithFlow(params: {
-  prompt: string;
-  aspectRatio: '16:9' | '9:16' | '1:1';
-  bearerToken: string;
-  projectId: string;
-  sessionId: string;
-  proxy?: string;
-  seed?: number;
-  sceneId?: string;
-}): Promise<{
-  operationName: string;
-  sceneId: string;
-  status: VideoGenerationStatus;
-  remainingCredits?: number;
-}> {
-  const {
-    prompt,
-    aspectRatio,
-    bearerToken,
-    projectId,
-    sessionId,
-    proxy,
-    seed,
-    sceneId,
-  } = params;
-
-  const response = await fetch('/api/flow/video/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt,
-      aspectRatio,
-      bearerToken,
-      cookie: useCanvasStore.getState().apiConfig.cookie, // 添加 cookie
-      projectId,
-      sessionId,
-      proxy,
-      seed,
-      sceneId,
-    }),
-  });
-
-  if (!response.ok) {
-    await handleFlowError(response);
-  }
-
-  const data = await response.json();
-  return {
-    operationName: data.operationName,
-    sceneId: data.sceneId,
-    status: data.status,
-    remainingCredits: data.remainingCredits,
-  };
-}
-
-async function generateVideoStartEndWithFlow(params: {
-  prompt: string;
-  aspectRatio: '16:9' | '9:16' | '1:1';
-  bearerToken: string;
-  projectId: string;
-  sessionId: string;
-  startMediaId: string;
-  endMediaId?: string; // 行级注释：尾帧是可选的
-  proxy?: string;
-  seed?: number;
-  sceneId?: string;
-}): Promise<{
-  operationName: string;
-  sceneId: string;
-  status: VideoGenerationStatus;
-  remainingCredits?: number;
-}> {
-  const {
-    prompt,
-    aspectRatio,
-    bearerToken,
-    projectId,
-    sessionId,
-    startMediaId,
-    endMediaId,
-    proxy,
-    seed,
-    sceneId,
-  } = params;
-
-  const response = await fetch('/api/flow/video/start-end', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt,
-      aspectRatio,
-      bearerToken,
-      cookie: useCanvasStore.getState().apiConfig.cookie, // 添加 cookie
-      projectId,
-      sessionId,
-      startMediaId,
-      endMediaId, // 行级注释：可能是 undefined，后端会处理
-      proxy,
-      seed,
-      sceneId,
-    }),
-  });
-
-  if (!response.ok) {
-    await handleFlowError(response);
-  }
-
-  const data = await response.json();
-  return {
-    operationName: data.operationName,
-    sceneId: data.sceneId,
-    status: data.status,
-    remainingCredits: data.remainingCredits,
-  };
-}
-
-export async function checkVideoStatusWithFlow(params: {
-  operations: Array<{ operation: { name: string } }>;
-  bearerToken: string;
-  proxy?: string;
-}): Promise<{
-  operations: Array<{
-    operation: { name: string; metadata?: any };
-    status: VideoGenerationStatus;
-    metadata?: any;
-    video?: {
-      videoUrl?: string;
-      encodedVideo?: string;
-      thumbnailUrl?: string;
-      mimeType?: string;
-    };
-    error?: string;
-  }>;
-  remainingCredits?: number;
-}> {
-  const { operations, bearerToken, proxy } = params;
-
-  const response = await fetch('/api/flow/video/status', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      operations,
-      bearerToken,
-      proxy,
-    }),
-  });
-
-  if (!response.ok) {
-    await handleFlowError(response);
-  }
-
-  const data = await response.json();
-  return {
-    operations: data.operations || [],
-    remainingCredits: data.remainingCredits,
-  };
-}
-
 async function generateImageWithFlow(params: {
   prompt: string;
   aspectRatio: '16:9' | '9:16' | '1:1';
@@ -558,41 +400,44 @@ function extractFlowVideoData(operation: any): FlowVideoResult | null {
 async function pollFlowVideoOperation(
   operationName: string,
   bearerToken: string,
-  proxy?: string
+  sceneId?: string
 ): Promise<FlowVideoResult> {
-  for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
-    console.log(`🔁 图生视频轮询第 ${attempt} 次`);
-    const statusResult = await checkVideoStatusWithFlow({
-      operations: [{ operation: { name: operationName } }],
-      bearerToken,
-      proxy,
-    });
+  // 行级注释：直接调用 Google API 轮询，不走后端
+  const { checkVideoStatusDirectly } = await import('./direct-google-api');
 
-    const operation = statusResult.operations?.[0];
-    const status = operation?.status;
-    console.log('📦 Flow 图生视频状态:', status);
+  for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
+    console.log(`🔁 视频生成轮询第 ${attempt} 次`);
+    
+    const statusResult = await checkVideoStatusDirectly(
+      operationName,
+      bearerToken,
+      sceneId
+    );
+
+    const status = statusResult.status;
+    console.log('📦 Flow 视频状态:', status);
 
     if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
-      const videoResult = extractFlowVideoData(operation);
-      if (!videoResult || !videoResult.videoUrl) {
+      if (!statusResult.videoUrl) {
         throw new Error('Flow 返回缺少视频地址');
       }
-      return videoResult;
+      return {
+        videoUrl: statusResult.videoUrl,
+        thumbnailUrl: statusResult.thumbnailUrl || '',
+        duration: statusResult.duration || 0,
+        mediaGenerationId: statusResult.mediaGenerationId,
+      };
     }
 
     if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
-      const errorMessage =
-        operation?.error ||
-        operation?.metadata?.error ||
-        operation?.operation?.metadata?.error ||
-        'Flow 图生视频生成失败';
+      const errorMessage = statusResult.error || 'Flow 视频生成失败';
       throw new Error(errorMessage);
     }
 
     await delay(VIDEO_POLL_INTERVAL_MS);
   }
 
-  throw new Error('图生视频生成超时，请稍后重试');
+  throw new Error('视频生成超时，请稍后重试');
 }
 
 // 生成唯一 ID
@@ -1029,7 +874,7 @@ export async function batchGenerate(
   };
 }
 
-// 生成视频接口（文生视频）
+// 生成视频接口（文生视频）- 直接调用 Google API
 export async function generateVideoFromText(
   prompt: string,
   aspectRatio: '16:9' | '9:16' | '1:1' = '9:16',
@@ -1063,25 +908,27 @@ export async function generateVideoFromText(
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  console.log('🎬 使用 Flow 文生视频:', { prompt, aspectRatio, sceneId });
+  console.log('🎬 直接调用 Google API 文生视频:', { prompt, aspectRatio, sceneId });
 
-  const generationTask = await generateVideoWithFlow({
+  // 行级注释：直接调用 Google API，不走后端
+  const { generateVideoTextDirectly } = await import('./direct-google-api');
+
+  const generationTask = await generateVideoTextDirectly(
     prompt,
-    aspectRatio,
-    bearerToken: apiConfig.bearerToken,
-    projectId: apiConfig.projectId,
+    apiConfig.bearerToken,
+    apiConfig.projectId,
     sessionId,
-    proxy: apiConfig.proxy,
+    aspectRatio,
     seed,
-    sceneId,
-  });
+    sceneId
+  );
 
-  console.log('✅ 文生视频任务已提交:', generationTask);
+  console.log('✅ 文生视频任务已提交（直接调用）:', generationTask);
 
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
-    apiConfig.proxy
+    generationTask.sceneId
   );
 
   console.log('🎞️ 文生视频生成完成:', videoResult);
@@ -1117,7 +964,7 @@ export async function generateVideoFromImage(
   };
 }
 
-// 生成视频接口（图到图视频 - 首帧尾帧）
+// 生成视频接口（图到图视频 - 首帧尾帧）- 直接调用 Google API
 export async function generateVideoFromImages(
   startImageId: string,
   endImageId?: string,
@@ -1185,7 +1032,7 @@ export async function generateVideoFromImages(
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  console.log('🎬 调用 Flow 图生视频:', {
+  console.log('🎬 直接调用 Google API 图生视频:', {
     startImageId,
     endImageId: endImageId || '无尾帧', // 行级注释：如实显示是否有尾帧
     hasEndImage: !!endMediaId,
@@ -1193,27 +1040,30 @@ export async function generateVideoFromImages(
     sceneId,
   });
 
-  const generationTask = await generateVideoStartEndWithFlow({
-    prompt: promptText,
-    aspectRatio,
-    bearerToken: apiConfig.bearerToken,
-    projectId: apiConfig.projectId,
-    sessionId,
-    proxy: apiConfig.proxy,
-    startMediaId,
-    endMediaId: resolvedEndMediaId, // 行级注释：可能是 undefined，后端会处理
-    sceneId,
-  });
+  // 行级注释：直接调用 Google API，不走后端
+  const { generateVideoImageDirectly } = await import('./direct-google-api');
 
-  console.log('✅ Flow 图生视频任务创建成功:', generationTask);
+  const generationTask = await generateVideoImageDirectly(
+    promptText,
+    apiConfig.bearerToken,
+    apiConfig.projectId,
+    sessionId,
+    aspectRatio,
+    startMediaId,
+    resolvedEndMediaId, // 行级注释：可能是 undefined，后端会处理
+    undefined, // seed
+    sceneId
+  );
+
+  console.log('✅ 图生视频任务已提交（直接调用）:', generationTask);
 
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
-    apiConfig.proxy
+    generationTask.sceneId
   );
 
-  console.log('🎞️ Flow 图生视频生成完成:', videoResult);
+  console.log('🎞️ 图生视频生成完成:', videoResult);
 
   return {
     videoUrl: videoResult.videoUrl,
