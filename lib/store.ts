@@ -23,6 +23,7 @@ interface ApiConfig {
   workflowId: string;
   sessionId: string;
   generationCount: number; // 每次生成的图片数量 (1-4)
+  accountTier: 'pro' | 'ultra'; // 账号类型：Pro 或 Ultra
 }
 
 // 状态接口定义
@@ -97,6 +98,7 @@ const loadApiConfig = (): ApiConfig => {
       workflowId: context.workflowId,
       sessionId: context.sessionId,
       generationCount: 1, // 默认生成 1 张图片
+      accountTier: 'pro', // 行级注释：默认 Pro 账号
     };
   }
   
@@ -114,6 +116,7 @@ const loadApiConfig = (): ApiConfig => {
         workflowId: parsed?.workflowId || context.workflowId,
         sessionId: parsed?.sessionId || context.sessionId,
         generationCount: parsed?.generationCount ?? 1, // 默认生成 1 张图片
+        accountTier: parsed?.accountTier || 'pro', // 行级注释：兼容旧配置，默认 pro
       };
     }
   } catch (error) {
@@ -130,6 +133,7 @@ const loadApiConfig = (): ApiConfig => {
     workflowId: context.workflowId,
     sessionId: context.sessionId,
     generationCount: 1, // 默认生成 1 张图片
+    accountTier: 'pro', // 行级注释：默认 Pro 账号
   };
 };
 

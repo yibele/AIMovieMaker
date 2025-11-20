@@ -547,7 +547,9 @@ export async function generateImage(
     sessionId = context.sessionId;
   }
 
-  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, `数量: ${count || apiConfig.generationCount || 1}`);
+  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+
+  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, accountTier, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -558,6 +560,7 @@ export async function generateImage(
     apiConfig.projectId,
     sessionId,
     aspectRatio,
+    accountTier,
     undefined, // references
     undefined, // seed
     count ?? apiConfig.generationCount ?? 1,
@@ -717,10 +720,13 @@ export async function runImageRecipe(
     sessionId = context.sessionId;
   }
 
+  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+
   console.log(
     '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
     instruction,
     aspectRatio,
+    accountTier,
     `参考图数量: ${validReferences.length}`,
     `生成数量: ${count || apiConfig.generationCount || 1}`
   );
@@ -734,6 +740,7 @@ export async function runImageRecipe(
     apiConfig.projectId,
     sessionId,
     aspectRatio,
+    accountTier,
     validReferences,
     seed,
     count ?? apiConfig.generationCount ?? 1,
@@ -817,7 +824,9 @@ export async function imageToImage(
     sessionId = context.sessionId;
   }
 
-  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, `数量: ${count || apiConfig.generationCount || 1}`);
+  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+
+  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -828,9 +837,10 @@ export async function imageToImage(
     apiConfig.projectId,
     sessionId,
     aspectRatio,
+    accountTier,
     [{ mediaId: originalMediaId }], // 传 mediaId 给 Flow API
     undefined, // seed
-    count ?? apiConfig.generationCount ?? 1,
+    (count ?? apiConfig.generationCount) || 1,
     useCanvasStore.getState().currentPrefixPrompt
   );
 
@@ -968,7 +978,9 @@ export async function generateVideoFromText(
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  console.log('🎬 直接调用 Google API 文生视频:', { prompt, aspectRatio, sceneId });
+  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+
+  console.log('🎬 直接调用 Google API 文生视频:', { prompt, aspectRatio, accountTier, sceneId });
 
   // 行级注释：直接调用 Google API，不走后端
   const { generateVideoTextDirectly } = await import('./direct-google-api');
@@ -979,6 +991,7 @@ export async function generateVideoFromText(
     apiConfig.projectId,
     sessionId,
     aspectRatio,
+    accountTier,
     seed,
     sceneId
   );
@@ -1088,6 +1101,7 @@ export async function generateVideoFromImages(
 
   const aspectRatio = inferVideoAspectRatio(startImage, endImage);
   const promptText = (prompt ?? '').trim() || 'Seamless transition between scenes';
+  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
   const sceneId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -1098,6 +1112,7 @@ export async function generateVideoFromImages(
     endImageId: endImageId || '无尾帧', // 行级注释：如实显示是否有尾帧
     hasEndImage: !!endMediaId,
     aspectRatio,
+    accountTier,
     sceneId,
   });
 
@@ -1110,6 +1125,7 @@ export async function generateVideoFromImages(
     apiConfig.projectId,
     sessionId,
     aspectRatio,
+    accountTier,
     startMediaId,
     resolvedEndMediaId, // 行级注释：可能是 undefined，后端会处理
     undefined, // seed

@@ -93,6 +93,7 @@ export async function generateImageDirectly(
   projectId: string,
   sessionId: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
+  accountTier: 'pro' | 'ultra',
   references?: Array<{ mediaId?: string; mediaGenerationId?: string }>,
   seed?: number,
   count?: number,
@@ -118,6 +119,11 @@ export async function generateImageDirectly(
     : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
 
   const generationCount = Math.max(1, Math.min(4, count || 1));
+
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra' 
+    ? 'PAYGATE_TIER_TWO' 
+    : 'PAYGATE_TIER_ONE';
 
   // 构建最终提示词
   const finalPrompt = prefixPrompt && prefixPrompt.trim()
@@ -151,7 +157,7 @@ export async function generateImageDirectly(
         sessionId: sessionId.trim(),
         projectId: projectId.trim(),
         tool: 'PINHOLE',
-        userPaygateTier: 'PAYGATE_TIER_ONE',
+        userPaygateTier,
       },
       seed: requestSeed,
       imageModelName: 'GEM_PIX',
@@ -264,6 +270,7 @@ export async function generateVideoTextDirectly(
   projectId: string,
   sessionId: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
+  accountTier: 'pro' | 'ultra',
   seed?: number,
   sceneId?: string
 ): Promise<{
@@ -279,10 +286,24 @@ export async function generateVideoTextDirectly(
     ? 'VIDEO_ASPECT_RATIO_SQUARE'
     : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
 
-  // 选择视频模型
-  const videoModelKey = aspectRatio === '9:16' 
-    ? 'veo_3_1_t2v_fast_portrait' 
-    : 'veo_3_1_t2v_fast';
+  // 行级注释：根据账号类型选择视频模型
+  let videoModelKey: string;
+  if (accountTier === 'ultra') {
+    // Ultra 账号使用带 _ultra 后缀的模型
+    videoModelKey = aspectRatio === '9:16'
+      ? 'veo_3_1_t2v_fast_ultra'
+      : 'veo_3_1_t2v_fast_ultra'; // 横屏也用 ultra
+  } else {
+    // Pro 账号使用标准模型
+    videoModelKey = aspectRatio === '9:16' 
+      ? 'veo_3_1_t2v_fast_portrait' 
+      : 'veo_3_1_t2v_fast';
+  }
+
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra' 
+    ? 'PAYGATE_TIER_TWO' 
+    : 'PAYGATE_TIER_ONE';
 
   const requestSeed = typeof seed === 'number' 
     ? seed 
@@ -299,7 +320,7 @@ export async function generateVideoTextDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier: 'PAYGATE_TIER_ONE',
+      userPaygateTier,
     },
     requests: [
       {
@@ -317,8 +338,10 @@ export async function generateVideoTextDirectly(
   };
 
   console.log('🎬 直接调用 Google Flow API 生成视频（文生视频）...', {
+    accountTier,
     aspectRatio: normalizedAspect,
     videoModelKey,
+    userPaygateTier,
     sceneId: generatedSceneId,
   });
 
@@ -375,6 +398,7 @@ export async function generateVideoImageDirectly(
   projectId: string,
   sessionId: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
+  accountTier: 'pro' | 'ultra',
   startMediaId: string,
   endMediaId?: string,
   seed?: number,
@@ -394,19 +418,40 @@ export async function generateVideoImageDirectly(
 
   const hasEndImage = Boolean(endMediaId && endMediaId.trim());
 
-  // 选择视频模型
+  // 行级注释：根据账号类型和模式选择视频模型
   let videoModelKey: string;
-  if (hasEndImage) {
-    // 首尾帧模式
-    videoModelKey = aspectRatio === '9:16'
-      ? 'veo_3_1_i2v_s_fast_portrait_fl'
-      : 'veo_3_1_i2v_s_fast_fl';
+  if (accountTier === 'ultra') {
+    // Ultra 账号使用带 _ultra 后缀的模型
+    if (hasEndImage) {
+      // 首尾帧模式
+      videoModelKey = aspectRatio === '9:16'
+        ? 'veo_3_1_i2v_s_fast_portrait_fl_ultra'
+        : 'veo_3_1_i2v_s_fast_fl_ultra';
+    } else {
+      // 仅首帧模式
+      videoModelKey = aspectRatio === '9:16'
+        ? 'veo_3_1_i2v_s_fast_portrait_ultra'
+        : 'veo_3_1_i2v_s_fast_ultra';
+    }
   } else {
-    // 仅首帧模式
-    videoModelKey = aspectRatio === '9:16'
-      ? 'veo_3_1_i2v_s_fast_portrait'
-      : 'veo_3_1_i2v_s_fast';
+    // Pro 账号使用标准模型
+    if (hasEndImage) {
+      // 首尾帧模式
+      videoModelKey = aspectRatio === '9:16'
+        ? 'veo_3_1_i2v_s_fast_portrait_fl'
+        : 'veo_3_1_i2v_s_fast_fl';
+    } else {
+      // 仅首帧模式
+      videoModelKey = aspectRatio === '9:16'
+        ? 'veo_3_1_i2v_s_fast_portrait'
+        : 'veo_3_1_i2v_s_fast';
+    }
   }
+
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra' 
+    ? 'PAYGATE_TIER_TWO' 
+    : 'PAYGATE_TIER_ONE';
 
   const requestSeed = typeof seed === 'number' 
     ? seed 
@@ -446,7 +491,7 @@ export async function generateVideoImageDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier: 'PAYGATE_TIER_ONE',
+      userPaygateTier,
     },
     requests: [requestObject],
   };
@@ -457,9 +502,11 @@ export async function generateVideoImageDirectly(
     : 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage';
 
   console.log('🎬 直接调用 Google Flow API 生成视频（图生视频）...', {
+    accountTier,
     mode: hasEndImage ? '首尾帧' : '仅首帧',
     aspectRatio: normalizedAspect,
     videoModelKey,
+    userPaygateTier,
     sceneId: generatedSceneId,
   });
 

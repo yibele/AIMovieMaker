@@ -21,6 +21,7 @@ export default function SettingsPanel() {
   const [projectId, setProjectId] = useState(apiConfig.projectId || '');
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
+  const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
 
   // 同步本地状态
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function SettingsPanel() {
     setProjectId(apiConfig.projectId || '');
     setWorkflowId(apiConfig.workflowId || '');
     setSessionId(apiConfig.sessionId || '');
+    setAccountTier(apiConfig.accountTier || 'pro');
   }, [apiConfig]);
 
   const handleGenerateContext = () => {
@@ -50,6 +52,7 @@ export default function SettingsPanel() {
       projectId: projectId.trim(),
       workflowId: workflowId.trim(),
       sessionId: sessionId.trim(),
+      accountTier,
     });
     setIsOpen(false);
     toast.success('API 配置已保存');
@@ -142,6 +145,39 @@ export default function SettingsPanel() {
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   从 Flow 工具的 URL 中获取项目 ID，视频生成必需
+                </p>
+              </div>
+
+              {/* 账号类型 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  账号类型
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setAccountTier('pro')}
+                    className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      accountTier === 'pro'
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    🎨 Pro
+                  </button>
+                  <button
+                    onClick={() => setAccountTier('ultra')}
+                    className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      accountTier === 'ultra'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    ✨ Ultra
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  选择你的 Google Labs 账号类型（Pro 或 Ultra），不同账号使用不同的视频模型
                 </p>
               </div>
 
