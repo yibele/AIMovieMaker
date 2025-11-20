@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useRef, useCallback, useMemo } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar } from '@xyflow/react';
+import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar, useReactFlow } from '@xyflow/react';
 import { Play, Pause, Image as ImageIcon, Type, Download, Sparkles, Trash2, RotateCcw } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
@@ -19,6 +19,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
+  const { setEdges } = useReactFlow(); // 行级注释：用于创建连线
 
   const generationStatusText = useMemo(() => {
     const hasPrompt = Boolean(videoData.promptText?.trim());
@@ -125,7 +126,15 @@ function VideoNode({ data, selected, id }: NodeProps) {
       if (videoData.mediaGenerationId) {
         try {
           console.log('📥 尝试通过 media API 获取视频 base64...');
-          setDownloadProgress(10);
+          setDownloadProgress(15);
+          
+          // 行级注释：模拟进度增长，避免长时间停在一个数字
+          const progressInterval = setInterval(() => {
+            setDownloadProgress(prev => {
+              if (prev < 40) return prev + 5; // 15% → 40%，持续增长
+              return prev;
+            });
+          }, 500); // 每 0.5 秒增加 5%
           
           const { useCanvasStore } = await import('@/lib/store');
           const apiConfig = useCanvasStore.getState().apiConfig;
@@ -144,18 +153,20 @@ function VideoNode({ data, selected, id }: NodeProps) {
             }
           );
           
+          clearInterval(progressInterval); // 行级注释：停止模拟进度
+          
           if (!mediaResponse.ok) {
             throw new Error('Media API 调用失败');
           }
           
           const mediaData = await mediaResponse.json();
-          setDownloadProgress(40);
+          setDownloadProgress(50); // 行级注释：API 返回，跳到 50%
           
           // 行级注释：提取视频 base64 数据
           const encodedVideo = mediaData?.video?.encodedVideo;
           if (encodedVideo) {
             console.log('✅ 获取到视频 base64，开始转换...');
-            setDownloadProgress(60);
+            setDownloadProgress(70); // 行级注释：开始转换，跳到 70%
             
             // 行级注释：将 base64 转为 Blob
             const byteCharacters = atob(encodedVideo);
@@ -170,6 +181,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
             setBlobSize(blob.size);
             setDownloadProgress(100);
           } else {
+            clearInterval(progressInterval); // 行级注释：确保清理定时器
             throw new Error('未获取到视频 base64');
           }
           
@@ -363,7 +375,21 @@ function VideoNode({ data, selected, id }: NodeProps) {
       const addElement = useCanvasStore.getState().addElement;
       addElement(newVideo);
 
-      console.log('✅ 创建超清视频 placeholder:', newVideoId);
+      // 行级注释：创建从原视频到超清视频的连线
+      const edgeId = `edge-${id}-${newVideoId}-upsample`;
+      setEdges((eds: any[]) => [
+        ...eds,
+        {
+          id: edgeId,
+          source: id,
+          target: newVideoId,
+          type: 'default',
+          animated: true,
+          style: { stroke: '#a855f7', strokeWidth: 2 }, // 行级注释：紫色表示超清
+        },
+      ]);
+
+      console.log('✅ 创建超清视频 placeholder 和连线:', newVideoId);
 
       // 行级注释：调用超清 API
       const { generateVideoUpsample, pollFlowVideoOperation } = await import('@/lib/api-mock');
@@ -400,6 +426,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
             status: 'ready',
             progress: 100,
           } as any);
+
+          // 行级注释：停止连线动画
+          const edgeId = `edge-${id}-${newVideoId}-upsample`;
+          setEdges((eds: any[]) =>
+            eds.map((edge: any) =>
+              edge.id === edgeId
+                ? { ...edge, animated: false }
+                : edge
+            )
+          );
         })
         .catch((error) => {
           console.error('❌ 超清视频生成失败:', error);
@@ -409,6 +445,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
             status: 'error',
             progress: 0,
           } as any);
+
+          // 行级注释：连线变红色表示错误
+          const edgeId = `edge-${id}-${newVideoId}-upsample`;
+          setEdges((eds: any[]) =>
+            eds.map((edge: any) =>
+              edge.id === edgeId
+                ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 2 } }
+                : edge
+            )
+          );
 
           alert(`超清放大失败: ${error instanceof Error ? error.message : '未知错误'}`);
         });
