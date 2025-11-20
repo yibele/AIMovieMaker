@@ -546,22 +546,46 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setSelection([newImage.id]);
   };
 
-// 下载图片 - 在新标签页打开让用户右键保存
-  const handleDownload = () => {
-    imageElements.forEach((img) => {
-      if (!img?.src) return;
-      // 在新标签页打开图片
-      const newWindow = window.open(img.src, '_blank', 'noopener,noreferrer');
-
-      // 如果新窗口打开成功，显示提示
-      if (newWindow) {
-        console.log(`✅ 已在新标签页打开图片: ${img.id}`);
-      } else {
-        // 如果新窗口被阻止，回退到当前窗口打开
-        window.location.href = img.src;
-        console.log(`⚠️ 新标签页被阻止，在当前窗口打开图片: ${img.id}`);
+// 行级注释：下载图片 - 直接从 Google URL 下载，不走 Vercel 流量
+  const handleDownload = async () => {
+    // 行级注释：支持批量下载
+    for (const img of imageElements) {
+      if (!img?.src) continue;
+      
+      try {
+        console.log('🚀 开始下载图片:', img.src);
+        
+        // 行级注释：直接 fetch Google URL，浏览器处理，不经过 Vercel
+        const response = await fetch(img.src);
+        if (!response.ok) {
+          throw new Error(`下载失败: ${response.status}`);
+        }
+        
+        // 行级注释：创建 Blob
+        const blob = await response.blob();
+        console.log('✅ 图片下载完成，大小:', blob.size, 'bytes');
+        
+        // 行级注释：创建下载链接
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `image-${img.id}.png`;
+        
+        // 行级注释：触发下载
+        document.body.appendChild(link);
+        link.click();
+        
+        // 行级注释：清理
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+      } catch (error) {
+        console.error('❌ 下载图片失败:', error);
+        toast.error(`下载失败: ${error instanceof Error ? error.message : '未知错误'}`);
       }
-    });
+    }
   };
 
   // 删除 - 直接删除，无需确认
