@@ -102,33 +102,7 @@ export default function SettingsPanel() {
                 </p>
               </div>
 
-              {/* Bearer Token */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bearer Token
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <textarea
-                  value={bearerToken}
-                  onChange={(e) => setBearerToken(e.target.value)}
-                  placeholder="ya29.a0ATi6K2tZ-xDdUkTv6zUfp_Sexho..."
-                  className="w-full h-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
-                />
-              </div>
-
-              {/* Cookie */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cookie
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <textarea
-                  value={cookie}
-                  onChange={(e) => setCookie(e.target.value)}
-                  placeholder="_ga=GA1.1.591914170.1757499304; EMAIL=..."
-                  className="w-full h-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
-                />
-              </div>
+              {/* 行级注释：Bearer Token 和 Cookie 已隐藏，由账号类型自动配置 */}
 
               {/* Project ID */}
               <div>

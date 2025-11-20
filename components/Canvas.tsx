@@ -110,6 +110,21 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     resetConnectionMenu,
   });
 
+  // 行级注释：同步 elements 到 React Flow 节点状态
+  useEffect(() => {
+    setNodes(elements.map(el => ({
+      id: el.id,
+      type: el.type,
+      position: el.position,
+      data: el as any,
+      draggable: true,
+      style: el.size ? {
+        width: el.size.width,
+        height: el.size.height,
+      } : undefined,
+    })));
+  }, [elements, setNodes]);
+
   useEffect(() => {
     if (!projectId) {
       return;
