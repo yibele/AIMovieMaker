@@ -2,6 +2,42 @@
 // 用于节省 Fast Origin Transfer
 
 /**
+ * 获取视频积分状态
+ * 返回当前账户的积分数量和付费等级
+ */
+export async function getVideoCreditStatus(
+  bearerToken: string
+): Promise<{
+  credits: number;
+  userPaygateTier: string;
+  g1MembershipState: string;
+  isUserAnimateCountryEnabled: boolean;
+}> {
+  const url = 'https://aisandbox-pa.googleapis.com/v1/whisk:getVideoCreditStatus';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Authorization: `Bearer ${bearerToken}`,
+      Origin: 'https://labs.google',
+      Referer: 'https://labs.google/',
+    },
+    body: '{}',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('获取积分状态失败:', response.status, errorText);
+    throw new Error(`获取积分失败: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log('✅ 积分状态:', data);
+  return data;
+}
+
+/**
  * 直接上传图片到 Google Flow API
  * 不需要 Cookie，可以绕过 Vercel 服务器
  */
