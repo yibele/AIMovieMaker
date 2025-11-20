@@ -403,90 +403,57 @@ export async function pollFlowVideoOperation(
   sceneId?: string,
   proxy?: string
 ): Promise<FlowVideoResult> {
-  // 行级注释：视频状态查询走后端，避免 CORS 问题
+  // 行级注释：视频状态查询直接调用 Google API（绕过 Vercel）
+  const { checkVideoStatusDirectly } = await import('./direct-google-api');
+  
   for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
     console.log(`🔁 视频生成轮询第 ${attempt} 次`);
     
     try {
-      const response = await fetch('/api/flow/video/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operations: [{
-            operation: { name: operationName },
-            ...(sceneId ? { sceneId } : {}),
-            status: 'MEDIA_GENERATION_STATUS_PENDING',
-          }],
-          bearerToken,
-          proxy,
-        }),
-      });
+      // 行级注释：直接调用 Google API 查询状态
+      const result = await checkVideoStatusDirectly(
+        operationName,
+        bearerToken,
+        sceneId
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ 状态查询失败:', response.status, errorData);
-        throw new Error(`Status check failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const operations = data.operations || [];
-      
-      if (operations.length === 0) {
-        throw new Error('No operations in response');
-      }
-
-      const operation = operations[0];
-      const status = operation?.status;
+      const status = result.status;
       console.log('📦 Flow 视频状态:', status);
 
       // 行级注释：失败状态 - 立即抛出错误
       if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
-        const operationInner = operation?.operation;
-        const metadata = operationInner?.metadata || operation?.metadata;
-        const errorMessage = operation?.error || metadata?.error || 'Flow 视频生成失败';
+        const errorMessage = result.error || 'Flow 视频生成失败';
         throw new Error(errorMessage);
       }
 
-      // 行级注释：成功状态 - 解析并返回视频数据
+      // 行级注释：成功状态 - 直接返回视频数据
       if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
-        console.log('🎉 视频生成成功，开始解析数据...');
-        console.log('📦 完整 operation 数据:', JSON.stringify(operation, null, 2));
+        console.log('🎉 视频生成成功！');
         
-        // 解析视频数据 - 根据文档，视频数据在 operation.operation.metadata.video
-        const operationInner = operation?.operation;
-        const metadata = operationInner?.metadata || operation?.metadata;
-        const videoData = metadata?.video || operation?.video;
-        
-        console.log('📦 metadata:', metadata ? '存在' : '不存在');
-        console.log('📦 videoData:', videoData ? '存在' : '不存在');
-        
-        if (videoData) {
-          console.log('📦 videoData.fifeUrl:', videoData.fifeUrl);
-          console.log('📦 videoData.servingBaseUri:', videoData.servingBaseUri);
-        }
-        
-        const videoUrl = videoData?.fifeUrl || videoData?.videoUrl || '';
-        if (!videoUrl) {
-          console.error('❌ 找不到视频 URL，完整数据:', JSON.stringify(operation, null, 2));
+        if (!result.videoUrl) {
           throw new Error('Flow 返回缺少视频地址');
         }
         
-        const result = {
-          videoUrl,
-          thumbnailUrl: videoData?.servingBaseUri || videoData?.thumbnailUrl || '',
-          duration: videoData?.durationSeconds || 0,
-          mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
-        };
-        
         // 行级注释：更新积分到 store
-        if (typeof data.remainingCredits === 'number') {
+        if (typeof result.remainingCredits === 'number') {
           const { useCanvasStore } = await import('@/lib/store');
-          useCanvasStore.getState().setCredits(data.remainingCredits);
-          console.log('💎 积分已更新:', data.remainingCredits);
+          useCanvasStore.getState().setCredits(result.remainingCredits);
+          console.log('💎 积分已更新:', result.remainingCredits);
         }
         
-        console.log('✅ 视频数据解析成功:', result);
-        return result;
+        console.log('✅ 视频数据解析成功:', {
+          videoUrl: result.videoUrl,
+          thumbnailUrl: result.thumbnailUrl,
+          duration: result.duration,
+          mediaGenerationId: result.mediaGenerationId,
+        });
+        
+        return {
+          videoUrl: result.videoUrl,
+          thumbnailUrl: result.thumbnailUrl || '',
+          duration: result.duration || 8,
+          mediaGenerationId: result.mediaGenerationId || '',
+        };
       }
 
       // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询

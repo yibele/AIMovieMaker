@@ -747,8 +747,22 @@ export async function generateVideoUpsampleDirectly(
     throw new Error('视频超清响应缺少 operation 字段');
   }
 
+  // 行级注释：详细日志，调试 operationName 提取
+  console.log('🔍 超清 operation 详情:', {
+    operation,
+    operationName: operation.operation?.name,
+    sceneId: operation.sceneId,
+    status: operation.status,
+  });
+
+  const extractedOperationName = operation.operation?.name || '';
+  
+  if (!extractedOperationName) {
+    console.error('❌ 警告：operationName 为空！完整响应:', JSON.stringify(data, null, 2));
+  }
+
   return {
-    operationName: operation.operation?.name || '',
+    operationName: extractedOperationName,
     sceneId: operation.sceneId || finalSceneId,
     status: operation.status || 'MEDIA_GENERATION_STATUS_PENDING',
     remainingCredits: data.remainingCredits,

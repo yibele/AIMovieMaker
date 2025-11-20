@@ -124,12 +124,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
       
       // 行级注释：优先尝试通过 media API 获取 base64（更快，0 流量）
       if (videoData.mediaGenerationId) {
+        let progressInterval: NodeJS.Timeout | null = null; // 行级注释：定义在外部以便清理
         try {
           console.log('📥 尝试通过 media API 获取视频 base64...');
           setDownloadProgress(15);
           
           // 行级注释：模拟进度增长，避免长时间停在一个数字
-          const progressInterval = setInterval(() => {
+          progressInterval = setInterval(() => {
             setDownloadProgress(prev => {
               if (prev < 40) return prev + 5; // 15% → 40%，持续增长
               return prev;
@@ -153,7 +154,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
             }
           );
           
-          clearInterval(progressInterval); // 行级注释：停止模拟进度
+          if (progressInterval) clearInterval(progressInterval); // 行级注释：停止模拟进度
           
           if (!mediaResponse.ok) {
             throw new Error('Media API 调用失败');
@@ -181,17 +182,19 @@ function VideoNode({ data, selected, id }: NodeProps) {
             setBlobSize(blob.size);
             setDownloadProgress(100);
           } else {
-            clearInterval(progressInterval); // 行级注释：确保清理定时器
             throw new Error('未获取到视频 base64');
           }
           
         } catch (mediaError) {
+          // 行级注释：确保清理定时器
+          if (progressInterval) clearInterval(progressInterval);
+          
           // 行级注释：media API 失败，回退到 URL 下载
           console.warn('⚠️ media API 获取失败，回退到 URL 下载:', mediaError);
           
           // 行级注释：从 URL 下载（原逻辑）
           setDownloadProgress(0);
-          const progressInterval = setInterval(() => {
+          const fallbackProgressInterval = setInterval(() => {
             setDownloadProgress(prev => Math.min(prev + 10, 90));
           }, 100);
 
@@ -230,7 +233,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
           console.log('✅ URL 下载完成，大小:', blob.size, 'bytes');
           setBlobSize(blob.size);
 
-          clearInterval(progressInterval);
+          clearInterval(fallbackProgressInterval);
           setDownloadProgress(100);
         }
       } else {
