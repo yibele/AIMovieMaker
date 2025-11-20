@@ -84,43 +84,7 @@ export default function SettingsPanel() {
 
             {/* 表单 */}
             <div className="space-y-6">
-              {/* API Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  API Key
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  用于调用 Flow Media API 获取图片数据
-                </p>
-              </div>
-
-              {/* 行级注释：Bearer Token 和 Cookie 已隐藏，由账号类型自动配置 */}
-
-              {/* Project ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project ID
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  placeholder="02ac868b-925f-40c1-9187-a688bd03a84d"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  从 Flow 工具的 URL 中获取项目 ID，视频生成必需
-                </p>
-              </div>
+              {/* 行级注释：API Key、Bearer Token、Cookie、Project ID 已隐藏，由系统自动配置 */}
 
               {/* 账号类型 */}
               <div>
