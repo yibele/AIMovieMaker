@@ -805,6 +805,74 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [connectionMenu.sourceNodeId, connectionMenu.sourceNodeType, elements]
   );
 
+  // 图片编辑器回调函数 - 使用 useCallback 避免不必要的重新渲染
+  const handleAnnotatorClose = useCallback(() => {
+    setAnnotatorTarget(null);
+  }, [setAnnotatorTarget]);
+
+  const handleAnnotatorConfirm = useCallback(async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
+    if (!annotatorTarget || !result.promptText?.trim()) return;
+
+    try {
+      const aspectRatio = (() => {
+        const width = annotatorTarget.size?.width || 640;
+        const height = annotatorTarget.size?.height || 360;
+        const ratio = width / height;
+        if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
+        if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
+        return '1:1';
+      })() as '16:9' | '9:16' | '1:1';
+
+      const size = aspectRatio === '9:16' ? { width: 360, height: 640 }
+        : aspectRatio === '1:1' ? { width: 512, height: 512 }
+          : { width: 640, height: 360 };
+
+      const newImageId = `image-${Date.now()}`;
+      const newImage: ImageElement = {
+        id: newImageId,
+        type: 'image',
+        src: '',
+        position: {
+          x: annotatorTarget.position.x + (annotatorTarget.size?.width || 640) + 50,
+          y: annotatorTarget.position.y,
+        },
+        size,
+        sourceImageIds: [annotatorTarget.id],
+        generatedFrom: {
+          type: 'image-to-image',
+          sourceIds: [annotatorTarget.id],
+          prompt: result.promptText,
+        },
+      };
+
+      addElement(newImage);
+
+      const base64Data = annotatedImageDataUrl.split(',')[1];
+      const uploadResult = await registerUploadedImage(base64Data);
+      if (!uploadResult.mediaGenerationId) throw new Error('上传失败');
+
+      const imageResult = await imageToImage(
+        result.promptText,
+        annotatedImageDataUrl,
+        aspectRatio,
+        '',
+        uploadResult.mediaGenerationId,
+        1
+      );
+
+      updateElement(newImageId, {
+        src: imageResult.imageUrl,
+        base64: imageResult.images?.[0]?.base64,
+        promptId: imageResult.promptId,
+        mediaId: imageResult.mediaId,
+        mediaGenerationId: imageResult.mediaGenerationId,
+        uploadState: 'synced',
+      } as Partial<ImageElement>);
+    } catch (error) {
+      console.error('图片编辑失败:', error);
+    }
+  }, [annotatorTarget, addElement, updateElement]);
+
   // 行级注释：文生视频处理函数
   const handleTextToVideo = useCallback(
     async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9') => {
@@ -1169,69 +1237,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         open={Boolean(annotatorTarget)}
         imageSrc={annotatorTarget?.src || null}
         isLoadingImage={isLoadingAnnotatorImage}
-        onClose={() => setAnnotatorTarget(null)}
-        onConfirm={async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
-          if (!annotatorTarget || !result.promptText?.trim()) return;
-
-          try {
-            const aspectRatio = (() => {
-              const width = annotatorTarget.size?.width || 640;
-              const height = annotatorTarget.size?.height || 360;
-              const ratio = width / height;
-              if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
-              if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
-              return '1:1';
-            })() as '16:9' | '9:16' | '1:1';
-
-            const size = aspectRatio === '9:16' ? { width: 360, height: 640 }
-              : aspectRatio === '1:1' ? { width: 512, height: 512 }
-                : { width: 640, height: 360 };
-
-            const newImageId = `image-${Date.now()}`;
-            const newImage: ImageElement = {
-              id: newImageId,
-              type: 'image',
-              src: '',
-              position: {
-                x: annotatorTarget.position.x + (annotatorTarget.size?.width || 640) + 50,
-                y: annotatorTarget.position.y,
-              },
-              size,
-              sourceImageIds: [annotatorTarget.id],
-              generatedFrom: {
-                type: 'image-to-image',
-                sourceIds: [annotatorTarget.id],
-                prompt: result.promptText,
-              },
-            };
-
-            addElement(newImage);
-
-            const base64Data = annotatedImageDataUrl.split(',')[1];
-            const uploadResult = await registerUploadedImage(base64Data);
-            if (!uploadResult.mediaGenerationId) throw new Error('上传失败');
-
-            const imageResult = await imageToImage(
-              result.promptText,
-              annotatedImageDataUrl,
-              aspectRatio,
-              '',
-              uploadResult.mediaGenerationId,
-              1
-            );
-
-            updateElement(newImageId, {
-              src: imageResult.imageUrl,
-              base64: imageResult.images?.[0]?.base64,
-              promptId: imageResult.promptId,
-              mediaId: imageResult.mediaId,
-              mediaGenerationId: imageResult.mediaGenerationId,
-              uploadState: 'synced',
-            } as Partial<ImageElement>);
-          } catch (error) {
-            console.error('图片编辑失败:', error);
-          }
-        }}
+        onClose={handleAnnotatorClose}
+        onConfirm={handleAnnotatorConfirm}
       />
     </div>
   );
