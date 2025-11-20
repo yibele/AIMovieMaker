@@ -50,7 +50,7 @@ interface CanvasStore {
   currentPrefixPrompt: string;
   // 行级注释：视频积分状态
   credits: number | null;
-  
+
   // 操作方法
   addElement: (element: CanvasElement) => void;
   updateElement: (id: string, updates: Partial<CanvasElement>) => void;
@@ -77,6 +77,11 @@ interface CanvasStore {
     count: number,
     panelRef: HTMLDivElement | null
   ) => void;
+  // 图片编辑器状态
+  annotatorTarget: ImageElement | null;
+  isLoadingAnnotatorImage: boolean;
+  setAnnotatorTarget: (target: ImageElement | null) => void;
+  setIsLoadingAnnotatorImage: (loading: boolean) => void;
 }
 
 const createFlowContext = () => {
@@ -104,7 +109,7 @@ const loadApiConfig = (): ApiConfig => {
       accountTier: 'pro', // 行级注释：默认 Pro 账号
     };
   }
-  
+
   try {
     const saved = localStorage.getItem('aimovimaker_api_config');
     if (saved) {
@@ -125,7 +130,7 @@ const loadApiConfig = (): ApiConfig => {
   } catch (error) {
     console.error('加载 API 配置失败:', error);
   }
-  
+
   const context = createFlowContext();
   return {
     apiKey: '',
@@ -186,120 +191,126 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
   };
 
   return {
-  elements: [],
-  selection: [],
-  promptsHistory: [],
-  batchContext: null,
-  uiState: {
-    zoom: 1,
-    showGrid: true,
-    activeTool: 'select',
-  },
-  projectTitle: 'Untitled',
-  apiConfig: initialConfig,
-  credits: null, // 行级注释：初始积分为 null，待首次获取
-  isSettingsOpen: false,
-  projectPrefixPrompts: loadProjectPrefixPrompts(),
-  currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
-  triggerVideoGeneration: undefined,
-  onGenerateFromInput: undefined,
-  
-  addElement: (element) => 
-    set((state) => ({ 
-      elements: [...state.elements, element] 
-    })),
-  
-  updateElement: (id, updates) =>
-    set((state) => ({
-      elements: state.elements.map((el) =>
-        el.id === id ? { ...el, ...updates } : el
-      ),
-    })),
-  
-  deleteElement: (id) =>
-    set((state) => ({
-      elements: state.elements.filter((el) => el.id !== id),
-      selection: state.selection.filter((selId) => selId !== id),
-    })),
-  
-  deleteSelectedElements: () =>
-    set((state) => ({
-      elements: state.elements.filter(
-        (el) => !state.selection.includes(el.id)
-      ),
-      selection: [],
-    })),
-  
-  setSelection: (ids) => set({ selection: ids }),
-  
-  clearSelection: () => set({ selection: [] }),
-  
-  addPromptHistory: (history) =>
-    set((state) => ({
-      promptsHistory: [...state.promptsHistory, history],
-    })),
-  
-  setBatchContext: (context) => set({ batchContext: context }),
-  
-  setUIState: (updates) =>
-    set((state) => ({
-      uiState: { ...state.uiState, ...updates },
-    })),
-  
-  setProjectTitle: (title) => set({ projectTitle: title }),
-  
-  setApiConfig: (config: Partial<ApiConfig>) => {
-    set((state) => {
-      const merged: ApiConfig = {
-        ...state.apiConfig,
-        ...config,
-      };
-      saveConfig(merged);
-      return { apiConfig: merged };
-    });
-  },
+    elements: [],
+    selection: [],
+    promptsHistory: [],
+    batchContext: null,
+    uiState: {
+      zoom: 1,
+      showGrid: true,
+      activeTool: 'select',
+    },
+    projectTitle: 'Untitled',
+    apiConfig: initialConfig,
+    credits: null, // 行级注释：初始积分为 null，待首次获取
+    isSettingsOpen: false,
+    projectPrefixPrompts: loadProjectPrefixPrompts(),
+    currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
+    triggerVideoGeneration: undefined,
+    onGenerateFromInput: undefined,
 
-  setPrefixPrompt: (prompt) => {
-    const projectId = get().apiConfig.projectId;
-    if (!projectId) return;
+    addElement: (element) =>
+      set((state) => ({
+        elements: [...state.elements, element]
+      })),
 
-    // 保存到项目映射中
-    saveProjectPrefixPrompt(projectId, prompt);
+    updateElement: (id, updates) =>
+      set((state) => ({
+        elements: state.elements.map((el) =>
+          el.id === id ? { ...el, ...updates } : el
+        ),
+      })),
 
-    // 更新当前前置提示词
-    set({ currentPrefixPrompt: prompt });
-  },
+    deleteElement: (id) =>
+      set((state) => ({
+        elements: state.elements.filter((el) => el.id !== id),
+        selection: state.selection.filter((selId) => selId !== id),
+      })),
 
-  loadProjectPrefixPrompt: (projectId) => {
-    const prompts = get().projectPrefixPrompts;
-    const prompt = prompts[projectId] || '';
-    set({
-      currentPrefixPrompt: prompt,
-      apiConfig: { ...get().apiConfig, projectId }
-    });
-  },
+    deleteSelectedElements: () =>
+      set((state) => ({
+        elements: state.elements.filter(
+          (el) => !state.selection.includes(el.id)
+        ),
+        selection: [],
+      })),
 
-  setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
-  
-  getElementByIds: (ids) => {
-    const { elements } = get();
-    return elements.filter((el) => ids.includes(el.id));
-  },
-  regenerateFlowContext: () => {
-    const context = createFlowContext();
-    set((state) => {
-      const nextConfig: ApiConfig = {
-        ...state.apiConfig,
-        workflowId: context.workflowId,
-        sessionId: context.sessionId,
-      };
-      saveConfig(nextConfig);
-      return { apiConfig: nextConfig };
-    });
-    return context;
-  },
-  
-  setCredits: (credits) => set({ credits }), // 行级注释：更新积分状态
+    setSelection: (ids) => set({ selection: ids }),
+
+    clearSelection: () => set({ selection: [] }),
+
+    addPromptHistory: (history) =>
+      set((state) => ({
+        promptsHistory: [...state.promptsHistory, history],
+      })),
+
+    setBatchContext: (context) => set({ batchContext: context }),
+
+    setUIState: (updates) =>
+      set((state) => ({
+        uiState: { ...state.uiState, ...updates },
+      })),
+
+    setProjectTitle: (title) => set({ projectTitle: title }),
+
+    setApiConfig: (config: Partial<ApiConfig>) => {
+      set((state) => {
+        const merged: ApiConfig = {
+          ...state.apiConfig,
+          ...config,
+        };
+        saveConfig(merged);
+        return { apiConfig: merged };
+      });
+    },
+
+    setPrefixPrompt: (prompt) => {
+      const projectId = get().apiConfig.projectId;
+      if (!projectId) return;
+
+      // 保存到项目映射中
+      saveProjectPrefixPrompt(projectId, prompt);
+
+      // 更新当前前置提示词
+      set({ currentPrefixPrompt: prompt });
+    },
+
+    loadProjectPrefixPrompt: (projectId) => {
+      const prompts = get().projectPrefixPrompts;
+      const prompt = prompts[projectId] || '';
+      set({
+        currentPrefixPrompt: prompt,
+        apiConfig: { ...get().apiConfig, projectId }
+      });
+    },
+
+    setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+    getElementByIds: (ids) => {
+      const { elements } = get();
+      return elements.filter((el) => ids.includes(el.id));
+    },
+    regenerateFlowContext: () => {
+      const context = createFlowContext();
+      set((state) => {
+        const nextConfig: ApiConfig = {
+          ...state.apiConfig,
+          workflowId: context.workflowId,
+          sessionId: context.sessionId,
+        };
+        saveConfig(nextConfig);
+        return { apiConfig: nextConfig };
+      });
+      return context;
+    },
+
+    setCredits: (credits) => set({ credits }), // 行级注释：更新积分状态
+
+    // 图片编辑器状态和方法
+    annotatorTarget: null,
+    isLoadingAnnotatorImage: false,
+    setAnnotatorTarget: (target) => set({ annotatorTarget: target }),
+    setIsLoadingAnnotatorImage: (loading) => set({ isLoadingAnnotatorImage: loading }),
   };
 });
 

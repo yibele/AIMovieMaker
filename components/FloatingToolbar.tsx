@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState } from 'react';
 import { RefreshCw, Copy, Download, Trash2, Square, Edit3 } from 'lucide-react';
 import { Panel, useReactFlow, useViewport } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
@@ -7,7 +8,6 @@ import { ImageElement } from '@/lib/types';
 import { editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './nodes/ToolbarButton';
-import { useState } from 'react';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 import { toast } from 'sonner';
 
@@ -68,7 +68,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       toast.error('当前图片缺少 mediaId 或 mediaGenerationId，无法编辑');
       return;
     }
-    
+
     // 立即打开 Modal，显示加载状态
     setAnnotatorTarget(selectedImage);
     setIsLoadingAnnotatorImage(true);
@@ -85,13 +85,13 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         setIsLoadingAnnotatorImage(false);
         return;
       }
-      
+
       console.log('📥 通过 API 获取原图 base64...');
-      
+
       const { useCanvasStore } = await import('@/lib/store');
       const apiConfig = useCanvasStore.getState().apiConfig;
 
-      if ( !apiConfig.bearerToken) {
+      if (!apiConfig.bearerToken) {
         toast.error('请先在设置中配置 API Key 和 Bearer Token');
         setAnnotatorTarget(null);
         setIsLoadingAnnotatorImage(false);
@@ -107,35 +107,35 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           } : {}
         }
       );
-      
+
       if (!mediaResponse.ok) {
         throw new Error('Media API 调用失败');
       }
-      
+
       const mediaData = await mediaResponse.json();
-      
+
       // 提取 base64 数据 - 检查多个可能的路径
       const encodedImage = mediaData?.image?.encodedImage ||
-                         mediaData?.userUploadedImage?.image ||
-                         mediaData?.userUploadedImage?.encodedImage;
+        mediaData?.userUploadedImage?.image ||
+        mediaData?.userUploadedImage?.encodedImage;
       if (!encodedImage) {
         throw new Error('未获取到图片数据');
       }
-      
+
       console.log('✅ 获取原图 base64 成功');
-      
+
       // 使用 base64 DataURL 更新目标
       const imageDataUrl = `data:image/png;base64,${encodedImage}`;
-      
+
       // 缓存 base64
       mediaBase64Cache.set(effectiveMediaId, imageDataUrl);
-      
+
       setAnnotatorTarget({
         ...selectedImage,
         src: imageDataUrl, // 用 base64 DataURL
       });
       setIsLoadingAnnotatorImage(false);
-      
+
     } catch (error) {
       console.error('❌ 获取原图失败:', error);
       toast.error(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -147,35 +147,35 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   // 注释完成 - 将标注图上传并进行图生图
   const handleAnnotatorConfirm = async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
     if (!selectedImage) return;
-    
+
     // 保持 Modal 打开，不关闭
     // setAnnotatorTarget(null);
-    
+
     // 如果没有提示词，不做图生图
     if (!result.promptText || !result.promptText.trim()) {
       console.log('✅ 图片标注完成，但未输入提示词，跳过图生图');
       return;
     }
-    
+
     try {
       console.log('🖍️ 开始图片编辑流程:', result.promptText);
-      
+
       // 推断宽高比
       let aspectRatio: '16:9' | '9:16' | '1:1' = '16:9';
       if (selectedImage.size) {
         const { width = 400, height = 300 } = selectedImage.size;
         const ratio = width / height;
-        if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
-        else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+        if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
+        else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
         else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
       }
-      
+
       // 计算新图片位置（在原图右侧）
       const newPosition = {
         x: selectedImage.position.x + (selectedImage.size?.width || 640) + 50,
         y: selectedImage.position.y,
       };
-      
+
       // 创建新图片的尺寸
       const size = { width: 640, height: 360 };
       if (aspectRatio === '9:16') {
@@ -185,7 +185,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         size.width = 512;
         size.height = 512;
       }
-      
+
       // 立即创建 placeholder（在上传阶段就显示）
       const newImageId = `image-${Date.now()}`;
       const newImage: ImageElement = {
@@ -201,9 +201,9 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           prompt: result.promptText,
         },
       };
-      
+
       addElement(newImage);
-      
+
       // 创建连线（连到原图，不连标注图）
       if (setEdges) {
         const edgeId = `edge-${selectedImage.id}-${newImageId}`;
@@ -219,26 +219,26 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           },
         ]);
       }
-      
+
       // 1. 将标注图的 DataURL 转为 base64
       const base64Data = annotatedImageDataUrl.split(',')[1];
-      
+
       // 2. 上传标注后的图片到 Flow，获取 mediaGenerationId
       const { registerUploadedImage } = await import('@/lib/api-mock');
-      
+
       console.log('📤 上传标注图片到 Flow...');
       const uploadResult = await registerUploadedImage(base64Data);
-      
+
       if (!uploadResult.mediaGenerationId) {
         throw new Error('上传失败：未获取到 mediaGenerationId');
       }
-      
+
       console.log('✅ 标注图片上传成功:', uploadResult.mediaGenerationId);
-      
+
       // 3. 调用图生图 API
       console.log('🎨 使用标注图进行图生图...');
       const { imageToImage } = await import('@/lib/api-mock');
-      
+
       const imageResult = await imageToImage(
         result.promptText,
         annotatedImageDataUrl, // 传入标注图的 dataUrl
@@ -247,7 +247,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         uploadResult.mediaGenerationId, // 使用上传后的 mediaGenerationId
         1
       );
-      
+
       // 更新图片内容（包含 base64）
       updateElement(newImageId, {
         src: imageResult.imageUrl,
@@ -257,7 +257,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         mediaGenerationId: imageResult.mediaGenerationId,
         uploadState: 'synced',
       } as Partial<ImageElement>);
-      
+
       // 停止连线动画
       if (setEdges) {
         const edgeId = `edge-${selectedImage.id}-${newImageId}`;
@@ -269,7 +269,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           )
         );
       }
-      
+
       // 添加到历史记录
       addPromptHistory({
         promptId: imageResult.promptId,
@@ -278,9 +278,9 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         mode: 'edit',
         createdAt: Date.now(),
       });
-      
+
       console.log('✅ 图片编辑完成！');
-      
+
     } catch (error) {
       console.error('❌ 图片编辑失败:', error);
       toast.error(`图片编辑失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -325,7 +325,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
 
         // 查找基图
         const sourceImageId = selectedImage.sourceImageIds?.[0] ||
-                             selectedImage.generatedFrom?.sourceIds?.[0];
+          selectedImage.generatedFrom?.sourceIds?.[0];
 
         if (!sourceImageId) {
           toast.error('找不到原始图片，无法再次生成');
@@ -344,8 +344,8 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         if (selectedImage.size) {
           const { width = 400, height = 300 } = selectedImage.size;
           const ratio = width / height;
-          if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
-          else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+          if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
+          else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
           else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
         }
 
@@ -463,8 +463,8 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         if (selectedImage.size) {
           const { width = 400, height = 300 } = selectedImage.size;
           const ratio = width / height;
-          if (Math.abs(ratio - 16/9) < 0.1) aspectRatio = '16:9';
-          else if (Math.abs(ratio - 9/16) < 0.1) aspectRatio = '9:16';
+          if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
+          else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
           else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
         }
 
@@ -495,12 +495,12 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   // 生成类似图片
   const handleSimilar = async () => {
     if (!selectedImage) return;
-    
+
     const prompt = '生成类似的图片';
-    
+
     try {
       const result = await editImage(prompt, selectedImage.id, 'similar');
-      
+
       const newImage: ImageElement = {
         id: `image-${Date.now()}`,
         type: 'image',
@@ -513,9 +513,9 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         promptId: result.promptId,
         sourceImageIds: [selectedImage.id],
       };
-      
+
       addElement(newImage);
-      
+
       addPromptHistory({
         promptId: result.promptId,
         promptText: prompt,
@@ -546,26 +546,26 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
     setSelection([newImage.id]);
   };
 
-// 行级注释：下载图片 - 优先使用 base64（瞬时下载，0 网络流量）
+  // 行级注释：下载图片 - 优先使用 base64（瞬时下载，0 网络流量）
   const handleDownload = async () => {
     // 行级注释：支持批量下载
     for (const img of imageElements) {
       if (!img?.src) continue;
-      
+
       try {
         console.log('🚀 开始下载图片:', img.id);
-        
+
         let blob: Blob;
-        
+
         // 行级注释：优先使用 base64（AI 生成的图片都有 base64）
         if (img.base64) {
           console.log('✅ 使用 base64 直接下载（瞬时，0 流量）');
-          
+
           // 行级注释：处理 base64 格式
-          const dataUrl = img.base64.startsWith('data:') 
-            ? img.base64 
+          const dataUrl = img.base64.startsWith('data:')
+            ? img.base64
             : `data:image/png;base64,${img.base64}`;
-          
+
           // 行级注释：将 base64 转为 Blob
           const base64Data = dataUrl.split(',')[1];
           const byteCharacters = atob(base64Data);
@@ -575,11 +575,11 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           }
           const byteArray = new Uint8Array(byteNumbers);
           blob = new Blob([byteArray], { type: 'image/png' });
-          
+
         } else if (img.src.startsWith('data:')) {
           // 行级注释：src 是 base64（用户上传的图片）
           console.log('✅ 使用 src (base64) 直接下载（瞬时，0 流量）');
-          
+
           const base64Data = img.src.split(',')[1];
           const byteCharacters = atob(base64Data);
           const byteNumbers = new Array(byteCharacters.length);
@@ -588,36 +588,36 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
           }
           const byteArray = new Uint8Array(byteNumbers);
           blob = new Blob([byteArray], { type: 'image/png' });
-          
+
         } else {
           // 行级注释：兜底方案 - fetch Google URL
           console.log('⚠️ 无 base64，从 URL 下载:', img.src);
-          
+
           const response = await fetch(img.src);
           if (!response.ok) {
             throw new Error(`下载失败: ${response.status}`);
           }
           blob = await response.blob();
         }
-        
+
         console.log('✅ 图片准备完成，大小:', blob.size, 'bytes');
-        
+
         // 行级注释：创建下载链接
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `image-${img.id}.png`;
-        
+
         // 行级注释：触发下载
         document.body.appendChild(link);
         link.click();
-        
+
         // 行级注释：清理
         setTimeout(() => {
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
         }, 100);
-        
+
       } catch (error) {
         console.error('❌ 下载图片失败:', error);
         toast.error(`下载失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -636,22 +636,36 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   };
 
   const hasSelection = imageElements.length > 0;
-  let toolbarContent: React.ReactElement | null = null;
 
-  if (hasSelection) {
+  // 使用 useMemo 优化 toolbar 内容的计算，避免每次视口变化都重新计算
+  const toolbarContent = React.useMemo(() => {
+    if (!hasSelection) return null;
+
     if (isSingleSelection && selectedImage) {
       const node = getNode(selectedImage.id);
       if (node) {
-        const imgWidth = selectedImage.size?.width || 400;
+        // 使用节点的实际测量宽度
+        const nodeWidth = node.measured?.width || node.width || selectedImage.size?.width || 400;
         const screenX = node.position.x * zoom + viewportX;
         const screenY = node.position.y * zoom + viewportY;
 
-        toolbarContent = (
+        console.log('FloatingToolbar 调试:', {
+          nodeId: selectedImage.id,
+          'node.measured?.width': node.measured?.width,
+          'node.width': node.width,
+          'selectedImage.size?.width': selectedImage.size?.width,
+          nodeWidth,
+          screenX,
+          screenY,
+          zoom
+        });
+
+        return (
           <div
             key={selectedImage.id}
             className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto"
             style={{
-              left: `${screenX + (imgWidth * zoom) / 2}px`,
+              left: `${screenX + (nodeWidth * zoom) / 2}px`,
               top: `${screenY - 58}px`,
               transform: 'translateX(-50%)',
             }}
@@ -668,7 +682,7 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         );
       }
     } else {
-      toolbarContent = (
+      return (
         <Panel position="top-center" className="!m-0 !p-0">
           <div
             className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2"
@@ -685,7 +699,25 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
         </Panel>
       );
     }
-  }
+
+    return null;
+  }, [
+    hasSelection,
+    isSingleSelection,
+    selectedImage,
+    getNode,
+    zoom,
+    viewportX,
+    viewportY,
+    handleMouseDown,
+    handleRegenerate,
+    handleSimilar,
+    handleAnnotate,
+    handleDuplicate,
+    handleDownload,
+    handleDelete,
+    imageElements.length
+  ]);
 
   return (
     <>

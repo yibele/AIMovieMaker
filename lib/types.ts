@@ -64,6 +64,7 @@ export interface VideoElement extends CanvasElement {
     sourceIds: string[]; // 源节点 ID（文本/图片/视频）
     prompt?: string;
   };
+  generationCount?: number; // 行级注释：生成数量 (1-4)
 }
 
 // 提示词历史记录

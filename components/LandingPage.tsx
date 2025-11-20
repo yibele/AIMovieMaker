@@ -152,7 +152,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLoginC
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('resize', handleResize);
         };
-    }, []);
+    }, [plans]);
 
     const scrollToPricing = () => {
         pricingRef.current?.scrollIntoView({ behavior: 'smooth' });

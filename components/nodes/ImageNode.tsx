@@ -1,11 +1,15 @@
 'use client';
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer } from '@xyflow/react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar } from '@xyflow/react';
+import { RefreshCw, Copy, Download, Trash2, Square, Edit3 } from 'lucide-react';
 import type { ImageElement } from '@/lib/types';
 import { useNodeResize } from '@/lib/node-resize-helpers';
 import { useCanvasStore } from '@/lib/store';
-import { imageToImage } from '@/lib/api-mock';
+import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
+import { generateFromInput } from '@/lib/input-panel-generator';
+import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
+import { toast } from 'sonner';
 
 // 行级注释：图片节点组件
 function ImageNode({ data, selected, id }: NodeProps) {
@@ -16,13 +20,13 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const hasMediaId = Boolean(imageData.mediaGenerationId);
   const showBaseImage = Boolean(imageData.src);
   const isProcessing = !isError && (isSyncing || !hasMediaId || !showBaseImage);
-  
+
   // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
-  
+
   // 行级注释：使用共享的 resize 逻辑
   const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
-  
+
   // 行级注释：图生图状态
   const updateElement = useCanvasStore((state) => state.updateElement);
   const deleteElement = useCanvasStore((state) => state.deleteElement);
@@ -31,17 +35,17 @@ function ImageNode({ data, selected, id }: NodeProps) {
     ? (imageData.generatedFrom?.prompt?.trim() || '')
     : '';
   const autoGenerateTriggeredRef = useRef(false); // 行级注释：防止自动触发多次
-  
+
   // 行级注释：获取宽高比
   const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
     const width = imageData.size?.width || 320;
     const height = imageData.size?.height || 180;
     const ratio = width / height;
-    if (Math.abs(ratio - 16/9) < 0.1) return '16:9';
-    if (Math.abs(ratio - 9/16) < 0.1) return '9:16';
+    if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
+    if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
     return '1:1';
   };
-  
+
   // 行级注释：处理图生图
   const handleImageToImage = useCallback(async () => {
     const prompt = imageToImagePrompt;
@@ -93,7 +97,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       alert('图片未上传到服务器，无法进行图生图');
       return;
     }
-    
+
     try {
       const aspectRatio = getAspectRatio();
       const result = await imageToImage(
@@ -104,7 +108,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         baseImageInfo.mediaReference,
         1
       );
-      
+
       // 行级注释：更新当前图片节点
       updateElement(id, {
         src: result.imageUrl,
@@ -117,7 +121,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         },
         pendingConnectionGeneration: false,
       } as Partial<ImageElement>);
-      
+
       console.log('✅ 图生图完成:', prompt);
     } catch (error: any) {
       console.error('❌ 图生图失败:', error);
@@ -172,6 +176,212 @@ function ImageNode({ data, selected, id }: NodeProps) {
     }
   }, [promptDisplayText]);
 
+  // ===== Toolbar Handlers =====
+  const addElement = useCanvasStore((state) => state.addElement);
+  const deleteSelectedElements = useCanvasStore((state) => state.deleteSelectedElements);
+  const setSelection = useCanvasStore((state) => state.setSelection);
+  const promptsHistory = useCanvasStore((state) => state.promptsHistory);
+  const addPromptHistory = useCanvasStore((state) => state.addPromptHistory);
+
+  // 使用全局图片编辑器状态
+  const setAnnotatorTarget = useCanvasStore((state) => state.setAnnotatorTarget);
+  const setIsLoadingAnnotatorImage = useCanvasStore((state) => state.setIsLoadingAnnotatorImage);
+  const [mediaBase64Cache] = useState<Map<string, string>>(new Map());
+
+
+  // 打开图片编辑
+  const handleAnnotate = useCallback(async () => {
+    if (!imageData.src) {
+      toast.error('当前图片暂无可编辑内容');
+      return;
+    }
+
+    // 如果图片已有 base64，直接使用
+    if (imageData.base64) {
+      const imageDataUrl = imageData.base64.startsWith('data:')
+        ? imageData.base64
+        : `data:image/png;base64,${imageData.base64}`;
+
+      setAnnotatorTarget({
+        ...imageData,
+        src: imageDataUrl,
+      });
+      setIsLoadingAnnotatorImage(false);
+      return;
+    }
+
+    const effectiveMediaId = imageData.mediaId || imageData.mediaGenerationId;
+    if (!effectiveMediaId) {
+      toast.error('当前图片缺少 mediaId，无法编辑');
+      return;
+    }
+
+    setAnnotatorTarget(imageData);
+    setIsLoadingAnnotatorImage(true);
+
+    try {
+      if (mediaBase64Cache.has(effectiveMediaId)) {
+        const cachedDataUrl = mediaBase64Cache.get(effectiveMediaId)!;
+        setAnnotatorTarget({
+          ...imageData,
+          src: cachedDataUrl,
+        });
+        setIsLoadingAnnotatorImage(false);
+        return;
+      }
+
+      const apiConfig = useCanvasStore.getState().apiConfig;
+      if (!apiConfig.bearerToken) {
+        toast.error('请先配置 Bearer Token');
+        setAnnotatorTarget(null);
+        setIsLoadingAnnotatorImage(false);
+        return;
+      }
+
+      const mediaResponse = await fetch(
+        `/api/flow/media/${effectiveMediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiConfig.bearerToken}`
+          }
+        }
+      );
+
+      if (!mediaResponse.ok) throw new Error('Media API 调用失败');
+
+      const mediaData = await mediaResponse.json();
+      const encodedImage = mediaData?.image?.encodedImage ||
+        mediaData?.userUploadedImage?.image ||
+        mediaData?.userUploadedImage?.encodedImage;
+
+      if (!encodedImage) throw new Error('未获取到图片数据');
+
+      const imageDataUrl = `data:image/png;base64,${encodedImage}`;
+      mediaBase64Cache.set(effectiveMediaId, imageDataUrl);
+
+      setAnnotatorTarget({
+        ...imageData,
+        src: imageDataUrl,
+      });
+      setIsLoadingAnnotatorImage(false);
+    } catch (error) {
+      console.error('获取原图失败:', error);
+      toast.error(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
+      setAnnotatorTarget(null);
+      setIsLoadingAnnotatorImage(false);
+    }
+  }, [imageData, mediaBase64Cache]);
+
+  // 下载图片
+  const handleDownload = useCallback(async () => {
+    if (!imageData.src) return;
+
+    try {
+      let blob: Blob;
+
+      if (imageData.base64) {
+        const dataUrl = imageData.base64.startsWith('data:')
+          ? imageData.base64
+          : `data:image/png;base64,${imageData.base64}`;
+        const base64Data = dataUrl.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: 'image/png' });
+      } else if (imageData.src.startsWith('data:')) {
+        const base64Data = imageData.src.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: 'image/png' });
+      } else {
+        const response = await fetch(imageData.src);
+        if (!response.ok) throw new Error(`下载失败: ${response.status}`);
+        blob = await response.blob();
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `image-${id}.png`;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error('下载失败:', error);
+      toast.error('下载失败');
+    }
+  }, [imageData.src, imageData.base64, id]);
+
+  // 删除
+  const handleDelete = useCallback(() => {
+    deleteElement(id);
+  }, [deleteElement, id]);
+
+  // 复制
+  const handleDuplicate = useCallback(() => {
+    const newImage: ImageElement = {
+      ...imageData,
+      id: `image-${Date.now()}`,
+      position: {
+        x: imageData.position.x + (imageData.size?.width || 400) + 30,
+        y: imageData.position.y,
+      },
+    };
+    addElement(newImage);
+    setSelection([newImage.id]);
+  }, [imageData, addElement, setSelection]);
+
+  // 再次生成
+  const handleRegenerate = useCallback(async () => {
+    let originalPrompt = '';
+    if (imageData.generatedFrom?.prompt) {
+      originalPrompt = imageData.generatedFrom.prompt;
+    } else if (imageData.promptId) {
+      const history = promptsHistory.find(h => h.promptId === imageData.promptId);
+      if (history) {
+        originalPrompt = history.promptText;
+      }
+    }
+    if (!originalPrompt) {
+      originalPrompt = '生成图片';
+    }
+
+    let aspectRatio: '16:9' | '9:16' | '1:1' = '16:9';
+    if (imageData.size) {
+      const { width = 400, height = 300 } = imageData.size;
+      const ratio = width / height;
+      if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
+      else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
+      else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
+    }
+
+    const newPosition = {
+      x: imageData.position.x + (imageData.size?.width || 640) + 50,
+      y: imageData.position.y,
+    };
+
+    await generateFromInput(
+      originalPrompt,
+      aspectRatio,
+      1,
+      newPosition,
+      addElement,
+      updateElement,
+      deleteElement,
+      addPromptHistory
+    );
+  }, [imageData, promptsHistory, addElement, updateElement, deleteElement, addPromptHistory]);
+
   return (
     <>
       {/* NodeResizer - 统一风格 */}
@@ -199,12 +409,30 @@ function ImageNode({ data, selected, id }: NodeProps) {
         onResizeEnd={handleResizeEnd}
       />
 
+      {/* NodeToolbar - 图片工具栏 */}
+      <NodeToolbar
+        isVisible={selected}
+        position={Position.Top}
+        align="center"
+        offset={15}
+        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <ToolbarButton icon={<RefreshCw className="w-3 h-3" />} label="再次生成" onClick={handleRegenerate} />
+        <ToolbarButton icon={<Edit3 className="w-3 h-3" />} label="图片编辑" onClick={handleAnnotate} />
+        <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
+        <ToolbarDivider />
+        <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />
+        <ToolbarButton icon={<Trash2 className="w-3 h-3" />} label="删除" variant="danger" onClick={handleDelete} />
+      </NodeToolbar>
+
       <div
-        className={`relative rounded-xl transition-all w-full h-full ${
-          selected
-            ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
-            : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
-        }`}
+        className={`relative rounded-xl transition-all w-full h-full ${selected
+          ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+          }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
         {/* 输入连接点（左侧） - 条件显示 */}
@@ -281,26 +509,25 @@ function ImageNode({ data, selected, id }: NodeProps) {
               }}
             >
               <div className="relative">
-              <button
-                onClick={handleCopyPrompt}
-                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all transform active:scale-95 ${
-                  isCopied
+                <button
+                  onClick={handleCopyPrompt}
+                  className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all transform active:scale-95 ${isCopied
                     ? 'text-gray-400 bg-gray-600 border-gray-600'
                     : 'text-white bg-black border-gray-600 hover:bg-gray-800'
-                }`}
-                title={isCopied ? "已复制!" : "复制提示词"}
-              >
-                {isCopied ? 'Copied!' : 'Copy Prompt'}
-              </button>
-              <div className="w-full bg-white rounded-lg px-3 py-2 pt-2">
-                <p
-                  className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
-                  title={promptDisplayText}
+                    }`}
+                  title={isCopied ? "已复制!" : "复制提示词"}
                 >
-                  {promptDisplayText}
-                </p>
+                  {isCopied ? 'Copied!' : 'Copy Prompt'}
+                </button>
+                <div className="w-full bg-white rounded-lg px-3 py-2 pt-2">
+                  <p
+                    className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
+                    title={promptDisplayText}
+                  >
+                    {promptDisplayText}
+                  </p>
+                </div>
               </div>
-            </div>
             </div>
           )}
         </div>

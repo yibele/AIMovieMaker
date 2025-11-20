@@ -11,7 +11,7 @@ import { ToolbarButton } from './ToolbarButton';
 // 行级注释：视频节点组件
 function VideoNode({ data, selected, id }: NodeProps) {
   const videoData = data as unknown as VideoElement;
-  
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -19,7 +19,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
-  const { setEdges } = useReactFlow(); // 行级注释：用于创建连线
+  const { setEdges, getEdges } = useReactFlow(); // 行级注释：用于创建连线和获取连线
 
   const generationStatusText = useMemo(() => {
     const hasPrompt = Boolean(videoData.promptText?.trim());
@@ -39,17 +39,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
     videoData.status !== 'queued';
   const generateButtonLabel =
     videoData.status === 'ready' || videoData.status === 'error' ? '重新生成' : '生成视频';
-  
+
   // 行级注释：检查是否支持超清（只有 16:9 横屏支持）
   const canUpscale = useMemo(() => {
     if (!videoData.src || !videoData.mediaGenerationId) return false;
-    
+
     const width = videoData.size?.width || 640;
     const height = videoData.size?.height || 360;
     const ratio = width / height;
-    
+
     // 行级注释：只有 16:9 横屏视频支持超清（竖屏 9:16 和方形 1:1 不支持）
-    return Math.abs(ratio - 16/9) < 0.1;
+    return Math.abs(ratio - 16 / 9) < 0.1;
   }, [videoData.src, videoData.mediaGenerationId, videoData.size]);
 
   // 处理视频点击 - 播放/暂停
@@ -74,21 +74,103 @@ function VideoNode({ data, selected, id }: NodeProps) {
   // 行级注释：使用共享的 resize 逻辑
   const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
 
+  // 处理生成点击 - 支持批量生成
   const handleGenerateClick = useCallback(() => {
     if (!canGenerate) {
       return;
     }
-    setIsPlaying(false);
-    setVideoError(false);
-    updateElement(id, {
-      status: 'queued',
-      progress: 0,
-      src: '',
-      thumbnail: '',
-      duration: 0,
-    } as Partial<VideoElement>);
-    triggerVideoGeneration?.(id);
-  }, [canGenerate, id, triggerVideoGeneration, updateElement]);
+
+    const count = videoData.generationCount || 1;
+
+    // 如果数量 > 1，需要克隆节点
+    if (count > 1) {
+      const { elements, addElement } = useCanvasStore.getState();
+
+      // 获取当前节点的连线
+      // 注意：我们需要 React Flow 的 edges 状态，这里通过 useReactFlow 获取
+      // 但在回调中无法直接使用 hook，所以我们假设 edges 已经同步或通过参数传递
+      // 这里简化处理：只复制节点，连线由 store 或 canvas 处理比较复杂
+      // 实际上，我们需要找到连接到当前节点的 所有 edge，并为新节点创建副本
+
+      // 简单的克隆策略：
+      // 1. 创建 N-1 个新节点
+      // 2. 复制当前节点的所有属性（除了 id 和 position）
+      // 3. 位置向右偏移
+      // 4. 查找连接到当前节点的 edges，并为新节点创建对应的 edges
+
+      const newNodes: VideoElement[] = [];
+      const newEdges: any[] = [];
+
+      // 获取连接到当前节点的 edges
+      const currentEdges = getEdges().filter(
+        (e: any) => e.target === id
+      );
+
+      for (let i = 1; i < count; i++) {
+        const newId = `video-${Date.now()}-${i}`;
+        const offset = 50 * i;
+
+        const newNode: VideoElement = {
+          ...videoData,
+          id: newId,
+          position: {
+            x: videoData.position.x + offset,
+            y: videoData.position.y + offset,
+          },
+          status: 'queued',
+          progress: 0,
+          src: '',
+          thumbnail: '',
+          duration: 0,
+          generationCount: 1, // 克隆出的节点重置为 1，避免递归克隆
+        };
+
+        newNodes.push(newNode);
+
+        // 复制连线
+        currentEdges.forEach((edge: any) => {
+          newEdges.push({
+            ...edge,
+            id: `edge-${edge.source}-${newId}-${edge.targetHandle || 'default'}`,
+            target: newId,
+          });
+        });
+      }
+
+      // 添加新节点和连线
+      newNodes.forEach(node => addElement(node));
+      setEdges((eds) => [...eds, ...newEdges]);
+
+      // 触发所有节点的生成（包括当前节点和新节点）
+      // 当前节点
+      updateElement(id, {
+        status: 'queued',
+        progress: 0,
+        src: '',
+        thumbnail: '',
+        duration: 0,
+      } as Partial<VideoElement>);
+      triggerVideoGeneration?.(id);
+
+      // 新节点
+      newNodes.forEach(node => {
+        triggerVideoGeneration?.(node.id);
+      });
+
+    } else {
+      // 单个生成（原有逻辑）
+      setIsPlaying(false);
+      setVideoError(false);
+      updateElement(id, {
+        status: 'queued',
+        progress: 0,
+        src: '',
+        thumbnail: '',
+        duration: 0,
+      } as Partial<VideoElement>);
+      triggerVideoGeneration?.(id);
+    }
+  }, [canGenerate, id, triggerVideoGeneration, updateElement, videoData]);
 
   // 处理重新生成
   const handleRegenerate = useCallback(() => {
@@ -121,14 +203,14 @@ function VideoNode({ data, selected, id }: NodeProps) {
       console.log('🚀 开始下载视频:', id);
 
       let blob: Blob;
-      
+
       // 行级注释：优先尝试通过 media API 获取 base64（更快，0 流量）
       if (videoData.mediaGenerationId) {
         let progressInterval: NodeJS.Timeout | null = null; // 行级注释：定义在外部以便清理
         try {
           console.log('📥 尝试通过 media API 获取视频 base64...');
           setDownloadProgress(15);
-          
+
           // 行级注释：模拟进度增长，避免长时间停在一个数字
           progressInterval = setInterval(() => {
             setDownloadProgress(prev => {
@@ -136,14 +218,14 @@ function VideoNode({ data, selected, id }: NodeProps) {
               return prev;
             });
           }, 500); // 每 0.5 秒增加 5%
-          
+
           const { useCanvasStore } = await import('@/lib/store');
           const apiConfig = useCanvasStore.getState().apiConfig;
-          
+
           if (!apiConfig.bearerToken) {
             throw new Error('缺少 Bearer Token');
           }
-          
+
           // 行级注释：调用 media API 获取完整数据（包含 base64）
           const mediaResponse = await fetch(
             `/api/flow/media/${videoData.mediaGenerationId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
@@ -153,22 +235,22 @@ function VideoNode({ data, selected, id }: NodeProps) {
               }
             }
           );
-          
+
           if (progressInterval) clearInterval(progressInterval); // 行级注释：停止模拟进度
-          
+
           if (!mediaResponse.ok) {
             throw new Error('Media API 调用失败');
           }
-          
+
           const mediaData = await mediaResponse.json();
           setDownloadProgress(50); // 行级注释：API 返回，跳到 50%
-          
+
           // 行级注释：提取视频 base64 数据
           const encodedVideo = mediaData?.video?.encodedVideo;
           if (encodedVideo) {
             console.log('✅ 获取到视频 base64，开始转换...');
             setDownloadProgress(70); // 行级注释：开始转换，跳到 70%
-            
+
             // 行级注释：将 base64 转为 Blob
             const byteCharacters = atob(encodedVideo);
             const byteNumbers = new Array(byteCharacters.length);
@@ -177,21 +259,21 @@ function VideoNode({ data, selected, id }: NodeProps) {
             }
             const byteArray = new Uint8Array(byteNumbers);
             blob = new Blob([byteArray], { type: 'video/mp4' });
-            
+
             console.log('✅ base64 转换完成（0 网络流量），大小:', blob.size, 'bytes');
             setBlobSize(blob.size);
             setDownloadProgress(100);
           } else {
             throw new Error('未获取到视频 base64');
           }
-          
+
         } catch (mediaError) {
           // 行级注释：确保清理定时器
           if (progressInterval) clearInterval(progressInterval);
-          
+
           // 行级注释：media API 失败，回退到 URL 下载
           console.warn('⚠️ media API 获取失败，回退到 URL 下载:', mediaError);
-          
+
           // 行级注释：从 URL 下载（原逻辑）
           setDownloadProgress(0);
           const fallbackProgressInterval = setInterval(() => {
@@ -239,7 +321,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       } else {
         // 行级注释：无 mediaGenerationId，直接从 URL 下载
         console.log('📥 无 mediaGenerationId，从 URL 下载...');
-        
+
         const progressInterval = setInterval(() => {
           setDownloadProgress(prev => Math.min(prev + 10, 90));
         }, 100);
@@ -323,8 +405,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
     const width = videoData.size?.width || 640;
     const height = videoData.size?.height || 360;
     const ratio = width / height;
-    
-    if (Math.abs(ratio - 16/9) >= 0.1) {
+
+    if (Math.abs(ratio - 16 / 9) >= 0.1) {
       alert('超清放大仅支持 16:9 横屏视频！\n竖屏（9:16）和方形（1:1）视频暂不支持超清功能。');
       return;
     }
@@ -512,11 +594,10 @@ function VideoNode({ data, selected, id }: NodeProps) {
       />
 
       <div
-        className={`relative rounded-xl transition-all w-full h-full ${
-          selected
-            ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
-            : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
-        }`}
+        className={`relative rounded-xl transition-all w-full h-full ${selected
+          ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+          }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
         <NodeToolbar
@@ -564,6 +645,30 @@ function VideoNode({ data, selected, id }: NodeProps) {
             variant="danger"
             onClick={() => handleDelete()}
           />
+
+          {/* 分隔符 */}
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+
+          {/* 生成数量选择器 - 只在未生成状态显示 */}
+          {(videoData.status === 'pending' || videoData.status === 'error') && (
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+              {[1, 2, 3, 4].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => updateElement(id, { generationCount: num } as any)}
+                  className={`
+                    w-6 h-6 flex items-center justify-center rounded-md text-xs font-medium transition-all
+                    ${(videoData.generationCount || 1) === num
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
+                  `}
+                  title={`生成 ${num} 个视频`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+          )}
         </NodeToolbar>
 
         {/* 生成按钮 - 只在准备就绪时显示 */}
@@ -572,11 +677,10 @@ function VideoNode({ data, selected, id }: NodeProps) {
             <button
               onClick={handleGenerateClick}
               disabled={!canGenerate}
-              className={`px-4 py-1.5 backdrop-blur-xl rounded-xl shadow-2xl border text-xs font-medium transition-all ${
-                canGenerate
-                  ? 'bg-blue-600 text-white hover:bg-blue-500'
-                  : 'bg-gray-700 text-gray-300 cursor-not-allowed'
-              }`}
+              className={`px-4 py-1.5 backdrop-blur-xl rounded-xl shadow-2xl border text-xs font-medium transition-all ${canGenerate
+                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                : 'bg-gray-700 text-gray-300 cursor-not-allowed'
+                }`}
             >
               {generateButtonLabel}
             </button>
@@ -636,9 +740,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
         )}
 
         <div
-          className={`absolute inset-0 rounded-xl overflow-hidden ${
-            videoData.status === 'ready' && !videoError ? 'bg-transparent' : 'bg-black'
-          }`}
+          className={`absolute inset-0 rounded-xl overflow-hidden ${videoData.status === 'ready' && !videoError ? 'bg-transparent' : 'bg-black'
+            }`}
         >
           {/* 待配置状态 */}
           {videoData.status === 'pending' && !videoData.readyForGeneration && (

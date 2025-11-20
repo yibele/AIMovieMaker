@@ -26,14 +26,14 @@ import { useCanvasStore } from '@/lib/store';
 import ImageNode from './nodes/ImageNode';
 import TextNode from './nodes/TextNode';
 import VideoNode from './nodes/VideoNode';
-import FloatingToolbar from './FloatingToolbar';
 import CanvasNavigation from './CanvasNavigation';
 import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
 import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
+import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
-import { generateVideoFromText, generateVideoFromImages, generateImage } from '@/lib/api-mock';
+import { generateVideoFromText, generateVideoFromImages, generateImage, imageToImage, registerUploadedImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
   getPositionAboveInput,
@@ -64,6 +64,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const setSelection = useCanvasStore((state) => state.setSelection);
   const uiState = useCanvasStore((state) => state.uiState);
   const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
+
+  // 图片编辑器状态 - 使用响应式 hooks
+  const annotatorTarget = useCanvasStore((state) => state.annotatorTarget);
+  const isLoadingAnnotatorImage = useCanvasStore((state) => state.isLoadingAnnotatorImage);
+  const setAnnotatorTarget = useCanvasStore((state) => state.setAnnotatorTarget);
+  const setIsLoadingAnnotatorImage = useCanvasStore((state) => state.setIsLoadingAnnotatorImage);
 
   // 行级注释：React Flow 节点和边缘状态（需要在 Hooks 之前声明）
   const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
@@ -198,10 +204,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         eds.map((edge: any) =>
           edge.target === videoId
             ? {
-                ...edge,
-                animated: true,
-                style: { stroke: '#a855f7', strokeWidth: 1 },
-              }
+              ...edge,
+              animated: true,
+              style: { stroke: '#a855f7', strokeWidth: 1 },
+            }
             : edge
         )
       );
@@ -248,10 +254,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           eds.map((edge: any) =>
             edge.target === videoId
               ? {
-                  ...edge,
-                  animated: false,
-                  style: EDGE_DEFAULT_STYLE,
-                }
+                ...edge,
+                animated: false,
+                style: EDGE_DEFAULT_STYLE,
+              }
               : edge
           )
         );
@@ -268,10 +274,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           eds.map((edge: any) =>
             edge.target === videoId
               ? {
-                  ...edge,
-                  animated: false,
-                  style: { stroke: '#ef4444', strokeWidth: 1 },
-                }
+                ...edge,
+                animated: false,
+                style: { stroke: '#ef4444', strokeWidth: 1 },
+              }
               : edge
           )
         );
@@ -439,7 +445,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     (videoNode: VideoElement, flowPosition: { x: number; y: number }) => {
       const textId = `text-${Date.now()}`;
       const textContent = videoNode.promptText || '双击编辑文字';
-      
+
       // 根据文字内容计算节点尺寸
       const fontSize = 24;
       const tempDiv = document.createElement('div');
@@ -451,19 +457,19 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       tempDiv.style.lineHeight = '1.4';
       tempDiv.style.maxWidth = '600px';
       tempDiv.textContent = textContent;
-      
+
       document.body.appendChild(tempDiv);
       const width = Math.ceil(tempDiv.offsetWidth);
       const height = Math.ceil(tempDiv.offsetHeight);
       document.body.removeChild(tempDiv);
-      
+
       // 添加内边距
       const padding = 24;
       const calculatedSize = {
         width: Math.max(100, Math.min(600, width + padding * 2)),
         height: Math.max(60, Math.min(400, height + padding * 2)),
       };
-      
+
       const position = {
         x: flowPosition.x - calculatedSize.width / 2,
         y: flowPosition.y - calculatedSize.height / 2,
@@ -575,7 +581,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           useCanvasStore.getState().deleteElement(change.id);
         }
       });
-      
+
       // 传递所有变化给 React Flow
       onNodesChange(changes);
     },
@@ -588,7 +594,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     (_event: React.MouseEvent, node: Node, nodes: Node[]) => {
       // 找到所有被选中的节点
       const selectedNodes = nodes.filter(n => n.selected);
-      
+
       if (selectedNodes.length > 1) {
         // 多选：保存所有选中节点的位置
         selectedNodes.forEach((n) => {
@@ -929,7 +935,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       // 行级注释：直接调用现有的 createVideoNodeFromImage 函数
       createVideoNodeFromImage(sourceNode, flowPosition, 'start-image', 'right');
-      
+
       console.log('✅ 从图片节点创建视频节点:', sourceNode.id);
     },
     [createVideoNodeFromImage, resetConnectionMenu]
@@ -1115,7 +1121,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
-        connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 2}}
+        connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 2 }}
         connectionLineType={ConnectionLineType.Bezier}
         proOptions={{ hideAttribution: true }}
       >
@@ -1137,9 +1143,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           />
         )}
 
-        {/* 悬浮工具栏 - 放在 React Flow 内部 */}
-        <FloatingToolbar setEdges={setEdges} />
-
         {/* AI 输入面板 - 放在 React Flow 内部以使用 useReactFlow */}
         <AIInputPanel />
       </ReactFlow>
@@ -1159,6 +1162,76 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onClose: resetConnectionMenu,
         }}
         promptInputRef={promptMenuInputRef}
+      />
+
+      {/* 图片编辑器 Modal - 全局渲染 */}
+      <ImageAnnotatorModal
+        open={Boolean(annotatorTarget)}
+        imageSrc={annotatorTarget?.src || null}
+        isLoadingImage={isLoadingAnnotatorImage}
+        onClose={() => setAnnotatorTarget(null)}
+        onConfirm={async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
+          if (!annotatorTarget || !result.promptText?.trim()) return;
+
+          try {
+            const aspectRatio = (() => {
+              const width = annotatorTarget.size?.width || 640;
+              const height = annotatorTarget.size?.height || 360;
+              const ratio = width / height;
+              if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
+              if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
+              return '1:1';
+            })() as '16:9' | '9:16' | '1:1';
+
+            const size = aspectRatio === '9:16' ? { width: 360, height: 640 }
+              : aspectRatio === '1:1' ? { width: 512, height: 512 }
+                : { width: 640, height: 360 };
+
+            const newImageId = `image-${Date.now()}`;
+            const newImage: ImageElement = {
+              id: newImageId,
+              type: 'image',
+              src: '',
+              position: {
+                x: annotatorTarget.position.x + (annotatorTarget.size?.width || 640) + 50,
+                y: annotatorTarget.position.y,
+              },
+              size,
+              sourceImageIds: [annotatorTarget.id],
+              generatedFrom: {
+                type: 'image-to-image',
+                sourceIds: [annotatorTarget.id],
+                prompt: result.promptText,
+              },
+            };
+
+            addElement(newImage);
+
+            const base64Data = annotatedImageDataUrl.split(',')[1];
+            const uploadResult = await registerUploadedImage(base64Data);
+            if (!uploadResult.mediaGenerationId) throw new Error('上传失败');
+
+            const imageResult = await imageToImage(
+              result.promptText,
+              annotatedImageDataUrl,
+              aspectRatio,
+              '',
+              uploadResult.mediaGenerationId,
+              1
+            );
+
+            updateElement(newImageId, {
+              src: imageResult.imageUrl,
+              base64: imageResult.images?.[0]?.base64,
+              promptId: imageResult.promptId,
+              mediaId: imageResult.mediaId,
+              mediaGenerationId: imageResult.mediaGenerationId,
+              uploadState: 'synced',
+            } as Partial<ImageElement>);
+          } catch (error) {
+            console.error('图片编辑失败:', error);
+          }
+        }}
       />
     </div>
   );
