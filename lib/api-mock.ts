@@ -478,6 +478,13 @@ async function pollFlowVideoOperation(
           mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
         };
         
+        // 行级注释：更新积分到 store
+        if (typeof data.remainingCredits === 'number') {
+          const { useCanvasStore } = await import('@/lib/store');
+          useCanvasStore.getState().setCredits(data.remainingCredits);
+          console.log('💎 积分已更新:', data.remainingCredits);
+        }
+        
         console.log('✅ 视频数据解析成功:', result);
         return result;
       }

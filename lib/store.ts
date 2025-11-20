@@ -48,6 +48,8 @@ interface CanvasStore {
   projectPrefixPrompts: Record<string, string>;
   // 当前项目的前置提示词
   currentPrefixPrompt: string;
+  // 行级注释：视频积分状态
+  credits: number | null;
   
   // 操作方法
   addElement: (element: CanvasElement) => void;
@@ -67,6 +69,7 @@ interface CanvasStore {
   getElementByIds: (ids: string[]) => CanvasElement[];
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
   triggerVideoGeneration?: (videoId: string) => void;
+  setCredits: (credits: number) => void; // 行级注释：更新积分
   // 行级注释：从输入框生成图片的回调（由 Canvas 注入）
   onGenerateFromInput?: (
     prompt: string,
@@ -194,6 +197,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
   },
   projectTitle: 'Untitled',
   apiConfig: initialConfig,
+  credits: null, // 行级注释：初始积分为 null，待首次获取
   isSettingsOpen: false,
   projectPrefixPrompts: loadProjectPrefixPrompts(),
   currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
@@ -294,6 +298,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     });
     return context;
   },
+  
+  setCredits: (credits) => set({ credits }), // 行级注释：更新积分状态
   };
 });
 

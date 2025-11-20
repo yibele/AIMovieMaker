@@ -7,9 +7,9 @@ import { getVideoCreditStatus } from '@/lib/direct-google-api';
 
 export default function CanvasNavigation() {
   const apiConfig = useCanvasStore((state) => state.apiConfig);
+  const credits = useCanvasStore((state) => state.credits); // 行级注释：从 store 读取积分
+  const setCredits = useCanvasStore((state) => state.setCredits);
   
-  // 行级注释：积分状态
-  const [credits, setCredits] = useState<number | null>(null);
   const [isLoadingCredits, setIsLoadingCredits] = useState(false);
 
   // 行级注释：获取积分状态
@@ -24,7 +24,6 @@ export default function CanvasNavigation() {
       setCredits(result.credits);
     } catch (error) {
       console.error('获取积分失败:', error);
-      setCredits(null);
     } finally {
       setIsLoadingCredits(false);
     }
@@ -32,7 +31,9 @@ export default function CanvasNavigation() {
 
   // 行级注释：初始加载积分
   useEffect(() => {
-    fetchCredits();
+    if (credits === null && apiConfig.bearerToken) {
+      fetchCredits();
+    }
   }, [apiConfig.bearerToken]);
 
   return (

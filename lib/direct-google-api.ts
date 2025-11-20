@@ -600,6 +600,7 @@ export async function checkVideoStatusDirectly(
   duration?: number;
   mediaGenerationId?: string;
   error?: string;
+  remainingCredits?: number; // 行级注释：视频完成时返回的剩余积分
 }> {
   const payload = {
     operations: [
@@ -654,6 +655,7 @@ export async function checkVideoStatusDirectly(
       duration: videoData?.durationSeconds || 0,
       mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
       error: operation?.error || metadata?.error,
+      remainingCredits: data.remainingCredits, // 行级注释：返回剩余积分
     };
   } catch (error) {
     console.error('❌ 查询视频状态失败:', error);
