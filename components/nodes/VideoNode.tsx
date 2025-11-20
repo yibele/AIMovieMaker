@@ -91,7 +91,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
     triggerVideoGeneration?.(id);
   }, [id, triggerVideoGeneration, updateElement]);
 
-  // 处理下载视频 - 使用 Blob 实现直接下载
+  // 行级注释：处理下载视频 - 优先使用 base64（通过 media API），回退到 URL
   const [blobSize, setBlobSize] = useState(0);
 
   const handleDownload = useCallback(async () => {
@@ -105,67 +105,168 @@ function VideoNode({ data, selected, id }: NodeProps) {
     setBlobSize(0);
 
     try {
-      console.log('🚀 开始下载视频:', videoData.src);
+      console.log('🚀 开始下载视频:', id);
 
-      // 模拟进度更新
-      const progressInterval = setInterval(() => {
-        setDownloadProgress(prev => Math.min(prev + 10, 90));
-      }, 100);
+      let blob: Blob;
+      
+      // 行级注释：优先尝试通过 media API 获取 base64（更快，0 流量）
+      if (videoData.mediaGenerationId) {
+        try {
+          console.log('📥 尝试通过 media API 获取视频 base64...');
+          setDownloadProgress(10);
+          
+          const { useCanvasStore } = await import('@/lib/store');
+          const apiConfig = useCanvasStore.getState().apiConfig;
+          
+          if (!apiConfig.bearerToken) {
+            throw new Error('缺少 Bearer Token');
+          }
+          
+          // 行级注释：调用 media API 获取完整数据（包含 base64）
+          const mediaResponse = await fetch(
+            `/api/flow/media/${videoData.mediaGenerationId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${apiConfig.bearerToken}`
+              }
+            }
+          );
+          
+          if (!mediaResponse.ok) {
+            throw new Error('Media API 调用失败');
+          }
+          
+          const mediaData = await mediaResponse.json();
+          setDownloadProgress(40);
+          
+          // 行级注释：提取视频 base64 数据
+          const encodedVideo = mediaData?.video?.encodedVideo;
+          if (encodedVideo) {
+            console.log('✅ 获取到视频 base64，开始转换...');
+            setDownloadProgress(60);
+            
+            // 行级注释：将 base64 转为 Blob
+            const byteCharacters = atob(encodedVideo);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            blob = new Blob([byteArray], { type: 'video/mp4' });
+            
+            console.log('✅ base64 转换完成（0 网络流量），大小:', blob.size, 'bytes');
+            setBlobSize(blob.size);
+            setDownloadProgress(100);
+          } else {
+            throw new Error('未获取到视频 base64');
+          }
+          
+        } catch (mediaError) {
+          // 行级注释：media API 失败，回退到 URL 下载
+          console.warn('⚠️ media API 获取失败，回退到 URL 下载:', mediaError);
+          
+          // 行级注释：从 URL 下载（原逻辑）
+          setDownloadProgress(0);
+          const progressInterval = setInterval(() => {
+            setDownloadProgress(prev => Math.min(prev + 10, 90));
+          }, 100);
 
-      // 获取视频文件
-      const response = await fetch(videoData.src);
-      if (!response.ok) {
-        throw new Error(`下载失败: ${response.status} ${response.statusText}`);
-      }
+          const response = await fetch(videoData.src);
+          if (!response.ok) {
+            throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+          }
 
-      // 获取文件大小用于计算进度
-      const contentLength = response.headers.get('content-length');
-      const totalSize = contentLength ? parseInt(contentLength) : 0;
+          const contentLength = response.headers.get('content-length');
+          const totalSize = contentLength ? parseInt(contentLength) : 0;
 
-      // 创建可读流来跟踪进度
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('浏览器不支持流式下载');
-      }
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error('浏览器不支持流式下载');
+          }
 
-      const chunks: Uint8Array[] = [];
-      let receivedLength = 0;
+          const chunks: Uint8Array[] = [];
+          let receivedLength = 0;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        if (value) {
-          chunks.push(value);
-          receivedLength += value.length;
+            if (value) {
+              chunks.push(value);
+              receivedLength += value.length;
 
-          // 更新进度
-          if (totalSize > 0) {
-            const progress = Math.round((receivedLength / totalSize) * 100);
-            setDownloadProgress(progress);
+              if (totalSize > 0) {
+                const progress = Math.round((receivedLength / totalSize) * 100);
+                setDownloadProgress(progress);
+              }
+            }
+          }
+
+          blob = new Blob(chunks as any, { type: 'video/mp4' });
+          console.log('✅ URL 下载完成，大小:', blob.size, 'bytes');
+          setBlobSize(blob.size);
+
+          clearInterval(progressInterval);
+          setDownloadProgress(100);
+        }
+      } else {
+        // 行级注释：无 mediaGenerationId，直接从 URL 下载
+        console.log('📥 无 mediaGenerationId，从 URL 下载...');
+        
+        const progressInterval = setInterval(() => {
+          setDownloadProgress(prev => Math.min(prev + 10, 90));
+        }, 100);
+
+        const response = await fetch(videoData.src);
+        if (!response.ok) {
+          throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+        }
+
+        const contentLength = response.headers.get('content-length');
+        const totalSize = contentLength ? parseInt(contentLength) : 0;
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('浏览器不支持流式下载');
+        }
+
+        const chunks: Uint8Array[] = [];
+        let receivedLength = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          if (value) {
+            chunks.push(value);
+            receivedLength += value.length;
+
+            if (totalSize > 0) {
+              const progress = Math.round((receivedLength / totalSize) * 100);
+              setDownloadProgress(progress);
+            }
           }
         }
+
+        blob = new Blob(chunks as any, { type: 'video/mp4' });
+        console.log('✅ URL 下载完成，大小:', blob.size, 'bytes');
+        setBlobSize(blob.size);
+
+        clearInterval(progressInterval);
+        setDownloadProgress(100);
       }
 
-      // 合并所有数据
-      const blob = new Blob(chunks as any, { type: 'video/mp4' });
-      console.log('✅ Blob 创建成功，大小:', blob.size, 'bytes');
-      setBlobSize(blob.size);
-
-      clearInterval(progressInterval);
-      setDownloadProgress(100);
-
-      // 创建下载链接
+      // 行级注释：创建下载链接
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `morpheus-video-${id}.mp4`;
 
-      // 触发下载
+      // 行级注释：触发下载
       document.body.appendChild(link);
       link.click();
 
-      // 清理
+      // 行级注释：清理
       setTimeout(() => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
@@ -182,7 +283,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       setBlobSize(0);
       alert('视频下载失败：' + (error as Error)?.message || '未知错误');
     }
-  }, [videoData.src, id]);
+  }, [videoData.src, videoData.mediaGenerationId, id]);
 
   // 处理超清放大
   const handleUpscale = useCallback(() => {
