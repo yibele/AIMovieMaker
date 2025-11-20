@@ -116,35 +116,6 @@ function TextNode({ data, id }: NodeProps) {
       textDecoration,
       size: newSize,
     } as Partial<TextElement>);
-
-    // 更新连接的视频节点
-    const edges = getEdges?.() ?? [];
-    const { elements } = useCanvasStore.getState();
-    edges
-      .filter((edge) => edge.source === id && edge.targetHandle === 'prompt-text')
-      .forEach((edge) => {
-        const videoElement = elements.find((el) => el.id === edge.target) as VideoElement | undefined;
-        if (!videoElement) {
-          return;
-        }
-        const startId = videoElement.startImageId;
-        const endId = videoElement.endImageId;
-        const readyForGeneration = Boolean(text.trim() && (startId || endId));
-        const sourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
-        if (startId) sourceIds.add(startId);
-        if (endId) sourceIds.add(endId);
-        sourceIds.add(id);
-
-        updateElement(edge.target, {
-          promptText: text,
-          readyForGeneration,
-          generatedFrom: {
-            type: 'image-to-image',
-            sourceIds: Array.from(sourceIds),
-            prompt: text,
-          },
-        } as Partial<VideoElement>);
-      });
   };
 
   // 处理按键

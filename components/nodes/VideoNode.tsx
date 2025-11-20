@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useState, useRef, useCallback, useMemo } from 'react';
+import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar, useReactFlow } from '@xyflow/react';
-import { Play, Pause, Image as ImageIcon, Type, Download, Sparkles, Trash2, RotateCcw } from 'lucide-react';
+import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { useNodeResize } from '@/lib/node-resize-helpers';
@@ -16,29 +16,40 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const [videoError, setVideoError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [promptInput, setPromptInput] = useState(videoData.promptText || '');
+  // 行级注释：使用本地 state 管理生成数量，避免频繁更新全局 store 导致卡顿
+  const [generationCount, setGenerationCount] = useState(videoData.generationCount || 1);
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
   const { setEdges, getEdges } = useReactFlow(); // 行级注释：用于创建连线和获取连线
 
   const generationStatusText = useMemo(() => {
-    const hasPrompt = Boolean(videoData.promptText?.trim());
+    const hasPrompt = Boolean(videoData.promptText?.trim() || promptInput.trim());
     const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
     if (hasPrompt && !hasFrame) {
-      return '等待首/尾帧';
+      return '可选：连接首/尾帧图片';
     }
     if (!hasPrompt && hasFrame) {
-      return '等待提示词';
+      return '输入提示词后生成';
     }
-    return '等待首尾帧与提示词';
-  }, [videoData.promptText, videoData.startImageId, videoData.endImageId]);
+    return '在下方输入框输入提示词';
+  }, [videoData.promptText, videoData.startImageId, videoData.endImageId, promptInput]);
 
-  const canGenerate =
-    Boolean(videoData.readyForGeneration) &&
-    videoData.status !== 'generating' &&
-    videoData.status !== 'queued';
-  const generateButtonLabel =
-    videoData.status === 'ready' || videoData.status === 'error' ? '重新生成' : '生成视频';
+
+  // 行级注释：同步外部更新的 promptText
+  useEffect(() => {
+    if (videoData.promptText && videoData.promptText !== promptInput) {
+      setPromptInput(videoData.promptText);
+    }
+  }, [videoData.promptText]);
+
+  // 行级注释：同步外部更新的 generationCount
+  useEffect(() => {
+    if (videoData.generationCount && videoData.generationCount !== generationCount) {
+      setGenerationCount(videoData.generationCount);
+    }
+  }, [videoData.generationCount]);
 
   // 行级注释：检查是否支持超清（只有 16:9 横屏支持）
   const canUpscale = useMemo(() => {
@@ -74,103 +85,30 @@ function VideoNode({ data, selected, id }: NodeProps) {
   // 行级注释：使用共享的 resize 逻辑
   const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
 
-  // 处理生成点击 - 支持批量生成
-  const handleGenerateClick = useCallback(() => {
-    if (!canGenerate) {
+  // 行级注释：从输入框生成视频
+  const handleGenerateFromInput = useCallback(() => {
+    if (!promptInput.trim()) {
       return;
     }
 
-    const count = videoData.generationCount || 1;
+    console.log('🎬 VideoNode: 开始生成视频', {
+      promptInput: promptInput.trim(),
+      generationCount,
+      videoData
+    });
 
-    // 如果数量 > 1，需要克隆节点
-    if (count > 1) {
-      const { elements, addElement } = useCanvasStore.getState();
+    // 行级注释：生成时同步 promptText 和 generationCount 到 store，并设置状态为 queued
+    updateElement(id, { 
+      promptText: promptInput.trim(),
+      generationCount: generationCount,
+      status: 'queued' // 行级注释：设置为 queued 状态，触发生成流程
+    } as any);
 
-      // 获取当前节点的连线
-      // 注意：我们需要 React Flow 的 edges 状态，这里通过 useReactFlow 获取
-      // 但在回调中无法直接使用 hook，所以我们假设 edges 已经同步或通过参数传递
-      // 这里简化处理：只复制节点，连线由 store 或 canvas 处理比较复杂
-      // 实际上，我们需要找到连接到当前节点的 所有 edge，并为新节点创建副本
-
-      // 简单的克隆策略：
-      // 1. 创建 N-1 个新节点
-      // 2. 复制当前节点的所有属性（除了 id 和 position）
-      // 3. 位置向右偏移
-      // 4. 查找连接到当前节点的 edges，并为新节点创建对应的 edges
-
-      const newNodes: VideoElement[] = [];
-      const newEdges: any[] = [];
-
-      // 获取连接到当前节点的 edges
-      const currentEdges = getEdges().filter(
-        (e: any) => e.target === id
-      );
-
-      for (let i = 1; i < count; i++) {
-        const newId = `video-${Date.now()}-${i}`;
-        const offset = 50 * i;
-
-        const newNode: VideoElement = {
-          ...videoData,
-          id: newId,
-          position: {
-            x: videoData.position.x + offset,
-            y: videoData.position.y + offset,
-          },
-          status: 'queued',
-          progress: 0,
-          src: '',
-          thumbnail: '',
-          duration: 0,
-          generationCount: 1, // 克隆出的节点重置为 1，避免递归克隆
-        };
-
-        newNodes.push(newNode);
-
-        // 复制连线
-        currentEdges.forEach((edge: any) => {
-          newEdges.push({
-            ...edge,
-            id: `edge-${edge.source}-${newId}-${edge.targetHandle || 'default'}`,
-            target: newId,
-          });
-        });
-      }
-
-      // 添加新节点和连线
-      newNodes.forEach(node => addElement(node));
-      setEdges((eds) => [...eds, ...newEdges]);
-
-      // 触发所有节点的生成（包括当前节点和新节点）
-      // 当前节点
-      updateElement(id, {
-        status: 'queued',
-        progress: 0,
-        src: '',
-        thumbnail: '',
-        duration: 0,
-      } as Partial<VideoElement>);
+    // 行级注释：触发生成（延迟以确保状态已更新）
+    setTimeout(() => {
       triggerVideoGeneration?.(id);
-
-      // 新节点
-      newNodes.forEach(node => {
-        triggerVideoGeneration?.(node.id);
-      });
-
-    } else {
-      // 单个生成（原有逻辑）
-      setIsPlaying(false);
-      setVideoError(false);
-      updateElement(id, {
-        status: 'queued',
-        progress: 0,
-        src: '',
-        thumbnail: '',
-        duration: 0,
-      } as Partial<VideoElement>);
-      triggerVideoGeneration?.(id);
-    }
-  }, [canGenerate, id, triggerVideoGeneration, updateElement, videoData]);
+    }, 100);
+  }, [id, promptInput, generationCount, videoData, updateElement, triggerVideoGeneration]);
 
   // 处理重新生成
   const handleRegenerate = useCallback(() => {
@@ -609,6 +547,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
           onMouseDown={(e) => {
             e.stopPropagation();
           }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
         >
           {/* 重新生成 - 只在 ready 或 error 状态时可用 */}
           <ToolbarButton
@@ -645,47 +586,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
             variant="danger"
             onClick={() => handleDelete()}
           />
-
-          {/* 分隔符 */}
-          <div className="w-px h-4 bg-gray-200 mx-1" />
-
-          {/* 生成数量选择器 - 只在未生成状态显示 */}
-          {(videoData.status === 'pending' || videoData.status === 'error') && (
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-              {[1, 2, 3, 4].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => updateElement(id, { generationCount: num } as any)}
-                  className={`
-                    w-6 h-6 flex items-center justify-center rounded-md text-xs font-medium transition-all
-                    ${(videoData.generationCount || 1) === num
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
-                  `}
-                  title={`生成 ${num} 个视频`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          )}
         </NodeToolbar>
 
-        {/* 生成按钮 - 只在准备就绪时显示 */}
-        {videoData.readyForGeneration && !selected && (
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-            <button
-              onClick={handleGenerateClick}
-              disabled={!canGenerate}
-              className={`px-4 py-1.5 backdrop-blur-xl rounded-xl shadow-2xl border text-xs font-medium transition-all ${canGenerate
-                ? 'bg-blue-600 text-white hover:bg-blue-500'
-                : 'bg-gray-700 text-gray-300 cursor-not-allowed'
-                }`}
-            >
-              {generateButtonLabel}
-            </button>
-          </div>
-        )}
 
         {/* 行级注释：根据视频类型显示不同的输入连接点 */}
         {videoData.generatedFrom?.type === 'upsample' ? (
@@ -701,36 +603,25 @@ function VideoNode({ data, selected, id }: NodeProps) {
             <Sparkles className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
           </Handle>
         ) : (
-          // 行级注释：普通视频 - 显示三个输入点（首帧/提示词/尾帧）
+          // 行级注释：普通视频 - 只显示首帧和尾帧输入点（不再显示文本输入）
           <>
             <Handle
               id="start-image"
               type="target"
               position={Position.Left}
-              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-300 !border-2 !border-white !rounded-full shadow-sm"
-              style={{ left: '-6px', top: '44%', zIndex: '30' }}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-400 !border-2 !border-white !rounded-full shadow-sm"
+              style={{ left: '-6px', top: '46%', zIndex: '30' }}
               isConnectable={true}
               title="首帧图片"
             >
               <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
             </Handle>
             <Handle
-              id="prompt-text"
-              type="target"
-              position={Position.Left}
-              className="!flex !items-center !justify-center !w-6 !h-6 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
-              style={{ left: '-6px', top: '50%', zIndex: '30' }}
-              isConnectable={true}
-              title="提示词文本"
-            >
-              <Type className="w-3 h-3 text-white" strokeWidth={2.5} />
-            </Handle>
-            <Handle
               id="end-image"
               type="target"
               position={Position.Left}
-              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-700 !border-2 !border-white !rounded-full shadow-sm"
-              style={{ left: '-6px', top: '56%', zIndex: '30' }}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-600 !border-2 !border-white !rounded-full shadow-sm"
+              style={{ left: '-6px', top: '54%', zIndex: '30' }}
               isConnectable={true}
               title="尾帧图片"
             >
@@ -744,15 +635,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
             }`}
         >
           {/* 待配置状态 */}
-          {videoData.status === 'pending' && !videoData.readyForGeneration && (
+          {videoData.status === 'pending' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black">
               <div className="text-gray-400 text-xs tracking-wide">{generationStatusText}</div>
-            </div>
-          )}
-
-          {videoData.status === 'pending' && videoData.readyForGeneration && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
-              <div className="text-gray-300 text-xs tracking-wide">准备就绪，点击上方生成</div>
             </div>
           )}
 
@@ -855,6 +740,108 @@ function VideoNode({ data, selected, id }: NodeProps) {
           />
         </div>
       </div>
+
+      {/* 行级注释：视频生成输入面板 - 只在视频未生成时显示 */}
+      {(videoData.status === 'pending' || videoData.status === 'error' || !videoData.src) && (
+        <div
+          className="absolute left-0 right-0 flex flex-col gap-2"
+          style={{
+            top: '100%',
+            marginTop: '12px',
+            zIndex: 40,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            className="w-full relative"
+            style={{ pointerEvents: 'auto' }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <div className="relative">
+              {/* 行级注释：顶部标签 - 模仿 ImageNode 的 Copy Prompt 样式 */}
+              <div className="absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded text-white bg-black border-gray-600">
+                Video Prompt
+              </div>
+              
+              {/* 行级注释：白色背景容器 - 包含输入框和数量选择 */}
+              <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm">
+                {/* 行级注释：输入框 */}
+                <input
+                  type="text"
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && promptInput.trim()) {
+                      handleGenerateFromInput();
+                    }
+                    e.stopPropagation();
+                  }}
+                  placeholder="输入视频描述，按 Enter 生成..."
+                  className="w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+                
+                {/* 行级注释：数量选择 - 放在输入框下方，只更新本地状态，不频繁触发全局更新 */}
+                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-gray-100">
+                  <span className="text-[9px] text-gray-400 font-medium select-none">生成数量</span>
+                  <div className="flex items-center bg-gray-100 rounded-md p-0.5 gap-0.5">
+                    {[1, 2, 3, 4].map((num) => (
+                      <button
+                        key={num}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          // 行级注释：只更新本地 state，避免频繁更新全局 store 导致卡顿
+                          setGenerationCount(num);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`
+                          w-5 h-4 flex items-center justify-center rounded text-[9px] font-medium transition-all
+                          ${generationCount === num
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
+                        `}
+                        title={`生成 ${num} 个视频`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 行级注释：纸飞机生成按钮 - 飘在输入框右侧 */}
+              <div className="absolute -right-8 top-0 mt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGenerateFromInput();
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  disabled={!promptInput.trim()}
+                  className={`
+                    w-6 h-6 flex items-center justify-center rounded-full transition-all shadow-md hover:shadow-lg active:scale-95
+                    ${promptInput.trim()
+                      ? 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                  `}
+                  title="生成视频"
+                >
+                  <Send className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

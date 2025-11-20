@@ -177,9 +177,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       const promptText = videoElement.promptText?.trim();
       const startImageId = videoElement.startImageId;
       const endImageId = videoElement.endImageId;
+      const generationCount = videoElement.generationCount || 1; // 行级注释：获取生成数量
 
       const hasAtLeastOneImage = Boolean(startImageId || endImageId);
-      const ready = Boolean(promptText && hasAtLeastOneImage);
+      // 行级注释：支持纯文本生成视频 - 只要有提示词就可以生成
+      const ready = Boolean(promptText);
 
       if (!ready) {
         updateElement(videoId, {
@@ -187,6 +189,50 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           readyForGeneration: ready,
         } as Partial<VideoElement>);
         return;
+      }
+
+      console.log('🎬 maybeStartVideo: 开始生成视频', { videoId, generationCount, promptText });
+
+      // 行级注释：如果 generationCount > 1，创建额外的视频节点
+      if (generationCount > 1) {
+        const basePosition = videoElement.position;
+        const size = videoElement.size || { width: 640, height: 360 };
+        const spacing = 50; // 行级注释：节点之间的间距
+
+        for (let i = 1; i < generationCount; i++) {
+          const newVideoId = `video-${Date.now()}-${i}`;
+          const newPosition = {
+            x: basePosition.x + (size.width + spacing) * i,
+            y: basePosition.y,
+          };
+
+          const newVideo: VideoElement = {
+            id: newVideoId,
+            type: 'video',
+            src: '',
+            thumbnail: '',
+            duration: 0,
+            status: 'queued',
+            progress: 0,
+            position: newPosition,
+            size: size,
+            promptText: promptText,
+            startImageId: startImageId,
+            endImageId: endImageId,
+            generationCount: 1, // 行级注释：每个节点只生成一个视频
+            generatedFrom: videoElement.generatedFrom,
+          };
+
+          const addElement = useCanvasStore.getState().addElement;
+          addElement(newVideo);
+
+          console.log('✅ 创建额外视频节点:', newVideoId);
+
+          // 行级注释：延迟触发生成，避免同时发起太多请求
+          setTimeout(() => {
+            maybeStartVideo(newVideoId);
+          }, i * 500); // 每个视频间隔 0.5 秒
+        }
       }
 
       activeGenerationRef.current.add(videoId);
@@ -223,16 +269,35 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       }, 300);
 
       try {
-        const actualStartId = startImageId || endImageId!;
-        const actualEndId = startImageId && endImageId ? endImageId : undefined;
+        let result;
+        let generationType: 'text-to-video' | 'image-to-image' = 'text-to-video';
+        const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
 
-        const result = await generateVideoFromImages(actualStartId, actualEndId, promptText);
+        // 行级注释：判断是图生视频还是文生视频
+        if (hasAtLeastOneImage) {
+          // 行级注释：图生视频 - 使用首尾帧
+          const actualStartId = startImageId || endImageId!;
+          const actualEndId = startImageId && endImageId ? endImageId : undefined;
+
+          result = await generateVideoFromImages(actualStartId, actualEndId, promptText);
+          
+          if (startImageId) combinedSourceIds.add(startImageId);
+          if (endImageId) combinedSourceIds.add(endImageId);
+          generationType = 'image-to-image';
+        } else {
+          // 行级注释：纯文本生成视频
+          const aspectRatio = videoElement.size?.width && videoElement.size?.height 
+            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16/9) < 0.1 ? '16:9'
+              : Math.abs(videoElement.size.width / videoElement.size.height - 9/16) < 0.1 ? '9:16'
+              : '1:1')
+            : '9:16'; // 行级注释：默认竖屏（与 Google 官方默认一致）
+          
+          console.log('🎬 调用文生视频:', { promptText, aspectRatio });
+          result = await generateVideoFromText(promptText, aspectRatio as '16:9' | '9:16' | '1:1');
+          generationType = 'text-to-video';
+        }
 
         clearInterval(progressInterval);
-
-        const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
-        if (startImageId) combinedSourceIds.add(startImageId);
-        if (endImageId) combinedSourceIds.add(endImageId);
 
         updateElement(videoId, {
           status: 'ready',
@@ -243,7 +308,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           progress: 100,
           readyForGeneration: true,
           generatedFrom: {
-            type: 'image-to-image',
+            type: generationType,
             sourceIds: Array.from(combinedSourceIds),
             prompt: promptText,
           },
@@ -1051,41 +1116,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         });
       };
 
-      // 只允许连接到视频节点的自定义输入
+      // 只允许连接到视频节点的自定义输入（只支持图片连接，不支持文本连接）
       if (targetNode.type === 'video') {
         const targetHandle = connection.targetHandle;
         let handled = false;
 
-        if (sourceNode.type === 'text' && targetHandle === 'prompt-text') {
-          const textNode = sourceNode as TextElement;
-          const videoData = targetNode as VideoElement;
-          const sourceIds = new Set<string>(videoData.generatedFrom?.sourceIds ?? []);
-          if (videoData.startImageId) {
-            sourceIds.add(videoData.startImageId);
-          }
-          if (videoData.endImageId) {
-            sourceIds.add(videoData.endImageId);
-          }
-          sourceIds.add(textNode.id);
-
-          const updates: Partial<VideoElement> = {
-            promptText: textNode.text,
-            generatedFrom: {
-              type: 'image-to-image',
-              sourceIds: Array.from(sourceIds),
-              prompt: textNode.text,
-            },
-            readyForGeneration: Boolean(textNode.text.trim() && (videoData.startImageId || videoData.endImageId)),
-          };
-          if (videoData.status === 'ready') {
-            updates.status = 'pending';
-            updates.progress = 0;
-            updates.src = '';
-            updates.thumbnail = '';
-          }
-          updateElement(targetId, updates);
-          handled = true;
-        } else if (sourceNode.type === 'image' && targetHandle === 'start-image') {
+        if (sourceNode.type === 'image' && targetHandle === 'start-image') {
           const imageNode = sourceNode as ImageElement;
           const videoData = targetNode as VideoElement;
           const sourceIds = new Set<string>(videoData.generatedFrom?.sourceIds ?? []);
@@ -1101,7 +1137,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
               sourceIds: Array.from(sourceIds),
               prompt: videoData.promptText,
             },
-            readyForGeneration: Boolean((videoData.promptText ?? '').trim() && (imageNode.id || videoData.endImageId)),
           };
           if (videoData.status === 'ready') {
             updates.status = 'pending';
@@ -1127,7 +1162,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
               sourceIds: Array.from(sourceIds),
               prompt: videoData.promptText,
             },
-            readyForGeneration: Boolean((videoData.promptText ?? '').trim() && (videoData.startImageId || imageNode.id)),
           };
           if (videoData.status === 'ready') {
             updates.status = 'pending';
