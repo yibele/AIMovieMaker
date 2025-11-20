@@ -151,6 +151,7 @@ async function generateVideoWithFlow(params: {
       prompt,
       aspectRatio,
       bearerToken,
+      cookie: useCanvasStore.getState().apiConfig.cookie, // 添加 cookie
       projectId,
       sessionId,
       proxy,
@@ -209,6 +210,7 @@ async function generateVideoStartEndWithFlow(params: {
       prompt,
       aspectRatio,
       bearerToken,
+      cookie: useCanvasStore.getState().apiConfig.cookie, // 添加 cookie
       projectId,
       sessionId,
       startMediaId,
@@ -350,12 +352,12 @@ async function generateImageWithFlow(params: {
         img?.encodedImage || img?.base64Image || img?.imageBase64;
       const mime = img?.mimeType || 'image/png';
       const fifeUrl = img?.fifeUrl;
-      
+
       // 行级注释：如果没有 fifeUrl 也没有 base64，则跳过
       if (!fifeUrl && !encoded) {
         return null;
       }
-      
+
       return {
         encodedImage: encoded,
         mimeType: mime,
@@ -384,12 +386,12 @@ async function generateImageWithFlow(params: {
     const encoded =
       data?.encodedImage || data?.base64Image || data?.imageBase64;
     const fifeUrl = data?.fifeUrl;
-    
+
     // 行级注释：如果既没有 fifeUrl 也没有 base64，则报错
     if (!fifeUrl && !encoded) {
       throw new Error('❌ Flow API 响应中未找到图片数据（缺少 fifeUrl 和 base64）');
     }
-    
+
     primaryImage = {
       encodedImage: encoded,
       mimeType: data?.mimeType || 'image/png',
@@ -403,7 +405,7 @@ async function generateImageWithFlow(params: {
   }
 
   // 行级注释：优先使用 fifeUrl，降级到 base64（减少 Vercel 流量费用）
-  const imageUrl = primaryImage.fifeUrl || 
+  const imageUrl = primaryImage.fifeUrl ||
     `data:${primaryImage.mimeType};base64,${primaryImage.encodedImage}`;
 
   return {
@@ -540,10 +542,10 @@ function extractFlowVideoData(operation: any): FlowVideoResult | null {
     typeof videoData.durationSeconds === 'number'
       ? videoData.durationSeconds
       : typeof videoData.duration === 'number'
-      ? videoData.duration
-      : typeof videoData.durationMs === 'number'
-      ? Math.round(videoData.durationMs / 1000)
-      : 0;
+        ? videoData.duration
+        : typeof videoData.durationMs === 'number'
+          ? Math.round(videoData.durationMs / 1000)
+          : 0;
 
   return {
     videoUrl,
@@ -625,7 +627,7 @@ export async function generateImage(
 }> {
   // 获取 API 配置
   const apiConfig = useCanvasStore.getState().apiConfig;
-  
+
   // 检查是否配置了 Bearer Token
   if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
     throw new Error('请先在右上角设置中配置 Bearer Token');
@@ -639,12 +641,12 @@ export async function generateImage(
     const context = useCanvasStore.getState().regenerateFlowContext();
     sessionId = context.sessionId;
   }
-  
+
   console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, `数量: ${count || apiConfig.generationCount || 1}`);
-  
+
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
-  
+
   const result = await generateImageDirectly(
     prompt,
     apiConfig.bearerToken,
@@ -656,7 +658,7 @@ export async function generateImage(
     count ?? apiConfig.generationCount ?? 1,
     useCanvasStore.getState().currentPrefixPrompt
   );
-  
+
   const contextUpdates: Partial<typeof apiConfig> = {};
   if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
     contextUpdates.sessionId = result.sessionId;
@@ -664,7 +666,7 @@ export async function generateImage(
   if (Object.keys(contextUpdates).length > 0) {
     useCanvasStore.getState().setApiConfig(contextUpdates);
   }
-  
+
   // 转换格式
   const images = result.images.map(img => ({
     imageUrl: img.fifeUrl || '',
@@ -676,7 +678,7 @@ export async function generateImage(
     seed: img.seed,
     fifeUrl: img.fifeUrl,
   }));
-  
+
   return {
     imageUrl: images[0]?.imageUrl || '',
     promptId: generateId(),
@@ -719,13 +721,13 @@ export async function registerUploadedImage(
 
   // 直接调用 Google API，不通过 Vercel 服务器
   const { uploadImageDirectly } = await import('./direct-google-api');
-  
+
   // 转换宽高比类型：FlowAspectRatioEnum -> '16:9' | '9:16' | '1:1'
   const convertedAspectRatio =
     flowAspectRatio === 'IMAGE_ASPECT_RATIO_PORTRAIT' ? '9:16' :
-    flowAspectRatio === 'IMAGE_ASPECT_RATIO_SQUARE' ? '1:1' :
-    flowAspectRatio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ? '16:9' :
-    undefined;
+      flowAspectRatio === 'IMAGE_ASPECT_RATIO_SQUARE' ? '1:1' :
+        flowAspectRatio === 'IMAGE_ASPECT_RATIO_LANDSCAPE' ? '16:9' :
+          undefined;
 
   const uploadResult = await uploadImageDirectly(
     imageBase64,
@@ -809,7 +811,7 @@ export async function runImageRecipe(
     const context = useCanvasStore.getState().regenerateFlowContext();
     sessionId = context.sessionId;
   }
-  
+
   console.log(
     '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
     instruction,
@@ -820,7 +822,7 @@ export async function runImageRecipe(
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
-  
+
   const result = await generateImageDirectly(
     instruction,
     apiConfig.bearerToken,
@@ -832,7 +834,7 @@ export async function runImageRecipe(
     count ?? apiConfig.generationCount ?? 1,
     useCanvasStore.getState().currentPrefixPrompt
   );
-  
+
   const recipeContextUpdates: Partial<typeof apiConfig> = {};
   if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
     recipeContextUpdates.sessionId = result.sessionId;
@@ -892,7 +894,7 @@ export async function imageToImage(
   }>;
 }> {
   const apiConfig = useCanvasStore.getState().apiConfig;
-  
+
   // 检查是否配置了 Cookie（编辑 API 需要 Cookie）
   if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
     throw new Error('图生图需要配置 Bearer Token，请在右上角设置中配置');
@@ -909,12 +911,12 @@ export async function imageToImage(
     const context = useCanvasStore.getState().regenerateFlowContext();
     sessionId = context.sessionId;
   }
-  
+
   console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
-  
+
   const result = await generateImageDirectly(
     prompt,
     apiConfig.bearerToken,
@@ -926,7 +928,7 @@ export async function imageToImage(
     count ?? apiConfig.generationCount ?? 1,
     useCanvasStore.getState().currentPrefixPrompt
   );
-  
+
   const editContextUpdates: Partial<typeof apiConfig> = {};
   if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
     editContextUpdates.sessionId = result.sessionId;
@@ -934,7 +936,7 @@ export async function imageToImage(
   if (Object.keys(editContextUpdates).length > 0) {
     useCanvasStore.getState().setApiConfig(editContextUpdates);
   }
-  
+
   // 转换格式
   const images = result.images.map(img => ({
     imageUrl: img.encodedImage ? `data:${img.mimeType || 'image/png'};base64,${img.encodedImage}` : (img.fifeUrl || ''), // 优先使用base64
@@ -969,7 +971,7 @@ export async function editImage(
 }> {
   console.log(`🔄 ${variationType === 'regenerate' ? '再次生成' : '生成类似图片'}:`, prompt, imageId);
   await delay(MOCK_LATENCY);
-  
+
   return {
     imageUrl: getRandomImage(),
     promptId: generateId(),
@@ -991,18 +993,18 @@ export async function batchGenerate(
   translatedPrompts?: Array<string | undefined>;
 }> {
   const apiConfig = useCanvasStore.getState().apiConfig;
-  
+
   if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
     throw new Error('批量图生图需要配置 Bearer Token，请在右上角设置中配置');
   }
   if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
     throw new Error('批量图生图需要配置 Flow Project ID，请在右上角设置中配置');
   }
-  
+
   console.log('🚀 使用 Flow API 批量图生图:', prompt, aspectRatio, sourceImageUrls.length, '张图片');
-  
+
   // 为每个源图生成一张新图
-  const imagePromises = sourceImageUrls.map((sourceUrl, index) => 
+  const imagePromises = sourceImageUrls.map((sourceUrl, index) =>
     imageToImage(
       prompt,
       sourceUrl,
@@ -1011,13 +1013,13 @@ export async function batchGenerate(
       sourceImageMediaIds?.[index]
     )
   );
-  
+
   const results = await Promise.all(imagePromises);
   const imageUrls = results.map(r => r.imageUrl);
   const mediaGenerationIds = results.map((r) => r.mediaGenerationId);
   const workflowIds = results.map((r) => r.workflowId);
   const translatedPrompts = results.map((r) => r.translatedPrompt);
-  
+
   return {
     imageUrls,
     promptId: generateId(),
@@ -1105,7 +1107,7 @@ export async function generateVideoFromImage(
 }> {
   console.log('🎬 图生视频:', imageId, prompt);
   await delay(MOCK_LATENCY * 2);
-  
+
   const video = getRandomVideo();
   return {
     videoUrl: video.src,
@@ -1144,8 +1146,8 @@ export async function generateVideoFromImages(
   ) as ImageElement | undefined;
   const endImage = endImageId
     ? (elements.find(
-        (el) => el.id === endImageId && el.type === 'image'
-      ) as ImageElement | undefined)
+      (el) => el.id === endImageId && el.type === 'image'
+    ) as ImageElement | undefined)
     : undefined;
 
   if (!startImage) {
@@ -1239,20 +1241,20 @@ export async function generateByMode(
   switch (mode) {
     case 'generate':
       return await generateImage(prompt);
-    
+
     case 'regenerate':
     case 'similar':
       if (!options?.imageId) {
         throw new Error('imageId is required for regenerate/similar mode');
       }
       return await editImage(prompt, options.imageId, mode);
-    
+
     case 'batch':
       if (!options?.imageIds || options.imageIds.length === 0) {
         throw new Error('imageIds are required for batch mode');
       }
       return await batchGenerate(prompt, options.imageIds);
-    
+
     default:
       throw new Error(`Unknown mode: ${mode}`);
   }

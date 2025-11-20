@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     } else {
       // 方图暂不支持
       return NextResponse.json(
-        { 
+        {
           error: '目前不支持方图视频生成，仅支持横屏（16:9）和竖屏（9:16）',
           details: `不支持的比例: ${normalizedAspect}`,
         },
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       projectId: trimmedProjectId,
       proxy: proxy ? '已配置' : '未配置',
     });
-    
+
     console.log('📤 完整 Payload:', JSON.stringify(payload, null, 2));
 
     const headers = {
