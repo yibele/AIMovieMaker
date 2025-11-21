@@ -116,19 +116,44 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     resetConnectionMenu,
   });
 
-  // 行级注释：同步 elements 到 React Flow 节点状态
+  // 行级注释：同步 elements 到 React Flow 节点状态（性能优化：只在元素数量或 ID 变化时完全重建）
+  const elementsIdsRef = useRef<string>('');
   useEffect(() => {
-    setNodes(elements.map(el => ({
-      id: el.id,
-      type: el.type,
-      position: el.position,
-      data: el as any,
-      draggable: true,
-      style: el.size ? {
-        width: el.size.width,
-        height: el.size.height,
-      } : undefined,
-    })));
+    const newIdsString = elements.map(el => el.id).sort().join(',');
+    
+    // 行级注释：只有元素数量/ID 变化时才完全重建节点列表（新增/删除节点）
+    if (elementsIdsRef.current !== newIdsString) {
+      elementsIdsRef.current = newIdsString;
+      setNodes(elements.map(el => ({
+        id: el.id,
+        type: el.type,
+        position: el.position,
+        data: el as any,
+        draggable: true,
+        style: el.size ? {
+          width: el.size.width,
+          height: el.size.height,
+        } : undefined,
+      })));
+    } else {
+      // 行级注释：元素数量不变时，只更新节点的 data 和 style（避免重建整个列表）
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          const element = elements.find((el) => el.id === node.id);
+          if (!element) return node;
+          
+          return {
+            ...node,
+            data: element as any,
+            position: element.position,
+            style: element.size ? {
+              width: element.size.width,
+              height: element.size.height,
+            } : undefined,
+          };
+        })
+      );
+    }
   }, [elements, setNodes]);
 
   useEffect(() => {
@@ -144,10 +169,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     }));
     // 加载项目的前置提示词
     loadProjectPrefixPrompt(projectId);
-    // 加载项目素材
-    loadMaterialsFromProject(projectId).catch((error) => {
-      console.error('同步项目素材失败:', error);
-    });
+    // 行级注释：素材库改为手动加载，不自动加载
   }, [projectId, loadProjectPrefixPrompt]);
 
   const reactFlowWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -225,6 +247,40 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
           const addElement = useCanvasStore.getState().addElement;
           addElement(newVideo);
+
+          // 行级注释：创建连线到图片节点
+          if (startImageId) {
+            const edgeId = `edge-${startImageId}-${newVideoId}-start`;
+            setEdges((eds: any[]) => [
+              ...eds,
+              {
+                id: edgeId,
+                source: startImageId,
+                sourceHandle: null,
+                target: newVideoId,
+                targetHandle: 'start-image',
+                type: 'default',
+                animated: true,
+                style: { stroke: '#3b82f6', strokeWidth: 2 },
+              },
+            ]);
+          }
+          if (endImageId && endImageId !== startImageId) {
+            const edgeId = `edge-${endImageId}-${newVideoId}-end`;
+            setEdges((eds: any[]) => [
+              ...eds,
+              {
+                id: edgeId,
+                source: endImageId,
+                sourceHandle: null,
+                target: newVideoId,
+                targetHandle: 'end-image',
+                type: 'default',
+                animated: true,
+                style: { stroke: '#3b82f6', strokeWidth: 2 },
+              },
+            ]);
+          }
 
           console.log('✅ 创建额外视频节点:', newVideoId);
 
@@ -608,21 +664,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     }));
   }, [elements]);
 
-  // 同步 store 的元素到 React Flow 节点，保留选中状态
-  useEffect(() => {
-    // @ts-ignore
-    setNodes((currentNodes: any) => {
-      // 保留当前节点的选中状态
-      return nodes.map((node) => {
-        const currentNode = currentNodes.find((n: any) => n.id === node.id);
-        return {
-          ...node,
-          // 保留 selected 状态
-          selected: currentNode?.selected || false,
-        };
-      });
-    });
-  }, [nodes, setNodes]);
+  // 行级注释：移除此 useEffect，避免重复渲染（已经在上面的 useEffect 中处理了节点同步）
 
   // 行级注释：移除指向已删除节点的连线
   useEffect(() => {
@@ -653,24 +695,41 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [onNodesChange]
   );
 
-  // 同步 React Flow 节点拖拽到 store
-  // 注意：当多选拖动时，需要保存所有拖动的节点
+  // 行级注释：拖动过程中的节点位置缓存（避免频繁更新 store）
+  const draggedNodesRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  
+  // 行级注释：拖动过程中只更新本地状态，不触发 store 更新（性能优化）
+  const handleNodeDrag = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      draggedNodesRef.current.set(node.id, { x: node.position.x, y: node.position.y });
+    },
+    []
+  );
+
+  // 行级注释：拖动结束后批量更新 store（减少渲染次数）
   const handleNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: Node, nodes: Node[]) => {
-      // 找到所有被选中的节点
+      // 找到所有被拖动的节点（包括多选）
       const selectedNodes = nodes.filter(n => n.selected);
+      const nodesToUpdate = selectedNodes.length > 1 ? selectedNodes : [node];
 
-      if (selectedNodes.length > 1) {
-        // 多选：保存所有选中节点的位置
-        selectedNodes.forEach((n) => {
-          updateElement(n.id, { position: n.position });
-        });
-      } else {
-        // 单选：只保存当前节点
-        updateElement(node.id, { position: node.position });
-      }
+      // 行级注释：批量更新位置到 store（一次性更新，避免多次触发 elements 变化）
+      const { elements: currentElements } = useCanvasStore.getState();
+      const updatedElements = currentElements.map((el) => {
+        const draggedNode = nodesToUpdate.find((n) => n.id === el.id);
+        if (draggedNode) {
+          return { ...el, position: draggedNode.position };
+        }
+        return el;
+      });
+      
+      // 行级注释：直接替换整个 elements 数组（一次性更新，而非多次调用 updateElement）
+      useCanvasStore.setState({ elements: updatedElements });
+      
+      // 清空拖动缓存
+      draggedNodesRef.current.clear();
     },
-    [updateElement]
+    []
   );
 
   // 处理选中变化
@@ -1204,6 +1263,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         edges={edges}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         onSelectionChange={handleSelectionChange}
         onConnect={handleConnect}

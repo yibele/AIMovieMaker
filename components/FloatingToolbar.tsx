@@ -136,6 +136,11 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       });
       setIsLoadingAnnotatorImage(false);
 
+      // 更新 store 中的 base64
+      updateElement(selectedImage.id, {
+        base64: encodedImage // 存储纯 base64 字符串（不带前缀），与生成逻辑保持一致
+      } as Partial<ImageElement>);
+
     } catch (error) {
       console.error('❌ 获取原图失败:', error);
       toast.error(`无法打开编辑器: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -678,12 +683,12 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
       <>
         <div
           key={selectedImage.id}
-          className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto"
+          className="image-toolbar-pop absolute z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-3 py-2 pointer-events-auto transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] hover:scale-[1.02]"
           style={{
             left: `${screenX + (nodeWidth * zoom) / 2}px`,
             top: `${screenY - 58}px`,
             transform: 'translateX(-50%)',
-            willChange: 'transform', // 优化 GPU 加速
+            willChange: 'transform, opacity', // 优化 GPU 加速
           }}
           onMouseDown={handleMouseDown}
         >
@@ -709,9 +714,9 @@ export default function FloatingToolbar({ setEdges }: FloatingToolbarProps) {
   // 多选工具栏：固定在顶部中央
   return (
     <>
-      <Panel position="top-center" className="!m-0 !p-0">
+      <Panel position="top-center" className="!m-0 !p-0 animate-in slide-in-from-top-4 fade-in duration-300">
         <div
-          className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2"
+          className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2 transition-all hover:shadow-lg"
           onMouseDown={handleMouseDown}
         >
           <span className="px-2 py-1 text-xs font-medium text-gray-500">

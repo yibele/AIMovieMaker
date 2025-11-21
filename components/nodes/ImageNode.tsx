@@ -19,6 +19,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const isError = uploadState === 'error';
   const hasMediaId = Boolean(imageData.mediaGenerationId);
   const showBaseImage = Boolean(imageData.src);
+  // isProcessing 状态下显示 Loading，否则显示图片或 Empty 状态
   const isProcessing = !isError && (isSyncing || !hasMediaId || !showBaseImage);
 
   // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
@@ -382,6 +383,14 @@ function ImageNode({ data, selected, id }: NodeProps) {
     );
   }, [imageData, promptsHistory, addElement, updateElement, deleteElement, addPromptHistory]);
 
+  // 行级注释：计算图片和Loading的透明度，用于 Cross-Fade
+  // Loading 只有在处理中时完全不透明，处理完（有图）后透明度为 0
+  const loadingOpacity = isProcessing ? 1 : 0;
+  // 图片只有在有 src 时完全不透明，否则透明度为 0
+  const imageOpacity = showBaseImage ? 1 : 0;
+  // Empty State (等待内容)
+  const emptyOpacity = !isProcessing && !showBaseImage ? 1 : 0;
+
   return (
     <>
       {/* NodeResizer - 统一风格 */}
@@ -415,7 +424,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         position={Position.Top}
         align="center"
         offset={15}
-        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2"
+        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2 animate-in fade-in zoom-in-95 duration-200"
         onMouseDown={(e) => {
           e.stopPropagation();
         }}
@@ -429,9 +438,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
       </NodeToolbar>
 
       <div
-        className={`relative rounded-xl transition-all w-full h-full ${selected
-          ? 'ring-1 ring-blue-500/80 shadow-[0_10px_40px_rgba(59,130,246,0.25)]'
-          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)]'
+        className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full ${selected
+          ? 'ring-2 ring-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.25)] scale-[1.01]'
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:shadow-lg'
           }`}
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
@@ -440,35 +449,57 @@ function ImageNode({ data, selected, id }: NodeProps) {
           <Handle
             type="target"
             position={Position.Left}
-            className="!flex !items-center !justify-center !w-4 !h-4 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+            className="!flex !items-center !justify-center !w-4 !h-4 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
             style={{ left: '-6px', top: '50%' }}
             isConnectable={true}
           />
         )}
 
-        <div className="absolute inset-0 rounded-xl overflow-hidden">
-          {isProcessing ? (
+        <div className="absolute inset-0 rounded-xl overflow-hidden bg-gray-50">
+          
+          {/* 1. Loading Layer - 绝对定位，通过 opacity 控制显示 */}
+          <div 
+            className="absolute inset-0 z-20 transition-opacity duration-700 ease-in-out"
+            style={{ opacity: loadingOpacity, pointerEvents: loadingOpacity > 0.5 ? 'auto' : 'none' }}
+          >
             <div className="flex h-full w-full items-center justify-center bg-white">
-              <div className="loading-glow w-full h-full rounded-2xl" />
+              <div className="loading-glow w-full h-full rounded-xl" />
             </div>
-          ) : showBaseImage ? (
-            <img
-              src={imageData.src}
+          </div>
+
+          {/* 2. Image Layer - 绝对定位，通过 opacity 控制显示 */}
+          <div 
+            className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
+            style={{ 
+              opacity: imageOpacity, 
+              transform: showBaseImage ? 'scale(1)' : 'scale(1.05)', // 图片出现时轻微缩小归位
+              pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none' 
+            }}
+          >
+            {imageData.src && (
+             <img
+              src={imageData.src} 
               alt={imageData.alt || '生成的图片'}
-              className="h-full w-full object-cover pointer-events-none select-none"
+              className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
               draggable={false}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center text-xs font-medium text-gray-500">
-              等待图片内容
-            </div>
-          )}
+            )}
+          </div>
 
+          {/* 3. Empty State Layer - 等待内容 */}
+          <div
+            className="absolute inset-0 z-0 flex flex-col items-center justify-center text-xs font-medium text-gray-400 transition-opacity duration-500"
+            style={{ opacity: emptyOpacity }}
+          >
+            等待图片内容
+          </div>
+
+          {/* 4. Error Overlay - 只有出错时显示 */}
           {isError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-50/80 backdrop-blur-sm text-red-500">
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1 bg-red-50/90 backdrop-blur-sm text-red-500 animate-in fade-in duration-300">
               <span className="text-xs font-medium">同步失败</span>
               {imageData.uploadMessage && (
                 <span className="text-[10px] leading-tight px-6 text-center opacity-75">
@@ -484,7 +515,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
           id="right"
           type="source"
           position={Position.Right}
-          className="!flex !items-center !justify-center !w-3.5 !h-3.5 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm"
+          className="!flex !items-center !justify-center !w-3.5 !h-3.5 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
           style={{ right: '-6px', top: '50%' }}
           isConnectable={true}
         />
@@ -492,7 +523,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
       {shouldRenderBelowPanel && (
         <div
-          className="absolute left-0 right-0 flex flex-col gap-2 items-start"
+          className="absolute left-0 right-0 flex flex-col gap-2 items-start animate-in slide-in-from-top-2 fade-in duration-300"
           style={{
             top: '100%',
             marginTop: '12px',
@@ -508,18 +539,18 @@ function ImageNode({ data, selected, id }: NodeProps) {
                 e.stopPropagation();
               }}
             >
-              <div className="relative">
+              <div className="relative group">
                 <button
                   onClick={handleCopyPrompt}
-                  className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all transform active:scale-95 ${isCopied
+                  className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all duration-200 transform active:scale-95 ${isCopied
                     ? 'text-gray-400 bg-gray-600 border-gray-600'
-                    : 'text-white bg-black border-gray-600 hover:bg-gray-800'
+                    : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm'
                     }`}
                   title={isCopied ? "已复制!" : "复制提示词"}
                 >
                   {isCopied ? 'Copied!' : 'Copy Prompt'}
                 </button>
-                <div className="w-full bg-white rounded-lg px-3 py-2 pt-2">
+                <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                   <p
                     className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
                     title={promptDisplayText}
@@ -537,4 +568,3 @@ function ImageNode({ data, selected, id }: NodeProps) {
 }
 
 export default memo(ImageNode);
-

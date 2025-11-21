@@ -232,9 +232,8 @@ export const useMaterialsStore = create<MaterialsStore>()(
     {
       name: 'materials-storage',
       storage: createJSONStorage(() => localStorage),
-      // 只持久化必要的字段
+      // 行级注释：不持久化 materials，改为手动加载
       partialize: (state) => ({
-        materials: state.materials,
         activeTab: state.activeTab,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
