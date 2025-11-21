@@ -808,7 +808,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (promptInput.trim()) {
+                  if (promptInput.trim() && !isGenerating) {
                     navigator.clipboard.writeText(promptInput.trim());
                     setIsCopied(true);
                     setTimeout(() => setIsCopied(false), 2000);
@@ -816,15 +816,15 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
-                disabled={!promptInput.trim()}
+                disabled={!promptInput.trim() || isGenerating}
                 className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded transition-all duration-200 transform active:scale-95 ${
-                  promptInput.trim()
+                  promptInput.trim() && !isGenerating
                     ? isCopied
                       ? 'text-gray-400 bg-gray-600 border-gray-600 cursor-pointer'
                       : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm cursor-pointer'
                     : 'text-gray-500 bg-gray-200 border-gray-300 cursor-not-allowed'
                 }`}
-                title={!promptInput.trim() ? "输入提示词后可复制" : isCopied ? "已复制!" : "复制提示词"}
+                title={isGenerating ? "生成中..." : !promptInput.trim() ? "输入提示词后可复制" : isCopied ? "已复制!" : "复制提示词"}
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
@@ -837,19 +837,22 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   value={promptInput}
                   onChange={(e) => setPromptInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && promptInput.trim()) {
+                    if (e.key === 'Enter' && promptInput.trim() && !isGenerating) {
                       handleGenerateFromInput();
                     }
                     e.stopPropagation();
                   }}
                   placeholder="输入视频描述，按 Enter 生成..."
-                  className="w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 transition-colors"
+                  disabled={isGenerating}
+                  className={`w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 transition-colors ${
+                    isGenerating ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 />
                 
                 {/* 行级注释：数量选择 - 放在输入框下方，只更新本地状态，不频繁触发全局更新 */}
-                <div className="flex items-center gap-2 mt-2 pt-1 border-t border-gray-100">
+                <div className={`flex items-center gap-2 mt-2 pt-1 border-t border-gray-100 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
                   <span className="text-[9px] text-gray-400 font-medium select-none">生成数量</span>
                   <div className="flex items-center bg-gray-100 rounded-md p-0.5 gap-0.5">
                     {[1, 2, 3, 4].map((num) => (
@@ -863,6 +866,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
                         }}
                         onMouseDown={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
+                        disabled={isGenerating}
                         className={`
                           w-5 h-4 flex items-center justify-center rounded text-[9px] font-medium transition-all duration-200
                           ${generationCount === num
@@ -887,14 +891,14 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
-                  disabled={!promptInput.trim()}
+                  disabled={!promptInput.trim() || isGenerating}
                   className={`
                     w-6 h-6 flex items-center justify-center rounded-full transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 hover:scale-110
-                    ${promptInput.trim()
+                    ${promptInput.trim() && !isGenerating
                       ? 'bg-blue-600 text-white hover:bg-blue-500'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
                   `}
-                  title="生成视频"
+                  title={isGenerating ? "生成中..." : "生成视频"}
                 >
                   <Send className="w-3 h-3" />
                 </button>
