@@ -1,10 +1,9 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar } from '@xyflow/react';
+import { Handle, Position, type NodeProps, NodeToolbar } from '@xyflow/react';
 import { RefreshCw, Copy, Download, Trash2, Square, Edit3 } from 'lucide-react';
 import type { ImageElement } from '@/lib/types';
-import { useNodeResize } from '@/lib/node-resize-helpers';
 import { useCanvasStore } from '@/lib/store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput } from '@/lib/input-panel-generator';
@@ -24,9 +23,6 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
-
-  // 行级注释：使用共享的 resize 逻辑
-  const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
 
   // 行级注释：图生图状态
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -400,31 +396,6 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   return (
     <>
-      {/* NodeResizer - 统一风格 */}
-      <NodeResizer
-        minWidth={100}
-        minHeight={75}
-        maxWidth={1080}
-        maxHeight={1920}
-        keepAspectRatio={true}
-        isVisible={selected}
-        color="#3b82f6"
-        handleStyle={{
-          width: '10px',
-          height: '10px',
-          borderRadius: '4px',
-          backgroundColor: '#3b82f6',
-          border: '1px solid white',
-        }}
-        lineStyle={{
-          borderWidth: '1px',
-          borderColor: '#3b82f6',
-        }}
-        onResizeStart={handleResizeStart}
-        onResize={handleResize}
-        onResizeEnd={handleResizeEnd}
-      />
-
       {/* NodeToolbar - 图片工具栏，只在单选时显示 */}
       <NodeToolbar
         isVisible={selected && selection.length === 1}

@@ -1,11 +1,10 @@
 'use client';
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Handle, Position, type NodeProps, NodeResizer, NodeToolbar, useReactFlow } from '@xyflow/react';
+import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
 import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
-import { useNodeResize } from '@/lib/node-resize-helpers';
 import { ToolbarButton } from './ToolbarButton';
 
 // 行级注释：视频节点组件
@@ -99,9 +98,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
       }
     }
   };
-
-  // 行级注释：使用共享的 resize 逻辑
-  const { handleResizeStart, handleResize, handleResizeEnd } = useNodeResize(id);
 
   // 行级注释：从输入框生成视频
   const handleGenerateFromInput = useCallback(() => {
@@ -569,31 +565,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   return (
     <>
-      {/* NodeResizer - 极简风格 */}
-      <NodeResizer
-        minWidth={200}
-        minHeight={150}
-        maxWidth={800}
-        maxHeight={600}
-        keepAspectRatio={true}
-        isVisible={selected}
-        color="#3b82f6"
-        handleStyle={{
-          width: '10px',
-          height: '10px',
-          borderRadius: '4px',
-          backgroundColor: '#3b82f6',
-          border: '1px solid white',
-        }}
-        lineStyle={{
-          borderWidth: '1px',
-          borderColor: '#3b82f6',
-        }}
-        onResizeStart={handleResizeStart}
-        onResize={handleResize}
-        onResizeEnd={handleResizeEnd}
-      />
-
       <div
         className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full ${selected
           ? 'ring-2 ring-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.25)] scale-[1.01]'
