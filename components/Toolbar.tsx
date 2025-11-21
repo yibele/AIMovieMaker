@@ -257,7 +257,7 @@ export default function Toolbar() {
 
   return (
     <>
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
+    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-200/50 p-2 flex flex-col gap-2">
       {tools.map((tool) => {
         const Icon = tool.icon;
         const isActive = activeTool === tool.id;
@@ -266,14 +266,14 @@ export default function Toolbar() {
           <button
             key={tool.id}
             onClick={tool.action}
-            className={`p-3 rounded-lg transition-all ${
+            className={`p-3 rounded-lg transition-all duration-200 ease-out hover:scale-110 active:scale-95 ${
               isActive
-                ? 'bg-blue-100 text-blue-600'
-                : 'hover:bg-gray-100 text-gray-700'
+                ? 'bg-blue-100 text-blue-600 shadow-md'
+                : 'hover:bg-gray-100 text-gray-700 hover:shadow-lg'
             }`}
             title={tool.label}
           >
-            <Icon className="w-5 h-5" />
+            <Icon className="w-5 h-5 transition-transform duration-200 ease-out" />
           </button>
         );
       })}
