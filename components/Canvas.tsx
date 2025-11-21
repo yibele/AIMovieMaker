@@ -83,7 +83,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       height: el.size.height,
     } : undefined,
   })));
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const reactFlowInstance = useReactFlow();
 
@@ -349,7 +349,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             : '9:16'; // 行级注释：默认竖屏（与 Google 官方默认一致）
           
           console.log('🎬 调用文生视频:', { promptText, aspectRatio });
-          result = await generateVideoFromText(promptText, aspectRatio as '16:9' | '9:16' | '1:1');
+          result = await generateVideoFromText(promptText || '', aspectRatio as '16:9' | '9:16' | '1:1');
           generationType = 'text-to-video';
         }
 
