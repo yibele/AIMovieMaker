@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
           userPaygateTier: 'PAYGATE_TIER_ONE',
         },
         seed: requestSeed,
-        imageModelName: 'GEM_PIX',
+        imageModelName: 'GEM_PIX2',
         imageAspectRatio: normalizedAspect,
         prompt: finalPrompt,
         imageInputs, // 始终包含 imageInputs（文生图时为空数组，图生图时为参考图数组）

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
           sessionId: clientSessionId,
         },
         imageModelSettings: {
-          imageModel: 'GEM_PIX',
+          imageModel: 'GEM_PIX2',
           aspectRatio: aspectRatioMap[aspectRatio] || 'IMAGE_ASPECT_RATIO_LANDSCAPE',
         },
         flags: {},

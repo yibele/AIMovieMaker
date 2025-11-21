@@ -212,6 +212,7 @@ export async function generateImageDirectly(
   const payload = { requests };
 
   console.log('🎨 直接调用 Google Flow Generate API...');
+  console.log('📤 请求参数 (requests):', JSON.stringify(requests, null, 2));
 
   try {
     const response = await fetch(
@@ -228,7 +229,8 @@ export async function generateImageDirectly(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Generate failed: ${response.status} ${response.statusText}`);
+      console.error('❌ API 错误响应:', JSON.stringify(errorData, null, 2));
+      throw new Error(`Generate failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
     }
 
     const rawData = await response.json();
