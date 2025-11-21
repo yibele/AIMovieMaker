@@ -506,9 +506,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   // 处理删除
   const handleDelete = useCallback(() => {
-    // TODO: 实现删除功能
-    console.log('删除视频节点:', id);
-    alert('删除功能开发中...');
+    const deleteElement = useCanvasStore.getState().deleteElement;
+    deleteElement(id);
   }, [id]);
 
   // 状态判断

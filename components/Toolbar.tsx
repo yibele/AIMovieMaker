@@ -102,7 +102,7 @@ export default function Toolbar() {
     addElement(newText);
   };
 
-  // 添加视频节点
+  // 添加视频节点 - 创建空节点供文生视频
   const handleAddVideo = () => {
     // 获取屏幕中心的画布坐标
     const screenCenter = {
@@ -111,7 +111,7 @@ export default function Toolbar() {
     };
     const flowPosition = screenToFlowPosition(screenCenter);
     
-    // 视频节点的尺寸（16:9 比例）
+    // 视频节点的尺寸（16:9 横屏，默认）
     const videoWidth = 480;
     const videoHeight = 270;
     
@@ -123,10 +123,12 @@ export default function Toolbar() {
         y: flowPosition.y - videoHeight / 2,
       },
       size: { width: videoWidth, height: videoHeight },
-      src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      thumbnail: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=480&h=270&fit=crop',
-      duration: 5,
-      status: 'ready',
+      src: '', // 空源，等待生成
+      thumbnail: '',
+      duration: 0,
+      status: 'pending', // pending 状态会自动显示输入框
+      readyForGeneration: false,
+      generationCount: 1, // 默认生成 1 个视频
     };
     addElement(newVideo);
   };

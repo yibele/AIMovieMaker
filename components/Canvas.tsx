@@ -118,6 +118,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
   // 行级注释：同步 elements 到 React Flow 节点状态（性能优化：只在元素数量或 ID 变化时完全重建）
   const elementsIdsRef = useRef<string>('');
+  const previousElementsRef = useRef<CanvasElement[]>(elements);
+  
   useEffect(() => {
     const newIdsString = elements.map(el => el.id).sort().join(',');
     
@@ -135,17 +137,25 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           height: el.size.height,
         } : undefined,
       })));
+      previousElementsRef.current = elements;
     } else {
       // 行级注释：元素数量不变时，只更新节点的 data 和 style（避免重建整个列表）
       setNodes((currentNodes) =>
         currentNodes.map((node) => {
           const element = elements.find((el) => el.id === node.id);
+          const prevElement = previousElementsRef.current.find((el) => el.id === node.id);
           if (!element) return node;
+          
+          // 行级注释：检查 position 是否真的变化了，避免不必要的位置更新（修复视频生成时的跳动问题）
+          const positionChanged = !prevElement || 
+            prevElement.position.x !== element.position.x || 
+            prevElement.position.y !== element.position.y;
           
           return {
             ...node,
             data: element as any,
-            position: element.position,
+            // 行级注释：只在位置真的变化时才更新 position，否则保持 React Flow 内部的位置不变
+            position: positionChanged ? element.position : node.position,
             style: element.size ? {
               width: element.size.width,
               height: element.size.height,
@@ -153,6 +163,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           };
         })
       );
+      previousElementsRef.current = elements;
     }
   }, [elements, setNodes]);
 
@@ -295,7 +306,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       updateElement(videoId, {
         status: 'generating',
-        progress: 0,
         readyForGeneration: true,
         src: '',
         thumbnail: '',
@@ -313,16 +323,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             : edge
         )
       );
-
-      let progress = 0;
-      const progressInterval = setInterval(() => {
-        progress += 5;
-        if (progress <= 90) {
-          updateElement(videoId, { progress } as Partial<VideoElement>);
-        } else {
-          clearInterval(progressInterval);
-        }
-      }, 300);
 
       try {
         let result;
@@ -353,8 +353,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           generationType = 'text-to-video';
         }
 
-        clearInterval(progressInterval);
-
         updateElement(videoId, {
           status: 'ready',
           src: result.videoUrl,
@@ -383,7 +381,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           )
         );
       } catch (error) {
-        clearInterval(progressInterval);
         console.error('❌ 图生视频生成失败:', error);
         updateElement(videoId, {
           status: 'error',
@@ -1052,17 +1049,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       ]);
 
       try {
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-          progress += 10;
-          if (progress <= 90) {
-            updateElement(newVideoId, { progress } as Partial<VideoElement>);
-          }
-        }, 300);
-
         const result = await generateVideoFromText(sourceNode.text, aspectRatio);
-
-        clearInterval(progressInterval);
 
         updateElement(newVideoId, {
           status: 'ready',
