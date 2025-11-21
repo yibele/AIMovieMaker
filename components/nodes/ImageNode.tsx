@@ -31,6 +31,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
   // 行级注释：图生图状态
   const updateElement = useCanvasStore((state) => state.updateElement);
   const deleteElement = useCanvasStore((state) => state.deleteElement);
+  const selection = useCanvasStore((state) => state.selection); // 行级注释：获取选中状态，用于判断是否单选
   const isImageToImage = imageData.generatedFrom?.type === 'image-to-image'; // 行级注释：标记当前节点是否用于图生图
   const imageToImagePrompt = isImageToImage
     ? (imageData.generatedFrom?.prompt?.trim() || '')
@@ -424,9 +425,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
         onResizeEnd={handleResizeEnd}
       />
 
-      {/* NodeToolbar - 图片工具栏 */}
+      {/* NodeToolbar - 图片工具栏，只在单选时显示 */}
       <NodeToolbar
-        isVisible={selected}
+        isVisible={selected && selection.length === 1}
         position={Position.Top}
         align="center"
         offset={15}

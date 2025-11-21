@@ -23,6 +23,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addElement = useCanvasStore((state) => state.addElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
+  const selection = useCanvasStore((state) => state.selection); // 行级注释：获取选中状态，用于判断是否单选
   const { setEdges, getEdges } = useReactFlow(); // 行级注释：用于创建连线和获取连线
 
   const generationStatusText = useMemo(() => {
@@ -601,7 +602,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         style={{ overflow: 'visible', backgroundColor: '#fff' }}
       >
         <NodeToolbar
-          isVisible={selected}
+          isVisible={selected && selection.length === 1}
           position={Position.Top}
           align="center"
           offset={15}
