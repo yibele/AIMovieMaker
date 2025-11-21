@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { MousePointer2, Type, Upload, Video } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
@@ -37,6 +37,40 @@ export default function Toolbar() {
   );
 
   const closeCropper = () => setCropperState(createDefaultCropperState());
+
+  // macOS Dock 效果状态
+  const [mouseY, setMouseY] = useState<number | null>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // 计算按钮缩放比例（macOS Dock 效果）
+  const calculateScale = useCallback((buttonIndex: number) => {
+    if (mouseY === null) return 1;
+    
+    const button = buttonRefs.current[buttonIndex];
+    if (!button) return 1;
+    
+    const rect = button.getBoundingClientRect();
+    const buttonCenterY = rect.top + rect.height / 2;
+    const distance = Math.abs(mouseY - buttonCenterY);
+    
+    // 距离越近，缩放越大
+    const maxScale = 1.5; // 最大缩放 150%
+    const minScale = 1.0; // 最小缩放 100%
+    const range = 100; // 影响范围 100px
+    
+    if (distance > range) return minScale;
+    
+    const scale = maxScale - ((distance / range) * (maxScale - minScale));
+    return scale;
+  }, [mouseY]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    setMouseY(e.clientY);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setMouseY(null);
+  }, []);
 
   const flowAspectMap: Record<AspectRatioOption, FlowAspectRatioEnum> = {
     '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
@@ -257,26 +291,33 @@ export default function Toolbar() {
 
   return (
     <>
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-200/50 p-3 flex flex-col gap-3">
-      {tools.map((tool) => {
+    <div 
+      className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-200/50 p-3 flex flex-col gap-2"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {tools.map((tool, index) => {
         const Icon = tool.icon;
         const isActive = activeTool === tool.id;
+        const scale = calculateScale(index);
 
         return (
           <button
             key={tool.id}
+            ref={(el) => { buttonRefs.current[index] = el; }}
             onClick={tool.action}
-            className={`relative p-3 rounded-xl transition-all duration-300 ease-out hover:scale-125 active:scale-90 ${
+            style={{
+              transform: `scale(${scale})`,
+              transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+            className={`relative p-3 rounded-xl origin-center ${
               isActive
                 ? 'bg-blue-100 text-blue-600 shadow-lg'
                 : 'text-gray-700'
-            } group`}
+            }`}
             title={tool.label}
           >
-            {/* 动态边框 */}
-            <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-blue-400 transition-all duration-300 ease-out"></div>
-            
-            <Icon className="w-5 h-5 relative z-10 transition-transform duration-300 ease-out group-hover:rotate-3" />
+            <Icon className="w-5 h-5 relative z-10" />
           </button>
         );
       })}
