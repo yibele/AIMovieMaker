@@ -310,14 +310,16 @@ export default function Toolbar() {
               transform: `scale(${scale})`,
               transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
-            className={`relative p-3 rounded-xl origin-center ${
-              isActive
-                ? 'bg-blue-100 text-blue-600 shadow-lg'
-                : 'text-gray-700'
-            }`}
+            className="relative p-3 rounded-xl origin-center group"
             title={tool.label}
           >
-            <Icon className="w-5 h-5 relative z-10" />
+            <Icon 
+              className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
+                isActive
+                  ? 'text-blue-500'
+                  : 'text-gray-600 group-hover:text-blue-500'
+              }`}
+            />
           </button>
         );
       })}
