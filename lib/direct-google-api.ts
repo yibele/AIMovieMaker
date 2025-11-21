@@ -336,6 +336,11 @@ export async function generateVideoTextDirectly(
       : 'veo_3_1_t2v_fast';
   }
 
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra' 
+    ? 'PAYGATE_TIER_TWO' 
+    : 'PAYGATE_TIER_ONE';
+
   const requestSeed = typeof seed === 'number' 
     ? seed 
     : Math.floor(Math.random() * 100_000);
@@ -349,6 +354,9 @@ export async function generateVideoTextDirectly(
   const payload = {
     clientContext: {
       sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier,
     },
     requests: [
       {
@@ -369,6 +377,7 @@ export async function generateVideoTextDirectly(
     accountTier,
     aspectRatio: normalizedAspect,
     videoModelKey,
+    userPaygateTier,
     sceneId: generatedSceneId,
   });
 
@@ -445,15 +454,15 @@ export async function generateVideoImageDirectly(
 
   const hasEndImage = Boolean(endMediaId && endMediaId.trim());
 
-  // 行级注释：根据账号类型和模式选择视频模型
+  // 行级注释：根据账号类型和模式选择视频模型（注意：ultra 在 fl 之前）
   let videoModelKey: string;
   if (accountTier === 'ultra') {
-    // Ultra 账号使用带 _ultra 后缀的模型
+    // Ultra 账号使用带 _ultra 的模型
     if (hasEndImage) {
-      // 首尾帧模式
+      // 首尾帧模式 - ultra 在 fl 之前
       videoModelKey = aspectRatio === '9:16'
-        ? 'veo_3_1_i2v_s_fast_portrait_fl_ultra'
-        : 'veo_3_1_i2v_s_fast_fl_ultra';
+        ? 'veo_3_1_i2v_s_fast_portrait_ultra_fl'
+        : 'veo_3_1_i2v_s_fast_ultra_fl';
     } else {
       // 仅首帧模式
       videoModelKey = aspectRatio === '9:16'
@@ -474,6 +483,11 @@ export async function generateVideoImageDirectly(
         : 'veo_3_1_i2v_s_fast';
     }
   }
+
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra' 
+    ? 'PAYGATE_TIER_TWO' 
+    : 'PAYGATE_TIER_ONE';
 
   const requestSeed = typeof seed === 'number' 
     ? seed 
@@ -511,6 +525,9 @@ export async function generateVideoImageDirectly(
   const payload = {
     clientContext: {
       sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier,
     },
     requests: [requestObject],
   };
@@ -525,6 +542,7 @@ export async function generateVideoImageDirectly(
     mode: hasEndImage ? '首尾帧' : '仅首帧',
     aspectRatio: normalizedAspect,
     videoModelKey,
+    userPaygateTier,
     sceneId: generatedSceneId,
   });
 
