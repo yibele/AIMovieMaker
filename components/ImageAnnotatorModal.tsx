@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   PenLine,
   Redo2,
+  Send,
   Square,
   Type,
   Undo2,
@@ -339,8 +340,7 @@ export default function ImageAnnotatorModal({
   };
 
   const handleConfirm = async () => {
-    if (!onConfirm) {
-      onClose();
+    if (!onConfirm || !promptText.trim()) {
       return;
     }
 
@@ -352,7 +352,13 @@ export default function ImageAnnotatorModal({
       setIsDrawing(false);
     }
 
-    setIsGenerating(true); // 开始生成
+    // 保存当前的 prompt 用于生成
+    const currentPrompt = promptText.trim();
+    
+    // 立即清空输入框，让用户可以继续输入下一个请求
+    setPromptText('');
+    
+    setIsGenerating(true); // 开始生成（仅用于视觉反馈）
 
     try {
       // 生成合成图片（原图 + 标注），直接传递 DataURL
@@ -362,18 +368,16 @@ export default function ImageAnnotatorModal({
       // 直接将 DataURL 传递给回调，不需要上传到 Blob
       await onConfirm({
         annotations: payload,
-        promptText: promptText.trim(),
+        promptText: currentPrompt,
       }, annotatedImageDataUrl);
       
       // 不自动关闭！让用户可以继续编辑
-      // onClose();
-      
-      // 清空输入框，方便用户继续编辑
-      setPromptText('');
       
     } catch (error) {
       console.error('图片处理失败:', error);
       alert(`图片处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      // 如果失败，恢复 prompt
+      setPromptText(currentPrompt);
     } finally {
       setIsGenerating(false); // 结束生成
     }
@@ -782,22 +786,28 @@ export default function ImageAnnotatorModal({
             <textarea
               value={promptText}
               onChange={(event) => setPromptText(event.target.value)}
-              placeholder="例如：请根据我圈起来的位置，替换为海滩上的吊床……"
-              disabled={isLoadingImage || isGenerating}
-              className="w-full min-h-[80px] resize-none rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 pr-14 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  if (promptText.trim() && !isLoadingImage) {
+                    handleConfirm();
+                  }
+                }
+              }}
+              placeholder="例如：请根据我圈起来的位置，替换为海滩上的吊床…… (Enter 发送，Shift+Enter 换行)"
+              disabled={isLoadingImage}
+              className="w-full min-h-[80px] resize-none rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 pr-16 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleConfirm}
-              disabled={isLoadingImage || isGenerating || !promptText.trim()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 group inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-800 text-white shadow-sm transition-all hover:bg-gray-900 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-800"
-              title={isGenerating ? "生成中..." : "完成编辑"}
+              disabled={isLoadingImage || !promptText.trim()}
+              className="absolute right-3 top-1/2 -translate-y-1/2 group inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              title="发送 (Enter)"
             >
               {isGenerating ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               ) : (
-                <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
+                <Send className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               )}
             </button>
           </div>
