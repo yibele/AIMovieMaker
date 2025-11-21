@@ -157,11 +157,6 @@ export async function generateImageDirectly(
 
   const generationCount = Math.max(1, Math.min(4, count || 1));
 
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra' 
-    ? 'PAYGATE_TIER_TWO' 
-    : 'PAYGATE_TIER_ONE';
-
   // 行级注释：根据模型选择 imageModelName
   const imageModelName = model === 'nanobananapro' 
     ? 'GEM_PIX_2' 
@@ -197,9 +192,6 @@ export async function generateImageDirectly(
     return {
       clientContext: {
         sessionId: sessionId.trim(),
-        projectId: projectId.trim(),
-        tool: 'PINHOLE',
-        userPaygateTier,
       },
       seed: requestSeed,
       imageModelName: imageModelName,

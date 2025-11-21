@@ -42,7 +42,7 @@ export default function SettingsPanel() {
     toast.success('已生成新的 Workflow ID 和 Session ID');
   };
 
-  // 保存设置
+  // 保存设置 - 只更新修改的字段，保留其他配置
   const handleSave = () => {
     setApiConfig({
       apiKey: apiKey.trim(),
@@ -53,6 +53,7 @@ export default function SettingsPanel() {
       workflowId: workflowId.trim(),
       sessionId: sessionId.trim(),
       accountTier,
+      // 行级注释：保留 generationCount 和 imageModel，不在设置面板中修改它们
     });
     setIsOpen(false);
     toast.success('API 配置已保存');
