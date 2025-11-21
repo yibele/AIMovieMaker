@@ -323,10 +323,16 @@ function ImageNode({ data, selected, id }: NodeProps) {
     }
   }, [imageData.src, imageData.base64, id]);
 
-  // 删除
+  // 删除 - 生成/处理中不允许删除
   const handleDelete = useCallback(() => {
+    // 行级注释：如果正在处理（syncing 或没有 mediaId 且没有错误），禁止删除
+    if (isProcessing) {
+      alert('图片正在生成/处理中，无法删除');
+      return;
+    }
+    
     deleteElement(id);
-  }, [deleteElement, id]);
+  }, [deleteElement, id, isProcessing]);
 
   // 复制
   const handleDuplicate = useCallback(() => {
@@ -434,7 +440,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />
-        <ToolbarButton icon={<Trash2 className="w-3 h-3" />} label="删除" variant="danger" onClick={handleDelete} />
+        <ToolbarButton icon={<Trash2 className="w-3 h-3" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />
       </NodeToolbar>
 
       <div

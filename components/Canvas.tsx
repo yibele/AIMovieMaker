@@ -678,18 +678,47 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   // 拦截 onNodesChange，处理删除事件并同步到 store
   const handleNodesChange = useCallback(
     (changes: any[]) => {
-      // 处理删除事件
-      changes.forEach((change) => {
+      // 行级注释：过滤掉正在生成/处理中的节点删除操作
+      const filteredChanges = changes.filter((change) => {
         if (change.type === 'remove') {
-          // 从 store 中删除元素
+          const element = elements.find((el) => el.id === change.id);
+          
+          if (element) {
+            // 行级注释：检查视频节点是否正在生成
+            if (element.type === 'video') {
+              const videoElement = element as VideoElement;
+              if (videoElement.status === 'queued' || videoElement.status === 'generating') {
+                alert('视频正在生成中，无法删除');
+                return false; // 阻止删除
+              }
+            }
+            
+            // 行级注释：检查图片节点是否正在处理
+            if (element.type === 'image') {
+              const imageElement = element as ImageElement;
+              const isSyncing = imageElement.uploadState === 'syncing';
+              const hasMediaId = Boolean(imageElement.mediaGenerationId);
+              const isError = imageElement.uploadState === 'error';
+              const isProcessing = !isError && (isSyncing || !hasMediaId);
+              
+              if (isProcessing) {
+                alert('图片正在生成/处理中，无法删除');
+                return false; // 阻止删除
+              }
+            }
+          }
+          
+          // 行级注释：允许删除，从 store 中删除元素
           useCanvasStore.getState().deleteElement(change.id);
         }
+        
+        return true; // 保留这个变化
       });
 
-      // 传递所有变化给 React Flow
-      onNodesChange(changes);
+      // 行级注释：传递过滤后的变化给 React Flow
+      onNodesChange(filteredChanges);
     },
-    [onNodesChange]
+    [onNodesChange, elements]
   );
 
   // 行级注释：拖动过程中的节点位置缓存（避免频繁更新 store）

@@ -21,6 +21,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const [generationCount, setGenerationCount] = useState(videoData.generationCount || 1);
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
+  const addElement = useCanvasStore((state) => state.addElement);
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
   const { setEdges, getEdges } = useReactFlow(); // 行级注释：用于创建连线和获取连线
 
@@ -126,19 +127,58 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }, 100);
   }, [id, promptInput, generationCount, videoData, updateElement, triggerVideoGeneration]);
 
-  // 处理重新生成
+  // 处理重新生成 - 创建新节点并复制配置和连线
   const handleRegenerate = useCallback(() => {
-    setIsPlaying(false);
-    setVideoError(false);
-    updateElement(id, {
-      status: 'queued',
-      progress: 0,
+    const newVideoId = `video-${Date.now()}`;
+    const size = videoData.size || { width: 480, height: 270 };
+    
+    // 行级注释：新节点位置在原节点右侧
+    const newPosition = {
+      x: videoData.position.x + size.width + 50,
+      y: videoData.position.y,
+    };
+    
+    // 行级注释：创建新视频节点，复制原节点的配置
+    const newVideo: VideoElement = {
+      id: newVideoId,
+      type: 'video',
       src: '',
       thumbnail: '',
       duration: 0,
-    } as Partial<VideoElement>);
-    triggerVideoGeneration?.(id);
-  }, [id, triggerVideoGeneration, updateElement]);
+      status: 'queued', // 直接设置为 queued，自动开始生成
+      position: newPosition,
+      size: size,
+      promptText: videoData.promptText || '', // 复制提示词
+      startImageId: videoData.startImageId, // 复制首帧图片 ID
+      endImageId: videoData.endImageId, // 复制尾帧图片 ID
+      generationCount: 1, // 重新生成默认 1 个
+      readyForGeneration: true,
+      generatedFrom: videoData.generatedFrom, // 复制生成来源信息
+    };
+    
+    addElement(newVideo);
+    
+    // 行级注释：复制连线 - 查找原节点的输入连线
+    const currentEdges = getEdges();
+    const incomingEdges = currentEdges.filter((edge: any) => edge.target === id);
+    
+    // 行级注释：为新节点创建相同的连线
+    if (incomingEdges.length > 0) {
+      setEdges((eds: any[]) => [
+        ...eds,
+        ...incomingEdges.map((edge: any) => ({
+          ...edge,
+          id: `${edge.id}-regen-${Date.now()}`, // 新的连线 ID
+          target: newVideoId, // 指向新节点
+        })),
+      ]);
+    }
+    
+    // 行级注释：触发新节点的生成
+    setTimeout(() => {
+      triggerVideoGeneration?.(newVideoId);
+    }, 100);
+  }, [id, videoData, addElement, getEdges, setEdges, triggerVideoGeneration]);
 
   // 行级注释：处理下载视频 - 优先使用 base64（通过 media API），回退到 URL
   const [blobSize, setBlobSize] = useState(0);
@@ -504,11 +544,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.src, videoData.mediaGenerationId, videoData.size, videoData.position, videoData.promptText, id, updateElement]);
 
-  // 处理删除
+  // 处理删除 - 生成中不允许删除
   const handleDelete = useCallback(() => {
+    // 行级注释：如果正在生成，禁止删除
+    if (videoData.status === 'queued' || videoData.status === 'generating') {
+      alert('视频正在生成中，无法删除');
+      return;
+    }
+    
     const deleteElement = useCanvasStore.getState().deleteElement;
     deleteElement(id);
-  }, [id]);
+  }, [id, videoData.status]);
 
   // 状态判断
   const isGenerating = videoData.status === 'queued' || videoData.status === 'generating';
@@ -594,12 +640,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
             onClick={() => handleUpscale()}
           />
 
-          {/* 删除 - 始终可用 */}
+          {/* 删除 - 生成中禁用 */}
           <ToolbarButton
             icon={<Trash2 className="w-3 h-3" />}
             label="删除"
-            title="删除"
+            title={isGenerating ? "生成中无法删除" : "删除"}
             variant="danger"
+            disabled={isGenerating}
             onClick={() => handleDelete()}
           />
         </NodeToolbar>
