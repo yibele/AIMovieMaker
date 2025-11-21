@@ -336,11 +336,6 @@ export async function generateVideoTextDirectly(
       : 'veo_3_1_t2v_fast';
   }
 
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra' 
-    ? 'PAYGATE_TIER_TWO' 
-    : 'PAYGATE_TIER_ONE';
-
   const requestSeed = typeof seed === 'number' 
     ? seed 
     : Math.floor(Math.random() * 100_000);
@@ -354,9 +349,6 @@ export async function generateVideoTextDirectly(
   const payload = {
     clientContext: {
       sessionId: sessionId.trim(),
-      projectId: projectId.trim(),
-      tool: 'PINHOLE',
-      userPaygateTier,
     },
     requests: [
       {
@@ -377,7 +369,6 @@ export async function generateVideoTextDirectly(
     accountTier,
     aspectRatio: normalizedAspect,
     videoModelKey,
-    userPaygateTier,
     sceneId: generatedSceneId,
   });
 
@@ -484,11 +475,6 @@ export async function generateVideoImageDirectly(
     }
   }
 
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra' 
-    ? 'PAYGATE_TIER_TWO' 
-    : 'PAYGATE_TIER_ONE';
-
   const requestSeed = typeof seed === 'number' 
     ? seed 
     : Math.floor(Math.random() * 100_000);
@@ -525,9 +511,6 @@ export async function generateVideoImageDirectly(
   const payload = {
     clientContext: {
       sessionId: sessionId.trim(),
-      projectId: projectId.trim(),
-      tool: 'PINHOLE',
-      userPaygateTier,
     },
     requests: [requestObject],
   };
@@ -542,7 +525,6 @@ export async function generateVideoImageDirectly(
     mode: hasEndImage ? '首尾帧' : '仅首帧',
     aspectRatio: normalizedAspect,
     videoModelKey,
-    userPaygateTier,
     sceneId: generatedSceneId,
   });
 
