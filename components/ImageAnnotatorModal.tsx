@@ -38,12 +38,14 @@ interface ArrowAnnotation extends BaseAnnotation {
   type: 'arrow';
   start: RelativePoint;
   end: RelativePoint;
+  strokeWidth: number;
 }
 
 interface RectangleAnnotation extends BaseAnnotation {
   type: 'rectangle';
   start: RelativePoint;
   end: RelativePoint;
+  strokeWidth: number;
 }
 
 interface TextAnnotation extends BaseAnnotation {
@@ -83,13 +85,16 @@ const toolDefinitions: {
 ];
 
 const colorOptions = [
-  '#f97316',
-  '#f43f5e',
-  '#8b5cf6',
-  '#0ea5e9',
-  '#10b981',
-  '#facc15',
-  '#0f172a',
+  '#0f172a', // 黑色
+  '#ffffff', // 白色
+  '#ef4444', // 红色
+  '#10b981', // 绿色
+] as const;
+
+const strokeWidthOptions = [
+  { id: 'thin', label: '细', width: 2 },
+  { id: 'medium', label: '中', width: 4 },
+  { id: 'thick', label: '粗', width: 6 },
 ] as const;
 
 const cursorMap: Record<ToolType, string> = {
@@ -110,12 +115,14 @@ export default function ImageAnnotatorModal({
   const [imgSize, setImgSize] = useState({ width: 1, height: 1 });
   const [activeTool, setActiveTool] = useState<ToolType>('pen');
   const [selectedColor, setSelectedColor] = useState<string>(colorOptions[0]);
+  const [selectedStrokeWidth, setSelectedStrokeWidth] = useState<number>(strokeWidthOptions[1].width); // 默认中等粗细
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [redoStack, setRedoStack] = useState<Annotation[]>([]);
   const [draftAnnotation, setDraftAnnotation] = useState<Annotation | null>(
     null
   );
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isDraggingText, setIsDraggingText] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false); // 是否正在生成
@@ -143,18 +150,29 @@ export default function ImageAnnotatorModal({
     return () => observer.disconnect();
   }, [open, imageSrc]);
 
+  // 关闭 modal 并清除所有标记
+  const handleClose = useCallback(() => {
+    setAnnotations([]);
+    setRedoStack([]);
+    setDraftAnnotation(null);
+    setIsDrawing(false);
+    setPromptText('');
+    setEditingTextId(null);
+    onClose();
+  }, [onClose]);
+
   // ESC 关闭
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose, open]);
+  }, [handleClose, open]);
 
   // 文本输入自动聚焦
   useEffect(() => {
@@ -194,7 +212,7 @@ export default function ImageAnnotatorModal({
   );
 
   const handlePointerDown = (event: React.PointerEvent) => {
-    if (event.button !== 0 || !open) {
+    if (event.button !== 0 || !open || isDraggingText) {
       return;
     }
 
@@ -229,7 +247,7 @@ export default function ImageAnnotatorModal({
         type: 'pen',
         color: selectedColor,
         points: [point],
-        strokeWidth: 3,
+        strokeWidth: selectedStrokeWidth,
       };
     } else if (activeTool === 'arrow') {
       nextDraft = {
@@ -238,6 +256,7 @@ export default function ImageAnnotatorModal({
         color: selectedColor,
         start: point,
         end: point,
+        strokeWidth: selectedStrokeWidth,
       };
     } else if (activeTool === 'rectangle') {
       nextDraft = {
@@ -246,6 +265,7 @@ export default function ImageAnnotatorModal({
         color: selectedColor,
         start: point,
         end: point,
+        strokeWidth: selectedStrokeWidth,
       };
     }
 
@@ -422,7 +442,7 @@ export default function ImageAnnotatorModal({
     annotations.forEach((annotation) => {
       if (annotation.type === 'pen') {
         ctx.strokeStyle = annotation.color;
-        ctx.lineWidth = 3 * Math.max(scaleX, scaleY);
+        ctx.lineWidth = annotation.strokeWidth * Math.max(scaleX, scaleY);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
@@ -443,7 +463,7 @@ export default function ImageAnnotatorModal({
         const endY = annotation.end.y * scaleY;
 
         ctx.strokeStyle = annotation.color;
-        ctx.lineWidth = 3 * Math.max(scaleX, scaleY);
+        ctx.lineWidth = annotation.strokeWidth * Math.max(scaleX, scaleY);
         ctx.lineCap = 'round';
 
         // 绘制箭头线
@@ -467,7 +487,7 @@ export default function ImageAnnotatorModal({
         const height = Math.abs(annotation.end.y - annotation.start.y) * scaleY;
 
         ctx.strokeStyle = annotation.color;
-        ctx.lineWidth = 2.5 * Math.max(scaleX, scaleY);
+        ctx.lineWidth = annotation.strokeWidth * Math.max(scaleX, scaleY);
         ctx.beginPath();
         ctx.roundRect(x, y, width, height, 8 * Math.max(scaleX, scaleY));
         ctx.stroke();
@@ -528,6 +548,35 @@ export default function ImageAnnotatorModal({
     setEditingTextId(null);
   };
 
+  // 文字拖动处理
+  const handleTextPointerDown = (textId: string, event: React.PointerEvent) => {
+    event.stopPropagation();
+    setIsDraggingText(true);
+    setEditingTextId(textId);
+    
+    const handleMove = (e: PointerEvent) => {
+      const point = eventToPoint(e as any);
+      if (!point) return;
+      
+      setAnnotations((prev) =>
+        prev.map((item) =>
+          item.id === textId && item.type === 'text'
+            ? { ...item, position: point }
+            : item
+        )
+      );
+    };
+    
+    const handleUp = () => {
+      setIsDraggingText(false);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+    
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
   if (!open || !imageSrc) {
     return null;
   }
@@ -543,7 +592,7 @@ export default function ImageAnnotatorModal({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
           >
             <X className="h-4 w-4" />
@@ -594,7 +643,7 @@ export default function ImageAnnotatorModal({
                         key={annotation.id}
                         points={pathPoints}
                         stroke={annotation.color}
-                        strokeWidth={3}
+                        strokeWidth={annotation.strokeWidth}
                         fill="none"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -628,14 +677,14 @@ export default function ImageAnnotatorModal({
                           x2={end.x}
                           y2={end.y}
                           stroke={annotation.color}
-                          strokeWidth={3}
+                          strokeWidth={annotation.strokeWidth}
                           strokeLinecap="round"
                         />
                         <polyline
                           points={arrowPoints}
                           fill="none"
                           stroke={annotation.color}
-                          strokeWidth={3}
+                          strokeWidth={annotation.strokeWidth}
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
@@ -657,7 +706,7 @@ export default function ImageAnnotatorModal({
                         width={width}
                         height={height}
                         stroke={annotation.color}
-                        strokeWidth={2.5}
+                        strokeWidth={annotation.strokeWidth}
                         fill="transparent"
                         rx={8}
                       />
@@ -679,6 +728,8 @@ export default function ImageAnnotatorModal({
                         fontWeight={600}
                         dominantBaseline="middle"
                         textAnchor="middle"
+                        style={{ cursor: 'move', userSelect: 'none' }}
+                        onPointerDown={(e) => handleTextPointerDown(annotation.id, e)}
                       >
                         {annotation.text}
                       </text>
@@ -757,24 +808,55 @@ export default function ImageAnnotatorModal({
                 </button>
               </div>
 
-              <div className="pointer-events-auto absolute bottom-4 left-4 flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-xl px-4 py-2.5 shadow-xl border border-gray-200/80">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  颜色
-                </span>
-                <div className="flex items-center gap-2">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      style={{ backgroundColor: color }}
-                      className={`h-7 w-7 rounded-full border-2 transition-all ${
-                        selectedColor === color
-                          ? 'border-gray-900 scale-110 shadow-lg'
-                          : 'border-white/80 shadow hover:scale-105'
-                      }`}
-                      title={color}
-                    />
-                  ))}
+              <div className="pointer-events-auto absolute bottom-4 left-4 flex items-center gap-4 rounded-2xl bg-white/95 backdrop-blur-xl px-4 py-2.5 shadow-xl border border-gray-200/80">
+                {/* 颜色选择 */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    颜色
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        style={{ 
+                          backgroundColor: color,
+                          border: color === '#ffffff' ? '2px solid #e5e7eb' : undefined
+                        }}
+                        className={`h-7 w-7 rounded-full border-2 transition-all ${
+                          selectedColor === color
+                            ? 'border-gray-900 scale-110 shadow-lg'
+                            : color === '#ffffff' 
+                              ? 'border-gray-300 shadow hover:scale-105'
+                              : 'border-white/80 shadow hover:scale-105'
+                        }`}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                {/* 粗细选择 */}
+                <div className="flex items-center gap-3 border-l border-gray-300 pl-4">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    粗细
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {strokeWidthOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setSelectedStrokeWidth(option.width)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          selectedStrokeWidth === option.width
+                            ? 'bg-gray-900 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title={option.label}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
                 </div>
