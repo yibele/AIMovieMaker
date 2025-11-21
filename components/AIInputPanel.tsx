@@ -62,7 +62,7 @@ export default function AIInputPanel() {
       <div className="bg-white/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/30 p-4">
         {/* 选中图片的缩略图 */}
         {showSelectedThumbnails ? (
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2">
+          <div className="flex items-center justify-center gap-2 mb-3 overflow-x-auto pb-2">
             {selectedImages.slice(0, 5).map((img: any) => {
               const hasSrc = Boolean(img.src && img.src.trim());
               const isProcessing =
@@ -91,7 +91,7 @@ export default function AIInputPanel() {
             )}
           </div>
         ) : hasProcessingSelection ? (
-          <div className="flex items-center justify-start gap-3 mb-3">
+          <div className="flex items-center justify-center gap-3 mb-3">
             <div className="loading-glow w-16 h-16 rounded-2xl" data-variant="compact" />
             <div className="loading-glow w-12 h-12 rounded-2xl opacity-85" data-variant="compact" />
             <div className="loading-glow w-10 h-10 rounded-xl opacity-65" data-variant="compact" />
