@@ -963,6 +963,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const handleAnnotatorConfirm = useCallback(async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
     if (!annotatorTarget || !result.promptText?.trim()) return;
 
+    const newImageId = `image-${Date.now()}`;
+    const edgeId = `edge-${annotatorTarget.id}-${newImageId}-edit`;
+
     try {
       const aspectRatio = (() => {
         const width = annotatorTarget.size?.width || 640;
@@ -977,7 +980,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         : aspectRatio === '1:1' ? { width: 512, height: 512 }
           : { width: 640, height: 360 };
 
-      const newImageId = `image-${Date.now()}`;
       const newImage: ImageElement = {
         id: newImageId,
         type: 'image',
@@ -996,6 +998,22 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       };
 
       addElement(newImage);
+
+      // 添加从原图到新图的连线
+      // @ts-ignore
+      setEdges((eds: any[]) => [
+        ...eds,
+        {
+          id: edgeId,
+          source: annotatorTarget.id,
+          sourceHandle: null,
+          target: newImageId,
+          targetHandle: null,
+          type: 'default',
+          animated: true,
+          style: { stroke: '#a855f7', strokeWidth: 1 },
+        },
+      ]);
 
       const base64Data = annotatedImageDataUrl.split(',')[1];
       const uploadResult = await registerUploadedImage(base64Data);
@@ -1018,10 +1036,30 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         mediaGenerationId: imageResult.mediaGenerationId,
         uploadState: 'synced',
       } as Partial<ImageElement>);
+
+      // 生成成功后，停止连线动画
+      // @ts-ignore
+      setEdges((eds: any[]) =>
+        eds.map((edge: any) =>
+          edge.id === edgeId
+            ? { ...edge, animated: false, style: { stroke: '#10b981', strokeWidth: 1 } }
+            : edge
+        )
+      );
     } catch (error) {
       console.error('图片编辑失败:', error);
+      
+      // 如果失败，将连线标记为错误状态
+      // @ts-ignore
+      setEdges((eds: any[]) =>
+        eds.map((edge: any) =>
+          edge.id === edgeId
+            ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
+            : edge
+        )
+      );
     }
-  }, [annotatorTarget, addElement, updateElement]);
+  }, [annotatorTarget, addElement, updateElement, setEdges]);
 
   // 行级注释：文生视频处理函数
   const handleTextToVideo = useCallback(
