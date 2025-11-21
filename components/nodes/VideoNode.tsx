@@ -832,10 +832,30 @@ function VideoNode({ data, selected, id }: NodeProps) {
             }}
           >
             <div className="relative">
-              {/* 行级注释：顶部标签 - 模仿 ImageNode 的 Copy Prompt 样式 */}
-              <div className="absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded text-white bg-black border-gray-600">
-                Video Prompt
-              </div>
+              {/* 行级注释：顶部标签 - 可点击复制提示词 */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (promptInput.trim()) {
+                    navigator.clipboard.writeText(promptInput.trim());
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                  }
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                disabled={!promptInput.trim()}
+                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded transition-all duration-200 transform active:scale-95 ${
+                  promptInput.trim()
+                    ? isCopied
+                      ? 'text-gray-400 bg-gray-600 border-gray-600 cursor-pointer'
+                      : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm cursor-pointer'
+                    : 'text-gray-500 bg-gray-200 border-gray-300 cursor-not-allowed'
+                }`}
+                title={!promptInput.trim() ? "输入提示词后可复制" : isCopied ? "已复制!" : "复制提示词"}
+              >
+                {isCopied ? 'Copied!' : 'Copy Prompt'}
+              </button>
               
               {/* 行级注释：白色背景容器 - 包含输入框和数量选择 */}
               <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow hover:shadow-md">

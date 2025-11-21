@@ -16,6 +16,7 @@ export default function AIInputPanel() {
   const onGenerateFromInput = useCanvasStore((state) => state.onGenerateFromInput);
   
   const generationCount = apiConfig.generationCount || 1;
+  const imageModel = apiConfig.imageModel || 'nanobanana';
 
   // 行级注释：获取选中的图片用于显示缩略图
   const selectedImages = elements
@@ -114,6 +115,34 @@ export default function AIInputPanel() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 模型选择器 */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+          <span className="text-xs text-gray-500">模型</span>
+          <button
+            onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+              imageModel === 'nanobanana'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Banana (Preview)"
+          >
+            Banana
+          </button>
+          <button
+            onClick={() => setApiConfig({ imageModel: 'nanobananapro' })}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all relative ${
+              imageModel === 'nanobananapro'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Banana Pro - 新模型 GEM_PIX_2"
+          >
+            Banana Pro
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+          </button>
         </div>
       </div>
       

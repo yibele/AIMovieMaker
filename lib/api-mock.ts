@@ -522,8 +522,9 @@ export async function generateImage(
   }
 
   const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
 
-  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, accountTier, `数量: ${count || apiConfig.generationCount || 1}`);
+  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -538,7 +539,8 @@ export async function generateImage(
     undefined, // references
     undefined, // seed
     count ?? apiConfig.generationCount ?? 1,
-    useCanvasStore.getState().currentPrefixPrompt
+    useCanvasStore.getState().currentPrefixPrompt,
+    imageModel // 传递模型参数
   );
 
   const contextUpdates: Partial<typeof apiConfig> = {};
@@ -695,12 +697,14 @@ export async function runImageRecipe(
   }
 
   const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
 
   console.log(
     '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
     instruction,
     aspectRatio,
     accountTier,
+    imageModel,
     `参考图数量: ${validReferences.length}`,
     `生成数量: ${count || apiConfig.generationCount || 1}`
   );
@@ -718,7 +722,8 @@ export async function runImageRecipe(
     validReferences,
     seed,
     count ?? apiConfig.generationCount ?? 1,
-    useCanvasStore.getState().currentPrefixPrompt
+    useCanvasStore.getState().currentPrefixPrompt,
+    imageModel // 传递模型参数
   );
 
   const recipeContextUpdates: Partial<typeof apiConfig> = {};
@@ -799,8 +804,9 @@ export async function imageToImage(
   }
 
   const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
 
-  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, `数量: ${count || apiConfig.generationCount || 1}`);
+  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 直接调用 Google API
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -815,7 +821,8 @@ export async function imageToImage(
     [{ mediaId: originalMediaId }], // 传 mediaId 给 Flow API
     undefined, // seed
     (count ?? apiConfig.generationCount) || 1,
-    useCanvasStore.getState().currentPrefixPrompt
+    useCanvasStore.getState().currentPrefixPrompt,
+    imageModel // 传递模型参数
   );
 
   const editContextUpdates: Partial<typeof apiConfig> = {};

@@ -133,7 +133,8 @@ export async function generateImageDirectly(
   references?: Array<{ mediaId?: string; mediaGenerationId?: string }>,
   seed?: number,
   count?: number,
-  prefixPrompt?: string
+  prefixPrompt?: string,
+  model?: 'nanobanana' | 'nanobananapro'
 ): Promise<{
   images: Array<{
     encodedImage?: string; // base64
@@ -160,6 +161,11 @@ export async function generateImageDirectly(
   const userPaygateTier = accountTier === 'ultra' 
     ? 'PAYGATE_TIER_TWO' 
     : 'PAYGATE_TIER_ONE';
+
+  // 行级注释：根据模型选择 imageModelName
+  const imageModelName = model === 'nanobananapro' 
+    ? 'GEM_PIX_2' 
+    : 'GEM_PIX';
 
   // 构建最终提示词
   const finalPrompt = prefixPrompt && prefixPrompt.trim()
@@ -196,7 +202,7 @@ export async function generateImageDirectly(
         userPaygateTier,
       },
       seed: requestSeed,
-      imageModelName: 'GEM_PIX',
+      imageModelName: imageModelName,
       imageAspectRatio: normalizedAspect,
       prompt: finalPrompt,
       imageInputs,

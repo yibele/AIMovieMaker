@@ -24,6 +24,7 @@ interface ApiConfig {
   sessionId: string;
   generationCount: number; // 每次生成的图片数量 (1-4)
   accountTier: 'pro' | 'ultra'; // 账号类型：Pro 或 Ultra
+  imageModel: 'nanobanana' | 'nanobananapro'; // 图片生成模型：Banana (Preview) 或 Banana Pro
 }
 
 // 状态接口定义
@@ -107,6 +108,7 @@ const loadApiConfig = (): ApiConfig => {
       sessionId: context.sessionId,
       generationCount: 1, // 默认生成 1 张图片
       accountTier: 'pro', // 行级注释：默认 Pro 账号
+      imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
     };
   }
 
@@ -125,6 +127,7 @@ const loadApiConfig = (): ApiConfig => {
         sessionId: parsed?.sessionId || context.sessionId,
         generationCount: parsed?.generationCount ?? 1, // 默认生成 1 张图片
         accountTier: parsed?.accountTier || 'pro', // 行级注释：兼容旧配置，默认 pro
+        imageModel: parsed?.imageModel || 'nanobanana', // 行级注释：兼容旧配置，默认 Banana (Preview)
       };
     }
   } catch (error) {
@@ -142,6 +145,7 @@ const loadApiConfig = (): ApiConfig => {
     sessionId: context.sessionId,
     generationCount: 1, // 默认生成 1 张图片
     accountTier: 'pro', // 行级注释：默认 Pro 账号
+    imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
   };
 };
 
