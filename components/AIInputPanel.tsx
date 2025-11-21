@@ -60,6 +60,44 @@ export default function AIInputPanel() {
   return (
     <div ref={panelRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-6xl px-4">
       <div className="bg-white/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/30 p-4">
+        {/* 选中图片的缩略图 */}
+        {showSelectedThumbnails ? (
+          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2">
+            {selectedImages.slice(0, 5).map((img: any) => {
+              const hasSrc = Boolean(img.src && img.src.trim());
+              const isProcessing =
+                img.uploadState === 'syncing' || !img.mediaGenerationId || !hasSrc;
+              return (
+                <div
+                  key={img.id}
+                  className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-white/60 shadow-[0_10px_25px_rgba(148,163,184,0.18)]"
+                >
+                  {isProcessing ? (
+                    <div className="loading-glow w-full h-full rounded-lg" data-variant="compact" />
+                  ) : (
+                    <img
+                      src={img.src}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              );
+            })}
+            {selectedImages.length > 5 && (
+              <span className="text-sm text-gray-500">
+                +{selectedImages.length - 5}
+              </span>
+            )}
+          </div>
+        ) : hasProcessingSelection ? (
+          <div className="flex items-center justify-start gap-3 mb-3">
+            <div className="loading-glow w-16 h-16 rounded-2xl" data-variant="compact" />
+            <div className="loading-glow w-12 h-12 rounded-2xl opacity-85" data-variant="compact" />
+            <div className="loading-glow w-10 h-10 rounded-xl opacity-65" data-variant="compact" />
+          </div>
+        ) : null}
+
         {/* 输入框 */}
         <div className="relative mb-3">
           <input
@@ -77,7 +115,7 @@ export default function AIInputPanel() {
         </div>
 
         {/* 控件选项 - 横向一行 */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center gap-3">
           {/* 比例选择器 */}
           <div className="flex items-center gap-2 px-3 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
             <span className="text-xs text-gray-500">比例</span>
