@@ -58,156 +58,109 @@ export default function AIInputPanel() {
   );
 
   return (
-    <div ref={panelRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4">
-      {/* 图片设置选项 */}
-      <div className="flex items-center justify-center gap-3 mb-2 flex-wrap">
-        {/* 比例选择器 */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
-          <span className="text-xs text-gray-500">比例</span>
-          <button
-            onClick={() => setAspectRatio('16:9')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-              aspectRatio === '16:9'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            横图
-          </button>
-          <button
-            onClick={() => setAspectRatio('9:16')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-              aspectRatio === '9:16'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            竖图
-          </button>
-          <button
-            onClick={() => setAspectRatio('1:1')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-              aspectRatio === '1:1'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            方图
-          </button>
-        </div>
-
-        {/* 生成数量选择器 */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
-          <span className="text-xs text-gray-500">数量</span>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4].map((count) => (
-              <button
-                key={count}
-                onClick={() => setApiConfig({ generationCount: count })}
-                className={`w-8 h-6 rounded-lg text-sm font-medium transition-all ${
-                  generationCount === count
-                    ? 'bg-purple-500 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title={`生成 ${count} 张`}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 模型选择器 */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
-          <span className="text-xs text-gray-500">模型</span>
-          <button
-            onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-              imageModel === 'nanobanana'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-            title="Banana (Preview)"
-          >
-            Banana
-          </button>
-          <button
-            onClick={() => setApiConfig({ imageModel: 'nanobananapro' })}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all relative ${
-              imageModel === 'nanobananapro'
-                ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-            title="Banana Pro - 新模型 GEM_PIX_2"
-          >
-            Banana Pro
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
-          </button>
-        </div>
-      </div>
-      
+    <div ref={panelRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-6xl px-4">
       <div className="bg-white/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/30 p-4">
-        {/* 选中图片的缩略图 */}
-        {showSelectedThumbnails ? (
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2">
-            {selectedImages.slice(0, 5).map((img: any) => {
-              const hasSrc = Boolean(img.src && img.src.trim());
-              const isProcessing =
-                img.uploadState === 'syncing' || !img.mediaGenerationId || !hasSrc;
-              return (
-                <div
-                  key={img.id}
-                  className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-white/60 shadow-[0_10px_25px_rgba(148,163,184,0.18)]"
-                >
-                  {isProcessing ? (
-                    <div className="loading-glow w-full h-full rounded-lg" data-variant="compact" />
-                  ) : (
-                    <img
-                      src={img.src}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              );
-            })}
-            {selectedImages.length > 5 && (
-              <span className="text-sm text-gray-500">
-                +{selectedImages.length - 5}
-              </span>
-            )}
-          </div>
-        ) : hasProcessingSelection ? (
-          <div className="flex items-center justify-start gap-3 mb-3">
-            <div className="loading-glow w-16 h-16 rounded-2xl" data-variant="compact" />
-            <div className="loading-glow w-12 h-12 rounded-2xl opacity-85" data-variant="compact" />
-            <div className="loading-glow w-10 h-10 rounded-xl opacity-65" data-variant="compact" />
-          </div>
-        ) : null}
-        
         {/* 输入框 */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={getPlaceholder()}
-              className="w-full px-4 py-3 border border-gray-300/30 rounded-2xl outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50 transition-all bg-white/40 backdrop-blur-sm"
-            />
-            {/* 回车提示 - 浮在输入框上面 */}
-            <kbd className="absolute top-1/2 -translate-y-1/2 right-3 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-lg shadow-sm z-10">
-              Enter
-            </kbd>
-          </div>
+        <div className="relative mb-3">
+          <input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholder()}
+            className="w-full px-4 py-3 border border-gray-300/30 rounded-2xl outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50 transition-all bg-white/40 backdrop-blur-sm"
+          />
+          {/* 回车提示 - 浮在输入框上面 */}
+          <kbd className="absolute top-1/2 -translate-y-1/2 right-3 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-lg shadow-sm z-10">
+            Enter
+          </kbd>
         </div>
-        
-        {/* 提示文字 */}
-        <div className="mt-2 text-xs text-gray-400 text-center">
-          {selectedImages.length === 0 && '输入描述生成图片'}
-          {selectedImages.length === 1 && '输入描述编辑选中的图片'}
-          {selectedImages.length > 1 && `基于选中的 ${selectedImages.length} 张图片生成新内容`}
+
+        {/* 控件选项 - 横向一行 */}
+        <div className="flex items-center gap-3">
+          {/* 比例选择器 */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+            <span className="text-xs text-gray-500">比例</span>
+            <button
+              onClick={() => setAspectRatio('16:9')}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                aspectRatio === '16:9'
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              横图
+            </button>
+            <button
+              onClick={() => setAspectRatio('9:16')}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                aspectRatio === '9:16'
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              竖图
+            </button>
+            <button
+              onClick={() => setAspectRatio('1:1')}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                aspectRatio === '1:1'
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              方图
+            </button>
+          </div>
+
+          {/* 生成数量选择器 */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+            <span className="text-xs text-gray-500">数量</span>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => setApiConfig({ generationCount: count })}
+                  className={`w-7 h-6 rounded-lg text-xs font-medium transition-all ${
+                    generationCount === count
+                      ? 'bg-purple-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={`生成 ${count} 张`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 模型选择器 */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+            <span className="text-xs text-gray-500">模型</span>
+            <button
+              onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                imageModel === 'nanobanana'
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="Banana (Preview)"
+            >
+              Banana
+            </button>
+            <button
+              onClick={() => setApiConfig({ imageModel: 'nanobananapro' })}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all relative ${
+                imageModel === 'nanobananapro'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="Banana Pro - 新模型 GEM_PIX_2"
+            >
+              Banana Pro
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
