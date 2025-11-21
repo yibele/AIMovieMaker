@@ -317,7 +317,7 @@ export default function Toolbar() {
               className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-600 group-hover:text-blue-500'
+                  : 'text-gray-600 group-hover:text-purple-500'
               }`}
             />
           </button>
