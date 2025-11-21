@@ -54,9 +54,9 @@ export default function Toolbar() {
     const distance = Math.abs(mouseY - buttonCenterY);
     
     // 距离越近，缩放越大
-    const maxScale = 1.5; // 最大缩放 150%
+    const maxScale = 2.0; // 最大缩放 200%（更明显！）
     const minScale = 1.0; // 最小缩放 100%
-    const range = 100; // 影响范围 100px
+    const range = 80; // 影响范围 80px（更聚焦）
     
     if (distance > range) return minScale;
     
