@@ -257,7 +257,7 @@ export default function Toolbar() {
 
   return (
     <>
-    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-200/50 p-2 flex flex-col gap-2">
+    <div className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-200/50 p-3 flex flex-col gap-3">
       {tools.map((tool) => {
         const Icon = tool.icon;
         const isActive = activeTool === tool.id;
@@ -266,14 +266,17 @@ export default function Toolbar() {
           <button
             key={tool.id}
             onClick={tool.action}
-            className={`p-3 rounded-lg transition-all duration-200 ease-out hover:scale-110 active:scale-95 ${
+            className={`relative p-3 rounded-xl transition-all duration-300 ease-out hover:scale-125 active:scale-90 ${
               isActive
-                ? 'bg-blue-100 text-blue-600 shadow-md'
-                : 'hover:bg-gray-100 text-gray-700 hover:shadow-lg'
-            }`}
+                ? 'bg-blue-100 text-blue-600 shadow-lg'
+                : 'text-gray-700'
+            } group`}
             title={tool.label}
           >
-            <Icon className="w-5 h-5 transition-transform duration-200 ease-out" />
+            {/* 动态边框 */}
+            <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-blue-400 transition-all duration-300 ease-out"></div>
+            
+            <Icon className="w-5 h-5 relative z-10 transition-transform duration-300 ease-out group-hover:rotate-3" />
           </button>
         );
       })}
