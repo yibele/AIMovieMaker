@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       data: payload,
-      timeout: 60000,
+      timeout: 180000, // 180 秒超时
       proxy: false,
     };
 

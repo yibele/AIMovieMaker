@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       data: payload,
-      timeout: 60000, // 设置超时避免长时间挂起 // 行级注释说明超时配置
+      timeout: 180000, // 设置 180 秒超时避免长时间挂起 // 行级注释说明超时配置
       proxy: false, // 禁用 axios 自带代理以使用自定义 agent // 行级注释说明代理处理
     };
 

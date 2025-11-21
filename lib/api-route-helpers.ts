@@ -63,7 +63,7 @@ export function createProxiedAxiosConfig(
     method,
     url,
     headers,
-    timeout: 60000,
+    timeout: 180000, // 180 秒超时
     proxy: false,
   };
 

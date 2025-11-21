@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       payload
     );
 
-    axiosConfig.timeout = 60000;
+    axiosConfig.timeout = 180000; // 180 秒超时
 
     const response = await axios(axiosConfig);
 

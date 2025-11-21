@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       data: payload,
-      timeout: 60000, // 设置 60 秒超时避免长时间挂起
+      timeout: 180000, // 设置 180 秒超时避免长时间挂起
       proxy: false, // 禁用 axios 默认代理以使用自定义 Agent
     };
 
