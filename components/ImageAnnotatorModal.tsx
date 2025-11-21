@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowUpRight,
+  Eraser,
   PenLine,
   Redo2,
   Send,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react';
 
 // 工具类型定义
-type ToolType = 'pen' | 'arrow' | 'rectangle' | 'text';
+type ToolType = 'pen' | 'arrow' | 'rectangle' | 'text' | 'eraser';
 
 // 归一化坐标，便于适配不同尺寸
 type RelativePoint = {
@@ -82,6 +83,7 @@ const toolDefinitions: {
   { id: 'arrow', label: '箭头', icon: ArrowUpRight },
   { id: 'rectangle', label: '方框', icon: Square },
   { id: 'text', label: '文字', icon: Type },
+  { id: 'eraser', label: '橡皮擦', icon: Eraser },
 ];
 
 const colorOptions = [
@@ -102,6 +104,7 @@ const cursorMap: Record<ToolType, string> = {
   arrow: 'crosshair',
   rectangle: 'crosshair',
   text: 'text',
+  eraser: 'pointer',
 };
 
 export default function ImageAnnotatorModal({
@@ -211,6 +214,38 @@ export default function ImageAnnotatorModal({
     []
   );
 
+  // 检测点击是否在某个标注上（用于橡皮擦）
+  const findAnnotationAtPoint = useCallback((point: RelativePoint): Annotation | null => {
+    // 从后往前检查（后画的在上面）
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const annotation = annotations[i];
+      
+      if (annotation.type === 'text') {
+        // 文字：检测点击是否在文字区域附近（20px范围）
+        const distance = Math.hypot(point.x - annotation.position.x, point.y - annotation.position.y);
+        if (distance < 30) return annotation;
+      } else if (annotation.type === 'pen') {
+        // 画笔：检测点击是否在笔画路径附近
+        for (const penPoint of annotation.points) {
+          const distance = Math.hypot(point.x - penPoint.x, point.y - penPoint.y);
+          if (distance < annotation.strokeWidth + 10) return annotation;
+        }
+      } else if (annotation.type === 'arrow' || annotation.type === 'rectangle') {
+        // 箭头和矩形：检测点击是否在形状内或边界附近
+        const { start, end } = annotation;
+        const minX = Math.min(start.x, end.x) - 10;
+        const maxX = Math.max(start.x, end.x) + 10;
+        const minY = Math.min(start.y, end.y) - 10;
+        const maxY = Math.max(start.y, end.y) + 10;
+        
+        if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
+          return annotation;
+        }
+      }
+    }
+    return null;
+  }, [annotations]);
+
   const handlePointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0 || !open || isDraggingText) {
       return;
@@ -222,6 +257,16 @@ export default function ImageAnnotatorModal({
     }
 
     event.preventDefault();
+
+    // 橡皮擦：删除点击位置的标注
+    if (activeTool === 'eraser') {
+      const targetAnnotation = findAnnotationAtPoint(point);
+      if (targetAnnotation) {
+        setAnnotations((prev) => prev.filter((a) => a.id !== targetAnnotation.id));
+        setRedoStack([]); // 删除后清空重做栈
+      }
+      return;
+    }
 
     if (activeTool === 'text') {
       const id = `annotation-${Date.now()}`;
