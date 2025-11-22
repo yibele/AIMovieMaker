@@ -562,33 +562,27 @@ export async function generateImage(
     fifeUrl?: string;
   }>;
 }> {
-  // 获取 API 配置
-  const apiConfig = useCanvasStore.getState().apiConfig;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
-  // 检查是否配置了 Bearer Token
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
     throw new Error('请先在右上角设置中配置 Bearer Token');
   }
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
+  if (!apiConfig.projectId?.trim()) {
     throw new Error('请在设置中配置 Flow Project ID');
   }
 
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = useCanvasStore.getState().regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
+  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
+  const finalPrompt = buildFinalPrompt(prompt);
 
-  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
-  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
+  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', finalPrompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
-  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
-
-  // 直接调用 Google API
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateImageDirectly } = await import('./direct-google-api');
 
   const result = await generateImageDirectly(
-    prompt,
+    finalPrompt,
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
@@ -597,17 +591,11 @@ export async function generateImage(
     undefined, // references
     undefined, // seed
     count ?? apiConfig.generationCount ?? 1,
-    useCanvasStore.getState().currentPrefixPrompt,
-    imageModel // 传递模型参数
+    imageModel
   );
 
-  const contextUpdates: Partial<typeof apiConfig> = {};
-  if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
-    contextUpdates.sessionId = result.sessionId;
-  }
-  if (Object.keys(contextUpdates).length > 0) {
-    useCanvasStore.getState().setApiConfig(contextUpdates);
-  }
+  // 行级注释：业务层 - 更新会话上下文
+  updateSessionContext(result.sessionId);
 
   // 转换格式
   const images = result.images.map(img => ({
@@ -729,37 +717,34 @@ export async function runImageRecipe(
     fifeUrl?: string;
   }>;
 }> {
-  const apiConfig = useCanvasStore.getState().apiConfig;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
-    throw new Error('多图编辑需要配置 Bearer Token，请在右上角设置中配置'); // 行级注释说明前置校验
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
+    throw new Error('多图编辑需要配置 Bearer Token，请在右上角设置中配置');
   }
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
+  if (!apiConfig.projectId?.trim()) {
     throw new Error('多图编辑需要配置 Flow Project ID，请在右上角设置中配置');
   }
 
+  // 行级注释：业务层 - 处理参考图列表
   const validReferences = referenceImages
-    .filter((ref) => (ref.mediaId && ref.mediaId.trim()) || (ref.mediaGenerationId && ref.mediaGenerationId.trim()))
+    .filter((ref) => (ref.mediaId?.trim()) || (ref.mediaGenerationId?.trim()))
     .map((ref) => ({
-      mediaId: ref.mediaId || ref.mediaGenerationId, // 优先使用 mediaId，Flow 要求传这个 // 行级注释说明用途
+      mediaId: ref.mediaId || ref.mediaGenerationId,
     }));
 
   if (validReferences.length < 2) {
-    throw new Error('至少需要两张包含 mediaId 或 mediaGenerationId 的图片才能进行多图编辑'); // 行级注释说明参数要求
+    throw new Error('至少需要两张包含 mediaId 或 mediaGenerationId 的图片才能进行多图编辑');
   }
 
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = useCanvasStore.getState().regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
-
-  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
-  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
+  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
+  const finalInstruction = buildFinalPrompt(instruction);
 
   console.log(
     '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
-    instruction,
+    finalInstruction,
     aspectRatio,
     accountTier,
     imageModel,
@@ -767,11 +752,11 @@ export async function runImageRecipe(
     `生成数量: ${count || apiConfig.generationCount || 1}`
   );
 
-  // 直接调用 Google API
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateImageDirectly } = await import('./direct-google-api');
 
   const result = await generateImageDirectly(
-    instruction,
+    finalInstruction,
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
@@ -780,17 +765,11 @@ export async function runImageRecipe(
     validReferences,
     seed,
     count ?? apiConfig.generationCount ?? 1,
-    useCanvasStore.getState().currentPrefixPrompt,
-    imageModel // 传递模型参数
+    imageModel
   );
 
-  const recipeContextUpdates: Partial<typeof apiConfig> = {};
-  if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
-    recipeContextUpdates.sessionId = result.sessionId;
-  }
-  if (Object.keys(recipeContextUpdates).length > 0) {
-    useCanvasStore.getState().setApiConfig(recipeContextUpdates);
-  }
+  // 行级注释：业务层 - 更新会话上下文
+  updateSessionContext(result.sessionId);
 
   // 转换格式 - 行级注释：多图融合使用 fifeUrl，保留 base64 供编辑用
   const images = result.images.map(img => ({
@@ -842,54 +821,43 @@ export async function imageToImage(
     fifeUrl?: string;
   }>;
 }> {
-  const apiConfig = useCanvasStore.getState().apiConfig;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
-  // 检查是否配置了 Cookie（编辑 API 需要 Cookie）
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
     throw new Error('图生图需要配置 Bearer Token，请在右上角设置中配置');
   }
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
+  if (!apiConfig.projectId?.trim()) {
     throw new Error('图生图需要配置 Flow Project ID，请在右上角设置中配置');
   }
-  if (!originalMediaId || !originalMediaId.trim()) {
+  if (!originalMediaId?.trim()) {
     throw new Error('图生图需要提供原始图片的 mediaId 或 mediaGenerationId');
   }
 
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = useCanvasStore.getState().regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
+  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
+  const finalPrompt = buildFinalPrompt(prompt);
 
-  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
-  const imageModel = apiConfig.imageModel || 'nanobanana'; // 行级注释：获取图片模型，默认 Banana (Preview)
+  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', finalPrompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
-  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
-
-  // 直接调用 Google API
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateImageDirectly } = await import('./direct-google-api');
 
   const result = await generateImageDirectly(
-    prompt,
+    finalPrompt,
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
     aspectRatio,
     accountTier,
-    [{ mediaId: originalMediaId }], // 传 mediaId 给 Flow API
+    [{ mediaId: originalMediaId }],
     undefined, // seed
     (count ?? apiConfig.generationCount) || 1,
-    useCanvasStore.getState().currentPrefixPrompt,
-    imageModel // 传递模型参数
+    imageModel
   );
 
-  const editContextUpdates: Partial<typeof apiConfig> = {};
-  if (result.sessionId && result.sessionId !== apiConfig.sessionId) {
-    editContextUpdates.sessionId = result.sessionId;
-  }
-  if (Object.keys(editContextUpdates).length > 0) {
-    useCanvasStore.getState().setApiConfig(editContextUpdates);
-  }
+  // 行级注释：业务层 - 更新会话上下文
+  updateSessionContext(result.sessionId);
 
   // 转换格式 - 行级注释：图生图使用 fifeUrl，保留 base64 供编辑用
   const images = result.images.map(img => ({
