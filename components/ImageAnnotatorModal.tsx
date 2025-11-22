@@ -70,8 +70,10 @@ interface ImageAnnotatorModalProps {
   open: boolean;
   imageSrc: string | null;
   isLoadingImage?: boolean; // 是否正在加载原图
+  mainImage?: any; // 主图信息（完整的 ImageElement）
+  referenceImages?: any[]; // 参考图列表（从外部传入）
   onClose: () => void;
-  onConfirm?: (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => void | Promise<void>;
+  onConfirm?: (result: ImageAnnotatorResult, annotatedImageDataUrl: string, mainImage?: any, referenceImages?: any[]) => void | Promise<void>;
 }
 
 const toolDefinitions: {
@@ -111,6 +113,8 @@ export default function ImageAnnotatorModal({
   open,
   imageSrc,
   isLoadingImage = false,
+  mainImage,
+  referenceImages = [],
   onClose,
   onConfirm,
 }: ImageAnnotatorModalProps) {
@@ -130,6 +134,21 @@ export default function ImageAnnotatorModal({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false); // 是否正在生成
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 行级注释：内部管理主图和参考图状态（允许用户切换）
+  const [currentMainImage, setCurrentMainImage] = useState<any>(mainImage);
+  const [currentReferenceImages, setCurrentReferenceImages] = useState<any[]>(referenceImages);
+  const [switchingImage, setSwitchingImage] = useState(false); // 是否正在切换图片
+
+  // 行级注释：当外部主图和参考图变化时，重置内部状态
+  useEffect(() => {
+    if (open) {
+      setCurrentMainImage(mainImage);
+      setCurrentReferenceImages(referenceImages);
+      setAnnotations([]); // 清空标注
+      setPromptText(''); // 清空提示词
+    }
+  }, [open, mainImage, referenceImages]);
 
   // 监听图片加载，更新尺寸
   useEffect(() => {
@@ -152,6 +171,124 @@ export default function ImageAnnotatorModal({
     observer.observe(img);
     return () => observer.disconnect();
   }, [open, imageSrc]);
+
+  // 行级注释：切换主图 - 将某个参考图设为主图（确保加载 base64 数据）
+  const handleSetMainImage = async (newMainImage: any) => {
+    if (!newMainImage || switchingImage) return;
+    
+    setSwitchingImage(true);
+    
+    try {
+      // 清空当前标注（因为要切换到新的主图了）
+      setAnnotations([]);
+      setRedoStack([]);
+      setDraftAnnotation(null);
+      
+      // 行级注释：如果新主图已有 base64，直接使用
+      if (newMainImage.base64) {
+        const imageDataUrl = newMainImage.base64.startsWith('data:')
+          ? newMainImage.base64
+          : `data:image/png;base64,${newMainImage.base64}`;
+        
+        // 交换主图和参考图
+        const oldMainImage = currentMainImage;
+        const newReferenceImages = currentReferenceImages.filter(img => img.id !== newMainImage.id);
+        
+        if (oldMainImage) {
+          newReferenceImages.push(oldMainImage);
+        }
+        
+        // 更新主图为 base64 版本
+        setCurrentMainImage({
+          ...newMainImage,
+          src: imageDataUrl,
+        });
+        setCurrentReferenceImages(newReferenceImages);
+        
+        console.log('✅ 主图已切换 (使用 base64):', newMainImage.id);
+        setSwitchingImage(false);
+        return;
+      }
+      
+      // 行级注释：如果新主图没有 base64，通过 API 加载
+      const effectiveMediaId = newMainImage.mediaId || newMainImage.mediaGenerationId;
+      
+      if (!effectiveMediaId) {
+        throw new Error('该图片缺少 mediaId，无法切换为主图');
+      }
+      
+      // 获取 API 配置（从 Canvas 传入的 mainImage 应该包含完整信息）
+      const apiKey = (window as any).__API_KEY__ || '';
+      const proxy = (window as any).__PROXY__ || '';
+      
+      if (!apiKey) {
+        console.warn('⚠️ 未找到 API Key，尝试使用原始 src');
+        
+        // 交换主图和参考图（使用原始 src）
+        const oldMainImage = currentMainImage;
+        const newReferenceImages = currentReferenceImages.filter(img => img.id !== newMainImage.id);
+        
+        if (oldMainImage) {
+          newReferenceImages.push(oldMainImage);
+        }
+        
+        setCurrentMainImage(newMainImage);
+        setCurrentReferenceImages(newReferenceImages);
+        
+        console.log('✅ 主图已切换 (使用原始 src):', newMainImage.id);
+        setSwitchingImage(false);
+        return;
+      }
+      
+      // 通过 API 获取 base64
+      const mediaResponse = await fetch(
+        `/api/flow/media/${effectiveMediaId}?key=${apiKey}&returnUriOnly=false&proxy=${proxy}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      
+      if (!mediaResponse.ok) {
+        throw new Error('获取图片数据失败');
+      }
+      
+      const mediaResult = await mediaResponse.json();
+      const base64Data = mediaResult.encodedImage;
+      
+      if (!base64Data) {
+        throw new Error('API 未返回图片数据');
+      }
+      
+      const imageDataUrl = base64Data.startsWith('data:')
+        ? base64Data
+        : `data:image/png;base64,${base64Data}`;
+      
+      // 交换主图和参考图
+      const oldMainImage = currentMainImage;
+      const newReferenceImages = currentReferenceImages.filter(img => img.id !== newMainImage.id);
+      
+      if (oldMainImage) {
+        newReferenceImages.push(oldMainImage);
+      }
+      
+      // 更新主图为 base64 版本
+      setCurrentMainImage({
+        ...newMainImage,
+        src: imageDataUrl,
+        base64: imageDataUrl,
+      });
+      setCurrentReferenceImages(newReferenceImages);
+      
+      console.log('✅ 主图已切换 (加载 base64):', newMainImage.id);
+      
+    } catch (error) {
+      console.error('❌ 切换主图失败:', error);
+      alert(`切换主图失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setSwitchingImage(false);
+    }
+  };
 
   // 关闭 modal 并清除所有标记
   const handleClose = useCallback(() => {
@@ -431,10 +568,11 @@ export default function ImageAnnotatorModal({
       const annotatedImageDataUrl = await generateAnnotatedImage();
 
       // 直接将 DataURL 传递给回调，不需要上传到 Blob
+      // 同时传递当前的主图和参考图（可能已被用户切换过）
       await onConfirm({
         annotations: payload,
         promptText: currentPrompt,
-      }, annotatedImageDataUrl);
+      }, annotatedImageDataUrl, currentMainImage, currentReferenceImages);
       
       // 不自动关闭！让用户可以继续编辑
       
@@ -660,11 +798,11 @@ export default function ImageAnnotatorModal({
             )}
             
             {/* 图片和标注 */}
-            {!isLoadingImage && imageSrc && (
+            {!isLoadingImage && (imageSrc || currentMainImage?.src) && (
               <>
                 <img
                   ref={imgRef}
-                  src={imageSrc}
+                  src={currentMainImage?.src || imageSrc || ''}
                   alt="待编辑图片"
                   className="pointer-events-none select-none block max-h-[60vh]"
                 />
@@ -909,6 +1047,73 @@ export default function ImageAnnotatorModal({
             )}
           </div>
 
+          {/* 参考图列表（包含主图） */}
+          {(currentMainImage || (currentReferenceImages && currentReferenceImages.length > 0)) && (
+            <div className="flex-shrink-0 border-t border-gray-200 pt-3 mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  图片列表
+                </span>
+                <span className="text-xs text-gray-500">
+                  可在提示词中使用"主图"、"图1"、"图2"等引用，点击图片可切换主图
+                </span>
+              </div>
+              
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {/* 主图 */}
+                {currentMainImage && (
+                  <div 
+                    className="relative flex-shrink-0 group"
+                    title="当前主图（正在编辑的图片）"
+                  >
+                    <img
+                      src={currentMainImage.src}
+                      alt="主图"
+                      className="w-24 h-24 rounded-lg object-cover border-3 border-blue-500 shadow-md"
+                    />
+                    <span className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded font-bold shadow-sm">
+                      主图
+                    </span>
+                    <div className="absolute bottom-1 left-1 right-1 bg-gradient-to-t from-black/60 to-transparent rounded-b-lg pt-4 pb-1 px-1">
+                      <span className="text-white text-[10px] font-medium block text-center">
+                        正在编辑
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 参考图列表 */}
+                {currentReferenceImages.map((ref: any, index: number) => (
+                  <div 
+                    key={ref.id} 
+                    className="relative flex-shrink-0 group cursor-pointer"
+                    title={`参考图 ${index + 1} - 点击设为主图`}
+                  >
+                    <img
+                      src={ref.src}
+                      alt={`参考图 ${index + 1}`}
+                      className="w-24 h-24 rounded-lg object-cover border-2 border-gray-300 group-hover:border-purple-400 transition-all"
+                    />
+                    <span className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+                      图{index + 1}
+                    </span>
+                    
+                    {/* 切换主图按钮 */}
+                    <button
+                      onClick={() => handleSetMainImage(ref)}
+                      disabled={switchingImage}
+                      className="absolute bottom-1 left-1 right-1 bg-gradient-to-t from-black/70 to-transparent rounded-b-lg py-1.5 px-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    >
+                      <span className="text-white text-[10px] font-bold block text-center">
+                        {switchingImage ? '切换中...' : '设为主图'}
+                      </span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex-shrink-0 relative">
             <textarea
               value={promptText}
@@ -921,7 +1126,11 @@ export default function ImageAnnotatorModal({
                   }
                 }
               }}
-              placeholder="例如：请根据我圈起来的位置，替换为海滩上的吊床…… (Enter 发送，Shift+Enter 换行)"
+              placeholder={
+                referenceImages && referenceImages.length > 0
+                  ? "例如：把方框里的人物换成图1中的人物，背景用图2…… (Enter 发送，Shift+Enter 换行)"
+                  : "例如：请根据我圈起来的位置，替换为海滩上的吊床…… (Enter 发送，Shift+Enter 换行)"
+              }
               disabled={isLoadingImage}
               className="w-full min-h-[80px] resize-none rounded-2xl border-2 border-gray-200 bg-white px-4 py-3 pr-16 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-gray-300 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />

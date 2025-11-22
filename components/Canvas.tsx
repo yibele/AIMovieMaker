@@ -30,6 +30,7 @@ import CanvasNavigation from './CanvasNavigation';
 import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
 import Toolbar from './Toolbar';
+import SelectionToolbar from './SelectionToolbar';
 import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
@@ -70,6 +71,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const isLoadingAnnotatorImage = useCanvasStore((state) => state.isLoadingAnnotatorImage);
   const setAnnotatorTarget = useCanvasStore((state) => state.setAnnotatorTarget);
   const setIsLoadingAnnotatorImage = useCanvasStore((state) => state.setIsLoadingAnnotatorImage);
+  
+  // 行级注释：多图编辑 - 主图和参考图
+  const [mainImageForEdit, setMainImageForEdit] = useState<ImageElement | null>(null);
+  const [referenceImages, setReferenceImages] = useState<ImageElement[]>([]);
 
   // 行级注释：React Flow 节点和边缘状态（需要在 Hooks 之前声明）
   const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
@@ -958,18 +963,138 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   // 图片编辑器回调函数 - 使用 useCallback 避免不必要的重新渲染
   const handleAnnotatorClose = useCallback(() => {
     setAnnotatorTarget(null);
+    setMainImageForEdit(null); // 清空主图
+    setReferenceImages([]); // 清空参考图
   }, [setAnnotatorTarget]);
 
-  const handleAnnotatorConfirm = useCallback(async (result: ImageAnnotatorResult, annotatedImageDataUrl: string) => {
-    if (!annotatorTarget || !result.promptText?.trim()) return;
+  // 行级注释：多图编辑 - 用户从画布选中多张图片后点击"图片编辑"
+  const handleMultiImageEdit = useCallback(async () => {
+    const selection = useCanvasStore.getState().selection;
+    const selectedImages = elements
+      .filter((el) => selection.includes(el.id) && el.type === 'image')
+      .map((el) => el as ImageElement);
+
+    if (selectedImages.length < 2 || selectedImages.length > 6) {
+      console.error('多图编辑需要 2-6 张图片');
+      return;
+    }
+
+    // 第1张作为主图，其他作为参考图
+    const mainImage = selectedImages[0];
+    const refImages = selectedImages.slice(1);
+
+    // 加载主图
+    setIsLoadingAnnotatorImage(true);
+
+    try {
+      const apiConfig = useCanvasStore.getState().apiConfig;
+      
+      // 行级注释：将 API 配置暴露到 window，供 ImageAnnotatorModal 使用
+      if (typeof window !== 'undefined') {
+        (window as any).__API_KEY__ = apiConfig.apiKey || '';
+        (window as any).__PROXY__ = apiConfig.proxy || '';
+        (window as any).__BEARER_TOKEN__ = apiConfig.bearerToken || '';
+      }
+      
+      // 行级注释：加载主图的 base64 数据
+      let mainImageBase64Src: string;
+      
+      // 如果主图有 base64，直接使用
+      if (mainImage.base64) {
+        mainImageBase64Src = mainImage.base64.startsWith('data:')
+          ? mainImage.base64
+          : `data:image/png;base64,${mainImage.base64}`;
+      } else {
+        // 如果没有 base64，通过 API 获取
+        const effectiveMediaId = mainImage.mediaId || mainImage.mediaGenerationId;
+        
+        if (!effectiveMediaId) {
+          throw new Error('主图缺少 mediaId，无法编辑');
+        }
+        
+        if (!apiConfig.bearerToken) {
+          throw new Error('请先在设置中配置 Bearer Token');
+        }
+
+        const mediaResponse = await fetch(
+          `/api/flow/media/${effectiveMediaId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
+          {
+            headers: apiConfig.bearerToken ? {
+              'Authorization': `Bearer ${apiConfig.bearerToken}`
+            } : {}
+          }
+        );
+
+        if (!mediaResponse.ok) {
+          throw new Error('获取图片失败');
+        }
+
+        const mediaData = await mediaResponse.json();
+        const encodedImage = mediaData?.image?.encodedImage ||
+          mediaData?.userUploadedImage?.image ||
+          mediaData?.userUploadedImage?.encodedImage;
+
+        if (!encodedImage) {
+          throw new Error('未获取到图片数据');
+        }
+        
+        mainImageBase64Src = encodedImage.startsWith('data:')
+          ? encodedImage
+          : `data:image/png;base64,${encodedImage}`;
+      }
+      
+      // 行级注释：确保参考图也包含 base64（如果有的话），用于切换主图
+      const refImagesWithBase64 = refImages.map(img => {
+        if (img.base64) {
+          const base64Src = img.base64.startsWith('data:')
+            ? img.base64
+            : `data:image/png;base64,${img.base64}`;
+          return { ...img, base64: base64Src };
+        }
+        return img;
+      });
+
+      setAnnotatorTarget({
+        ...mainImage,
+        src: mainImageBase64Src,
+        base64: mainImageBase64Src,
+      });
+      setMainImageForEdit({
+        ...mainImage,
+        base64: mainImageBase64Src,
+      });
+      setReferenceImages(refImagesWithBase64);
+      setIsLoadingAnnotatorImage(false);
+
+    } catch (error) {
+      console.error('❌ 加载主图失败:', error);
+      setAnnotatorTarget(null);
+      setMainImageForEdit(null);
+      setReferenceImages([]);
+      setIsLoadingAnnotatorImage(false);
+    }
+  }, [elements, setAnnotatorTarget, setIsLoadingAnnotatorImage]);
+
+  const handleAnnotatorConfirm = useCallback(async (
+    result: ImageAnnotatorResult, 
+    annotatedImageDataUrl: string,
+    finalMainImage?: ImageElement,
+    finalReferenceImages?: ImageElement[]
+  ) => {
+    // 行级注释：使用用户最终确认的主图和参考图（可能被切换过）
+    const currentMainImage = finalMainImage || annotatorTarget;
+    const currentReferenceImages = finalReferenceImages || referenceImages;
+    
+    if (!currentMainImage || !result.promptText?.trim()) return;
 
     const newImageId = `image-${Date.now()}`;
-    const edgeId = `edge-${annotatorTarget.id}-${newImageId}-edit`;
+    const hasReferenceImages = currentReferenceImages.length > 0;
+    const allSourceImages = [currentMainImage, ...currentReferenceImages];
 
     try {
       const aspectRatio = (() => {
-        const width = annotatorTarget.size?.width || 640;
-        const height = annotatorTarget.size?.height || 360;
+        const width = currentMainImage.size?.width || 640;
+        const height = currentMainImage.size?.height || 360;
         const ratio = width / height;
         if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
         if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
@@ -985,49 +1110,100 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         type: 'image',
         src: '',
         position: {
-          x: annotatorTarget.position.x + (annotatorTarget.size?.width || 640) + 50,
-          y: annotatorTarget.position.y,
+          x: currentMainImage.position.x + (currentMainImage.size?.width || 640) + 50,
+          y: currentMainImage.position.y,
         },
         size,
-        sourceImageIds: [annotatorTarget.id],
+        sourceImageIds: allSourceImages.map(img => img.id),
         generatedFrom: {
           type: 'image-to-image',
-          sourceIds: [annotatorTarget.id],
+          sourceIds: allSourceImages.map(img => img.id),
           prompt: result.promptText,
         },
       };
 
       addElement(newImage);
 
-      // 添加从原图到新图的连线
+      // 行级注释：为所有源图片创建连线（主图 + 参考图）
+      const edgeIds: string[] = [];
       // @ts-ignore
-      setEdges((eds: any[]) => [
-        ...eds,
-        {
-          id: edgeId,
-          source: annotatorTarget.id,
-          sourceHandle: null,
-          target: newImageId,
-          targetHandle: null,
-          type: 'default',
-          animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 1 },
-        },
-      ]);
+      setEdges((eds: any[]) => {
+        const newEdges = allSourceImages.map(sourceImg => {
+          const edgeId = `edge-${sourceImg.id}-${newImageId}-edit`;
+          edgeIds.push(edgeId);
+          return {
+            id: edgeId,
+            source: sourceImg.id,
+            sourceHandle: null,
+            target: newImageId,
+            targetHandle: null,
+            type: 'default',
+            animated: true,
+            style: { stroke: '#a855f7', strokeWidth: 1 },
+          };
+        });
+        return [...eds, ...newEdges];
+      });
 
+      // 上传标注图
       const base64Data = annotatedImageDataUrl.split(',')[1];
       const uploadResult = await registerUploadedImage(base64Data);
-      if (!uploadResult.mediaGenerationId) throw new Error('上传失败');
+      if (!uploadResult.mediaGenerationId) throw new Error('上传标注图失败');
 
-      const imageResult = await imageToImage(
-        result.promptText,
-        annotatedImageDataUrl,
-        aspectRatio,
-        '',
-        uploadResult.mediaGenerationId,
-        1
-      );
+      let imageResult;
 
+      if (hasReferenceImages) {
+        // 行级注释：多图编辑 - 使用 runImageRecipe
+        console.log('🧩 多图融合模式，参考图数量:', referenceImages.length);
+
+        const { runImageRecipe } = await import('@/lib/api-mock');
+
+        // 构建参考图列表
+        const references = [
+          // 主图（标注后）
+          {
+            mediaId: uploadResult.mediaGenerationId,
+          caption: '标注后的主图',
+          mediaCategory: 'MEDIA_CATEGORY_BOARD',
+        },
+        // 参考图
+        ...currentReferenceImages.map((ref, index) => ({
+            mediaId: ref.mediaId || ref.mediaGenerationId,
+            caption: ref.caption || `参考图${index + 1}`,
+            mediaCategory: 'MEDIA_CATEGORY_SUBJECT',
+          }))
+        ];
+
+        // 检查所有图片是否有 mediaId
+        for (const ref of references) {
+          if (!ref.mediaId) {
+            throw new Error('存在未同步到 Flow 的参考图，请稍后重试');
+          }
+        }
+
+        imageResult = await runImageRecipe(
+          result.promptText,
+          references,
+          aspectRatio,
+          undefined,
+          1
+        );
+
+      } else {
+        // 行级注释：单图编辑 - 使用 imageToImage
+        console.log('🎨 单图编辑模式');
+
+        imageResult = await imageToImage(
+          result.promptText,
+          annotatedImageDataUrl,
+          aspectRatio,
+          '',
+          uploadResult.mediaGenerationId,
+          1
+        );
+      }
+
+      // 更新图片
       updateElement(newImageId, {
         src: imageResult.imageUrl,
         base64: imageResult.images?.[0]?.base64,
@@ -1037,23 +1213,26 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         uploadState: 'synced',
       } as Partial<ImageElement>);
 
-      // 生成成功后，停止连线动画
+      // 生成成功后，停止所有连线动画
       // @ts-ignore
       setEdges((eds: any[]) =>
         eds.map((edge: any) =>
-          edge.id === edgeId
+          edgeIds.includes(edge.id)
             ? { ...edge, animated: false, style: { stroke: '#10b981', strokeWidth: 1 } }
             : edge
         )
       );
+
+      console.log('✅ 图片编辑完成！');
+
     } catch (error) {
-      console.error('图片编辑失败:', error);
+      console.error('❌ 图片编辑失败:', error);
       
-      // 如果失败，将连线标记为错误状态
+      // 如果失败，将所有连线标记为错误状态
       // @ts-ignore
       setEdges((eds: any[]) =>
         eds.map((edge: any) =>
-          edge.id === edgeId
+          edge.target === newImageId
             ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
             : edge
         )
@@ -1380,11 +1559,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         promptInputRef={promptMenuInputRef}
       />
 
+      {/* 多选工具栏 */}
+      <SelectionToolbar onMultiImageEdit={handleMultiImageEdit} />
+
       {/* 图片编辑器 Modal - 全局渲染 */}
       <ImageAnnotatorModal
         open={Boolean(annotatorTarget)}
         imageSrc={annotatorTarget?.src || null}
         isLoadingImage={isLoadingAnnotatorImage}
+        mainImage={mainImageForEdit}
+        referenceImages={referenceImages}
         onClose={handleAnnotatorClose}
         onConfirm={handleAnnotatorConfirm}
       />
