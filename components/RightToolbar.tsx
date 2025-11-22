@@ -33,7 +33,7 @@ export default function RightToolbar() {
             setIsPromptLibraryOpen(!isPromptLibraryOpen); // 允许 toggle
             if (!isPromptLibraryOpen) setIsMaterialsPanelOpen(false); // 互斥：打开提示词库时关闭素材库
           },
-          title: prefixPrompt ? `前置提示词：${prefixPrompt.slice(0, 20)}...` : '提示词库',
+          title: prefixPrompt ? `风格库：${prefixPrompt.slice(0, 20)}...` : '风格库',
           isActive: isPromptLibraryOpen || Boolean(prefixPrompt), // 当面板打开或有内容时高亮
           dotColor: 'bg-purple-500'
         }

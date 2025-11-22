@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -12,9 +12,11 @@ import {
   LayoutGrid, 
   Globe,
   User,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
+import { supabase } from '@/lib/supabaseClient';
 
 // 类型定义
 export interface PromptItem {
@@ -26,63 +28,6 @@ export interface PromptItem {
   createdAt?: number;
 }
 
-// 系统预设提示词数据 (Mock)
-const SYSTEM_PROMPTS: PromptItem[] = [
-  {
-    id: 'sys-1',
-    title: '电影质感',
-    content: 'cinematic lighting, 8k, highly detailed, dramatic atmosphere, depth of field, movie still, color graded',
-    coverImage: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80',
-    category: '摄影'
-  },
-  {
-    id: 'sys-2',
-    title: '吉卜力风格',
-    content: 'studio ghibli style, anime, vibrant colors, detailed background, whimsical, hand drawn, cel shaded',
-    coverImage: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&q=80',
-    category: '动漫'
-  },
-  {
-    id: 'sys-3',
-    title: '赛博朋克',
-    content: 'cyberpunk, neon lights, futuristic city, high tech, night time, rain, reflections, sci-fi',
-    coverImage: 'https://images.unsplash.com/photo-1515630278258-407f66498911?w=500&q=80',
-    category: '科幻'
-  },
-  {
-    id: 'sys-4',
-    title: '极简主义',
-    content: 'minimalist, clean lines, simple background, pastel colors, flat design, vector art, high contrast',
-    coverImage: 'https://images.unsplash.com/photo-1507643179173-442727e34e3b?w=500&q=80',
-    category: '设计'
-  },
-  {
-    id: 'sys-5',
-    title: '胶片摄影',
-    content: '35mm film photography, kodak portra 400, grain, vintage look, light leaks, nostalgic, soft focus',
-    coverImage: 'https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?w=500&q=80',
-    category: '摄影'
-  },
-  {
-    id: 'sys-6',
-    title: '3D 渲染',
-    content: '3d render, unreal engine 5, ray tracing, octane render, hyperrealistic, plastic texture, studio lighting',
-    coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&q=80',
-    category: '3D'
-  }
-];
-
-// 初始用户数据 (Mock)
-const INITIAL_USER_PROMPTS: PromptItem[] = [
-  {
-    id: 'usr-1',
-    title: '我的专属风格',
-    content: 'my custom style, purple and gold theme, luxury, elegant, sharp focus',
-    coverImage: 'https://images.unsplash.com/photo-1558470598-a5dda9640f66?w=500&q=80',
-    createdAt: Date.now()
-  }
-];
-
 interface PromptLibraryPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -92,7 +37,10 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
   // 状态管理
   const [activeTab, setActiveTab] = useState<'system' | 'user'>('system');
   const [searchQuery, setSearchQuery] = useState('');
-  const [userPrompts, setUserPrompts] = useState<PromptItem[]>(INITIAL_USER_PROMPTS);
+  const [systemPrompts, setSystemPrompts] = useState<PromptItem[]>([]);
+  const [userPrompts, setUserPrompts] = useState<PromptItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // 编辑/新建状态
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
@@ -112,21 +60,84 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
     }
   }, [isOpen]);
 
+  // 初始化加载数据
+  useEffect(() => {
+    if (isOpen) {
+      fetchSystemPrompts();
+      fetchUserPrompts();
+    }
+  }, [isOpen]);
+
+  const fetchSystemPrompts = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('system_prompts')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedData: PromptItem[] = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          coverImage: item.cover_image,
+          category: item.category,
+          createdAt: new Date(item.created_at).getTime()
+        }));
+        setSystemPrompts(formattedData);
+      }
+    } catch (error) {
+      console.error('Error fetching system prompts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserPrompts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 如果用户未登录，暂不获取用户提示词
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_prompts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedData: PromptItem[] = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          coverImage: item.cover_image || 'https://source.unsplash.com/random/500x300?abstract', // 默认图
+          createdAt: new Date(item.created_at).getTime()
+        }));
+        setUserPrompts(formattedData);
+      }
+    } catch (error) {
+      console.error('Error fetching user prompts:', error);
+    }
+  };
+
   // 过滤显示的提示词
   const displayedPrompts = useMemo(() => {
-    const source = activeTab === 'system' ? SYSTEM_PROMPTS : userPrompts;
+    const source = activeTab === 'system' ? systemPrompts : userPrompts;
     if (!searchQuery.trim()) return source;
     return source.filter(p => 
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       p.content.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [activeTab, userPrompts, searchQuery]);
+  }, [activeTab, systemPrompts, userPrompts, searchQuery]);
 
   // 动作处理
   const handleUsePrompt = (prompt: PromptItem) => {
     setPrefixPrompt(prompt.content);
-    // 侧边栏模式下，应用后可以选择关闭或保持打开，这里保持打开方便尝试不同风格
-    // onClose(); 
   };
 
   const handleEditPrompt = (e: React.MouseEvent, prompt: PromptItem) => {
@@ -136,21 +147,80 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
     setIsEditorOpen(true);
   };
 
-  const handleDeletePrompt = (e: React.MouseEvent, id: string) => {
+  const handleDeletePrompt = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('确定要删除这个提示词吗？')) {
+    if (!window.confirm('确定要删除这个提示词吗？')) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_prompts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // 更新本地状态
       setUserPrompts(prev => prev.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error deleting prompt:', error);
+      alert('删除失败，请重试');
     }
   };
 
-  const handleSavePrompt = (prompt: PromptItem) => {
-    if (editorMode === 'create') {
-      setUserPrompts(prev => [prompt, ...prev]);
-    } else {
-      setUserPrompts(prev => prev.map(p => p.id === prompt.id ? prompt : p));
+  const handleSavePrompt = async (prompt: PromptItem) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('请先登录再保存提示词');
+        return;
+      }
+
+      const promptData = {
+        title: prompt.title,
+        content: prompt.content,
+        cover_image: prompt.coverImage,
+        user_id: user.id
+      };
+
+      let result;
+      
+      if (editorMode === 'create') {
+        // 创建
+        result = await supabase
+          .from('user_prompts')
+          .insert(promptData)
+          .select()
+          .single();
+      } else {
+        // 更新
+        result = await supabase
+          .from('user_prompts')
+          .update(promptData)
+          .eq('id', prompt.id)
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      // 刷新用户列表
+      fetchUserPrompts();
+      setIsEditorOpen(false);
+      setEditingPrompt(null);
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+      alert('保存失败，请重试');
     }
-    setIsEditorOpen(false);
-    setEditingPrompt(null);
+  };
+
+  // 强制切换为 Grid 视图
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const handleSyncPrompts = async () => {
+    setIsSyncing(true);
+    await fetchSystemPrompts();
+    // 添加一个小延迟让用户感知到刷新动作
+    setTimeout(() => setIsSyncing(false), 500);
   };
 
   return (
@@ -177,7 +247,7 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
                   <Sparkles size={18} strokeWidth={2.5} />
                </div>
                <div>
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">提示词库</h2>
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">风格库</h2>
                   <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Style Presets</p>
                </div>
             </div>
@@ -219,27 +289,45 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索风格..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/10 transition-all shadow-sm"
+              className="w-full pl-9 pr-10 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/10 transition-all shadow-sm"
             />
-            {activeTab === 'user' && (
-              <button 
-                onClick={() => {
-                  setEditorMode('create');
-                  setEditingPrompt(null);
-                  setIsEditorOpen(true);
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-violet-50 text-violet-600 rounded-lg transition-colors"
-                title="新建提示词"
-              >
-                <Plus size={18} />
-              </button>
-            )}
+            
+            {/* 右侧操作按钮：同步或新建 */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {activeTab === 'system' ? (
+                <button 
+                  onClick={handleSyncPrompts}
+                  className={`p-1 hover:bg-violet-50 text-gray-400 hover:text-violet-600 rounded-lg transition-all group/sync ${isSyncing ? 'text-violet-600 bg-violet-50' : ''}`}
+                  title="同步官方提示词"
+                  disabled={isSyncing}
+                >
+                  <RefreshCw size={16} className={isSyncing ? "animate-spin" : "group-hover/sync:animate-spin"} />
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setEditorMode('create');
+                    setEditingPrompt(null);
+                    setIsEditorOpen(true);
+                  }}
+                  className="p-1 hover:bg-violet-50 text-violet-600 rounded-lg transition-colors"
+                  title="新建提示词"
+                >
+                  <Plus size={18} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* 内容区域 - 滚动列表 */}
         <div className="flex-1 overflow-y-auto p-4 bg-gray-50/30">
-          {displayedPrompts.length > 0 ? (
+          {isLoading && systemPrompts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+              <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-sm">加载提示词...</p>
+            </div>
+          ) : displayedPrompts.length > 0 ? (
             <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-500">
               {displayedPrompts.map((prompt) => {
                 const isActive = currentPrefixPrompt === prompt.content;
@@ -260,6 +348,10 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
                           src={prompt.coverImage} 
                           alt={prompt.title} 
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-image.svg';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-50">
@@ -362,7 +454,7 @@ function PromptEditor({
     if (!title.trim() || !content.trim()) return;
     
     const newData: PromptItem = {
-      id: initialData?.id || `usr-${Date.now()}`,
+      id: initialData?.id || '', // ID 由后端生成或在更新时保留
       title,
       content,
       coverImage,
