@@ -1518,6 +1518,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         elementsSelectable={true}
         connectionLineStyle={{ stroke: '#a855f7', strokeWidth: 2 }}
         connectionLineType={ConnectionLineType.Bezier}
+        onlyRenderVisibleElements={true} // 行级注释：只渲染视口内的节点，大幅提升性能
         proOptions={{ hideAttribution: true }}
       >
         {/* 控制器 */}

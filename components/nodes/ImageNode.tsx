@@ -458,6 +458,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
              <img
               src={imageData.src} 
               alt={imageData.alt || '生成的图片'}
+              loading="lazy"
               className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
               draggable={false}
               onError={(e) => {

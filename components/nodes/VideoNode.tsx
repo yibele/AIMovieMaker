@@ -699,6 +699,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 <img
                   src={videoData.thumbnail}
                   alt="视频封面"
+                  loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 animate-in fade-in duration-500"
                 />
               )}
@@ -708,6 +709,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
               <video
                 ref={videoRef}
                 src={videoData.src}
+                preload="metadata"
                 className={`w-full h-full object-cover transition-opacity duration-300 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
                 loop
                 playsInline
