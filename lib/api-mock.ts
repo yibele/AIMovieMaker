@@ -963,37 +963,33 @@ export async function generateVideoFromText(
   promptId: string;
   mediaGenerationId?: string;
 }> {
-  const store = useCanvasStore.getState();
-  const apiConfig = store.apiConfig;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier } = getApiContext();
 
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
     throw new Error('文生视频需要配置 Bearer Token，请在右上角设置中配置');
   }
-
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
+  if (!apiConfig.projectId?.trim()) {
     throw new Error('文生视频需要配置 Flow Project ID，请在右上角设置中配置');
   }
 
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = store.regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
-
+  // 行级注释：业务层 - 生成场景 ID
   const sceneId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
+  const finalPrompt = buildFinalPrompt(prompt);
 
-  console.log('🎬 直接调用 Google API 文生视频:', { prompt, aspectRatio, accountTier, sceneId });
+  console.log('🎬 直接调用 Google API 文生视频:', { prompt: finalPrompt, aspectRatio, accountTier, sceneId });
 
-  // 行级注释：直接调用 Google API，不走后端
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoTextDirectly } = await import('./direct-google-api');
 
   const generationTask = await generateVideoTextDirectly(
-    prompt,
+    finalPrompt,
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
@@ -1057,18 +1053,18 @@ export async function generateVideoFromImages(
   promptId: string;
   mediaGenerationId?: string;
 }> {
-  const store = useCanvasStore.getState();
-  const apiConfig = store.apiConfig;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier } = getApiContext();
 
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
     throw new Error('图生视频需要配置 Bearer Token，请在右上角设置中配置');
   }
-
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
+  if (!apiConfig.projectId?.trim()) {
     throw new Error('图生视频需要配置 Flow Project ID，请在右上角设置中配置');
   }
 
-  const elements = store.elements;
+  const elements = useCanvasStore.getState().elements;
   const startImage = elements.find(
     (el) => el.id === startImageId && el.type === 'image'
   ) as ImageElement | undefined;
@@ -1100,15 +1096,14 @@ export async function generateVideoFromImages(
   // 行级注释：不要用首帧替代尾帧！没有就是没有
   const resolvedEndMediaId = endMediaId || undefined;
 
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = store.regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
-
+  // 行级注释：业务层 - 推断视频宽高比
   const aspectRatio = inferVideoAspectRatio(startImage, endImage);
-  const promptText = (prompt ?? '').trim() || 'Seamless transition between scenes';
-  const accountTier = apiConfig.accountTier || 'pro'; // 行级注释：获取账号类型，默认 pro
+  
+  // 行级注释：业务层 - 处理提示词（附加前置提示词）
+  const userPrompt = (prompt ?? '').trim() || 'Seamless transition between scenes';
+  const finalPrompt = buildFinalPrompt(userPrompt);
+  
+  // 行级注释：业务层 - 生成场景 ID
   const sceneId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -1116,25 +1111,26 @@ export async function generateVideoFromImages(
 
   console.log('🎬 直接调用 Google API 图生视频:', {
     startImageId,
-    endImageId: endImageId || '无尾帧', // 行级注释：如实显示是否有尾帧
+    endImageId: endImageId || '无尾帧',
     hasEndImage: !!endMediaId,
+    prompt: finalPrompt,
     aspectRatio,
     accountTier,
     sceneId,
   });
 
-  // 行级注释：直接调用 Google API，不走后端
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoImageDirectly } = await import('./direct-google-api');
 
   const generationTask = await generateVideoImageDirectly(
-    promptText,
+    finalPrompt,
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
     aspectRatio,
     accountTier,
     startMediaId,
-    resolvedEndMediaId, // 行级注释：可能是 undefined，后端会处理
+    resolvedEndMediaId,
     undefined, // seed
     sceneId
   );
@@ -1206,20 +1202,20 @@ export async function generateVideoUpsample(
   status: string;
   remainingCredits?: number;
 }> {
-  const apiConfig = useCanvasStore.getState().apiConfig;
-  const sessionId = apiConfig.sessionId;
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId } = getApiContext();
 
-  if (!apiConfig.bearerToken) {
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
     throw new Error('缺少 Bearer Token');
   }
-
-  if (!originalMediaId || !originalMediaId.trim()) {
+  if (!originalMediaId?.trim()) {
     throw new Error('缺少原始视频的 mediaId');
   }
 
   console.log('🎬 直接调用 Google API 视频超清（绕过 Vercel）:', originalMediaId, aspectRatio);
 
-  // 行级注释：直接调用 Google API
+  // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoUpsampleDirectly } = await import('./direct-google-api');
 
   const result = await generateVideoUpsampleDirectly(
