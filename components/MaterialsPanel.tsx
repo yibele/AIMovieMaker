@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw } from 'lucide-react';
+import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw, FolderOpen, Filter } from 'lucide-react';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { useCanvasStore } from '@/lib/store';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
@@ -136,35 +136,37 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         <div
           key={material.id}
           className={`
-            relative group cursor-pointer rounded-lg overflow-hidden
-            border transition-all duration-200
-            ${isSelected ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}
+            relative group cursor-pointer rounded-xl overflow-hidden
+            border transition-all duration-300
+            ${isSelected 
+              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' 
+              : 'border-gray-100 hover:border-gray-300 hover:shadow-lg hover:-translate-y-1 bg-white'}
           `}
           onClick={() => handleMaterialClick(material)}
           onDoubleClick={() => handleMaterialDoubleClick(material)}
         >
           {/* 缩略图 */}
-          <div className="aspect-square bg-gray-100 relative">
+          <div className="aspect-square bg-gray-50 relative overflow-hidden">
             {material.type === 'image' ? (
               <img
                 src={material.thumbnail || material.src}
                 alt={material.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder-image.svg';
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <Video className="w-12 h-12 text-gray-500" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
+                <Video className="w-12 h-12 opacity-50" />
               </div>
             )}
 
-            {/* 悬浮按钮 */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            {/* 悬浮遮罩 & 按钮 */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
               <button
-                className="bg-white text-gray-900 px-3 py-1 rounded-md text-sm font-medium hover:bg-gray-100 transition-all shadow-lg"
+                className="w-full py-2 bg-white/90 backdrop-blur-sm text-gray-900 rounded-lg text-xs font-semibold hover:bg-white transition-all shadow-lg transform translate-y-4 group-hover:translate-y-0 active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleMaterialClick(material);
@@ -176,9 +178,14 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
           </div>
 
           {/* 信息 */}
-          <div className="p-2 bg-white">
-            <p className="text-xs font-medium text-gray-900 truncate">{material.name}</p>
-            <p className="text-xs text-gray-500">{material.type}</p>
+          <div className="p-2.5 bg-white/50 backdrop-blur-sm">
+            <p className="text-xs font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
+              {material.name}
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">{material.type}</p>
+              {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+            </div>
           </div>
         </div>
       );
@@ -188,15 +195,17 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         <div
           key={material.id}
           className={`
-            flex items-center gap-3 p-3 rounded-lg cursor-pointer
-            border transition-all duration-200
-            ${isSelected ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}
+            flex items-center gap-3 p-2 rounded-xl cursor-pointer
+            border transition-all duration-200 group
+            ${isSelected 
+              ? 'border-blue-500 bg-blue-50/30' 
+              : 'border-transparent hover:bg-white hover:shadow-sm hover:border-gray-100'}
           `}
           onClick={() => handleMaterialClick(material)}
           onDoubleClick={() => handleMaterialDoubleClick(material)}
         >
           {/* 缩略图 */}
-          <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-gray-100">
+          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 shadow-sm">
             {material.type === 'image' ? (
               <img
                 src={material.thumbnail || material.src}
@@ -208,29 +217,32 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <Video className="w-6 h-6 text-gray-500" />
+              <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                <Video className="w-5 h-5 text-gray-400" />
               </div>
             )}
           </div>
 
           {/* 信息 */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{material.name}</p>
-            <p className="text-xs text-gray-500">
-              {material.type} • {new Date(material.createdAt).toLocaleDateString()}
+            <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900 truncate transition-colors">{material.name}</p>
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+              <span>{material.type}</span>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <span>{new Date(material.createdAt).toLocaleDateString()}</span>
             </p>
           </div>
 
           {/* 操作按钮 */}
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-gray-100"
+            className="opacity-0 group-hover:opacity-100 transition-all p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-blue-600 transform translate-x-2 group-hover:translate-x-0"
             onClick={(e) => {
               e.stopPropagation();
               handleMaterialClick(material);
             }}
+            title="添加到画布"
           >
-            <Plus className="w-4 h-4 text-gray-600" />
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       );
@@ -239,149 +251,201 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
   return (
     <>
-      {/* 面板 - 悬浮毛玻璃卡片 */}
+      {/* 遮罩层 (可选，如果不想要完全模态可以去掉 pointer-events) */}
+      <div 
+        className={`
+          fixed inset-0 bg-black/5 z-[45] transition-opacity duration-500 ease-in-out
+          ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+        `}
+        onClick={onClose}
+      />
+
+      {/* 面板 - 右侧抽屉 */}
       <div
         className={`
-          fixed right-20 top-12 w-[420px] h-[calc(100vh-6rem)] bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl z-50 border border-gray-200/50
-          transform transition-all duration-300 ease-in-out flex flex-col
-          ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}
+          fixed right-0 top-0 bottom-0 w-[420px] bg-white/80 backdrop-blur-2xl z-[50] 
+          border-l border-white/50 shadow-[-20px_0_60px_rgba(0,0,0,0.05)]
+          transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
+          flex flex-col
+          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
       >
-        {/* 标签页 */}
-        <div className="flex border-b border-gray-200/50">
+        {/* 头部 */}
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100/50 rounded-xl">
+              <FolderOpen className="w-5 h-5 text-gray-700" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">素材库</h2>
+            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-500">
+              {filteredMaterials.length}
+            </span>
+          </div>
           <button
-            className={`
-              flex-1 py-3 px-4 pt-4 pb-4 font-medium text-sm transition-all
-              ${activeTab === 'image'
-                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-              }
-            `}
-            onClick={() => setActiveTab('image')}
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500 hover:text-gray-900"
           >
-            <Image className="w-4 h-4 inline mr-2" />
-            图片
+            <X className="w-5 h-5" />
           </button>
-          <button
-            className={`
-              flex-1 py-3 px-4 pt-4 pb-4 font-medium text-sm transition-all
-              ${activeTab === 'video'
-                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-              }
-            `}
-            onClick={() => setActiveTab('video')}
-          >
-            <Video className="w-4 h-4 inline mr-2" />
-            视频
-          </button>
+        </div>
+
+        {/* 标签页切换 - Segmented Control */}
+        <div className="px-6 py-4">
+          <div className="flex p-1 bg-gray-100/80 rounded-xl relative isolate">
+            {/* 滑动背景块 */}
+            <div 
+              className="absolute top-1 bottom-1 rounded-lg bg-white shadow-sm transition-all duration-300 ease-in-out z-[-1]"
+              style={{
+                left: activeTab === 'image' ? '4px' : '50%',
+                width: 'calc(50% - 4px)',
+              }}
+            />
+            
+            <button
+              className={`
+                flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-colors z-10
+                ${activeTab === 'image' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}
+              `}
+              onClick={() => setActiveTab('image')}
+            >
+              <Image className="w-4 h-4" />
+              图片素材
+            </button>
+            <button
+              className={`
+                flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-colors z-10
+                ${activeTab === 'video' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}
+              `}
+              onClick={() => setActiveTab('video')}
+            >
+              <Video className="w-4 h-4" />
+              视频素材
+            </button>
+          </div>
         </div>
 
         {/* 工具栏 */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200/50 flex-wrap gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* 视图切换 */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid className="w-4 h-4 text-gray-700" />
-              </button>
-              <button
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4 text-gray-700" />
-              </button>
-            </div>
-
-            {/* 排序 */}
-            <select
-              value={`${sortBy}_${sortOrder}`}
-              onChange={(e) => {
-                const [sort, order] = e.target.value.split('_');
-                setSortBy(sort as any);
-                setSortOrder(order as any);
-              }}
-              className="text-sm border border-gray-200 bg-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="createdAt_desc">最新优先</option>
-              <option value="createdAt_asc">最旧优先</option>
-              <option value="name_asc">名称 A-Z</option>
-              <option value="name_desc">名称 Z-A</option>
-            </select>
+        <div className="px-6 pb-4 flex items-center justify-between gap-3">
+          {/* 搜索框 */}
+          <div className="flex-1 relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder="搜索素材..."
+              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+            />
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* 视图切换 */}
+          <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 p-0.5">
             <button
-              onClick={handleSyncMaterials}
-              disabled={!currentProjectId || isLoading || isSyncing}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all ${
-                !currentProjectId || isLoading || isSyncing
-                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-              title={currentProjectId ? '同步当前项目素材' : '请先选择项目 ID'}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+              onClick={() => setViewMode('grid')}
             >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  isLoading || isSyncing ? 'animate-spin text-gray-500' : 'text-gray-600'
-                }`}
-              />
-              {isLoading || isSyncing ? '同步中...' : '同步素材'}
+              <Grid className="w-4 h-4" />
             </button>
-
-            {/* 批量操作 */}
-            {selectedMaterials.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  已选 {selectedMaterials.length} 项
-                </span>
-                <button
-                  onClick={handleBatchDelete}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={clearSelection}
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  清除
-                </button>
-              </div>
-            )}
+            <button
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+              onClick={() => setViewMode('list')}
+            >
+              <List className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
+        {/* 过滤器与排序 (折叠式) */}
+        <div className="px-6 pb-2 flex items-center justify-between text-xs text-gray-500">
+           <div className="flex items-center gap-2">
+              <Filter className="w-3 h-3" />
+              <span>排序:</span>
+              <select
+                value={`${sortBy}_${sortOrder}`}
+                onChange={(e) => {
+                  const [sort, order] = e.target.value.split('_');
+                  setSortBy(sort as any);
+                  setSortOrder(order as any);
+                }}
+                className="bg-transparent border-none p-0 text-gray-700 font-medium focus:ring-0 cursor-pointer hover:text-blue-600"
+              >
+                <option value="createdAt_desc">最新添加</option>
+                <option value="createdAt_asc">最早添加</option>
+                <option value="name_asc">名称 (A-Z)</option>
+                <option value="name_desc">名称 (Z-A)</option>
+              </select>
+           </div>
+
+           <div className="flex items-center gap-2">
+             <button
+                onClick={handleSyncMaterials}
+                disabled={!currentProjectId || isLoading || isSyncing}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
+                  isSyncing ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-600'
+                }`}
+                title="同步最新素材"
+              >
+                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? '同步中' : '刷新'}
+              </button>
+           </div>
+        </div>
+
         {(loadingMessage || syncError) && (
-          <div className="px-4 py-2 text-xs">
-            {loadingMessage && (
-              <p className="text-gray-500">{loadingMessage}</p>
-            )}
-            {syncError && (
-              <p className="text-red-500 mt-1">{syncError}</p>
-            )}
+          <div className="px-6 pb-2">
+             <div className={`px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
+               syncError ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+             }`}>
+               <div className={`w-1.5 h-1.5 rounded-full ${syncError ? 'bg-red-500' : 'bg-blue-500 animate-pulse'}`} />
+               {syncError || loadingMessage}
+             </div>
           </div>
         )}
 
-        {/* 素材列表 */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-500">{loadingMessage || '加载中...'}</p>
-              </div>
+        {/* 批量操作栏 (浮动) */}
+        {selectedMaterials.length > 0 && (
+          <div className="px-6 pb-3">
+             <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <span className="text-xs font-medium pl-1">已选中 {selectedMaterials.length} 项</span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={clearSelection}
+                    className="px-3 py-1 text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    onClick={handleBatchDelete}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    删除
+                  </button>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* 素材列表 - 滚动区域 */}
+        <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
+          {isLoading && materials.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-sm">正在加载素材...</p>
             </div>
           ) : filteredMaterials.length === 0 ? (
-            <div className="text-center py-12">
-              <MaterialsIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">暂无{activeTab === 'image' ? '图片' : '视频'}素材</p>
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
+              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
+                <MaterialsIcon className="w-8 h-8 opacity-20" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">暂无{activeTab === 'image' ? '图片' : '视频'}素材</p>
+              <p className="text-xs text-gray-400 mt-1">上传或生成内容后将在此显示</p>
             </div>
           ) : (
-            <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3' : 'space-y-2'}>
+            <div className={`
+              ${viewMode === 'grid' ? 'grid grid-cols-2 gap-4' : 'space-y-2'}
+              animate-in fade-in duration-500
+            `}>
               {filteredMaterials.map(renderMaterialItem)}
             </div>
           )}
