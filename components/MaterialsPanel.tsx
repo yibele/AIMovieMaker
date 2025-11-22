@@ -106,7 +106,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         <div
           key={material.id}
           className={`
-            relative group cursor-pointer rounded-xl overflow-hidden
+            relative group cursor-pointer rounded-lg overflow-hidden
             border transition-all duration-300
             ${isSelected 
               ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' 
@@ -129,34 +129,30 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
-                <Video className="w-12 h-12 opacity-50" />
+                <Video className="w-8 h-8 opacity-50" />
               </div>
             )}
 
             {/* 悬浮遮罩 & 按钮 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-3">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-2">
               <button
-                className="w-full py-2 bg-white/90 backdrop-blur-sm text-gray-900 rounded-lg text-xs font-semibold hover:bg-white transition-all shadow-lg transform translate-y-4 group-hover:translate-y-0 active:scale-95"
+                className="w-full py-1.5 bg-white/90 backdrop-blur-sm text-gray-900 rounded text-[10px] font-semibold hover:bg-white transition-all shadow-lg transform translate-y-4 group-hover:translate-y-0 active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleMaterialClick(material);
                 }}
               >
-                添加到画布
+                添加
               </button>
             </div>
           </div>
 
-          {/* 信息 */}
-          <div className="p-2.5 bg-white/50 backdrop-blur-sm">
-            <p className="text-xs font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
+          {/* 信息 - 极简模式，只在悬浮时显示完整信息 */}
+          {/* <div className="p-2 bg-white/50 backdrop-blur-sm">
+            <p className="text-[10px] font-medium text-gray-700 truncate group-hover:text-gray-900 transition-colors">
               {material.name}
             </p>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wider">{material.type}</p>
-              {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-            </div>
-          </div>
+          </div> */}
         </div>
       );
     } else {
@@ -233,7 +229,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       {/* 面板 - 右侧抽屉 */}
       <div
         className={`
-          fixed right-0 top-0 bottom-0 w-[480px] bg-white/80 backdrop-blur-2xl z-[50] 
+          fixed right-0 top-0 bottom-0 w-[560px] bg-white/80 backdrop-blur-2xl z-[50] 
           border-l border-white/50 shadow-[-20px_0_60px_rgba(0,0,0,0.05)]
           transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
           flex flex-col
@@ -305,7 +301,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border
               ${isSyncing 
                 ? 'bg-blue-50 text-blue-600 border-blue-100' 
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
             `}
             title="同步最新素材"
           >
@@ -384,7 +380,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             </div>
           ) : (
             <div className={`
-              ${viewMode === 'grid' ? 'grid grid-cols-2 gap-4' : 'space-y-2'}
+              ${viewMode === 'grid' ? 'grid grid-cols-3 gap-3' : 'space-y-2'}
               animate-in fade-in duration-500
             `}>
               {filteredMaterials.map(renderMaterialItem)}
