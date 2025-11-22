@@ -52,11 +52,11 @@ export default function Toolbar() {
     {
       id: 'base',
       items: [
-        {
-          id: 'select' as const,
-          icon: MousePointer2,
-          label: '移动',
-          action: () => setUIState({ activeTool: 'select' }),
+    {
+      id: 'select' as const,
+      icon: MousePointer2,
+      label: '移动',
+      action: () => setUIState({ activeTool: 'select' }),
           isActive: activeTool === 'select',
           dotColor: 'bg-blue-500'
         }
@@ -65,33 +65,33 @@ export default function Toolbar() {
     {
       id: 'create',
       items: [
-        {
-          id: 'text' as const,
-          icon: Type,
+    {
+      id: 'text' as const,
+      icon: Type,
           label: '添加文字',
-          action: () => handleAddText(),
+      action: () => handleAddText(),
           isActive: false,
           dotColor: 'bg-purple-500'
-        },
-        {
-          id: 'upload' as const,
-          icon: Upload,
-          label: '上传图片',
-          action: () => handleUploadImage(),
+    },
+    {
+      id: 'upload' as const,
+      icon: Upload,
+      label: '上传图片',
+      action: () => handleUploadImage(),
           isActive: false,
           dotColor: 'bg-pink-500'
-        },
-        {
-          id: 'video' as const,
-          icon: Video,
-          label: '视频节点',
-          action: () => handleAddVideo(),
+    },
+    {
+      id: 'video' as const,
+      icon: Video,
+      label: '视频节点',
+      action: () => handleAddVideo(),
           isActive: false,
           dotColor: 'bg-orange-500'
-        },
+    },
       ]
     }
-  ];
+    ];
 
   // 添加文字
   const handleAddText = () => {
@@ -204,73 +204,73 @@ export default function Toolbar() {
 
   const placeImageOnCanvas = async (result: CroppedImageResult) => {
     const { dataUrl, width, height, aspect } = result;
-    const imageId = `image-${Date.now()}`;
-    const hasFlowCredential =
-      Boolean(apiConfig.bearerToken && apiConfig.bearerToken.trim()) &&
-      Boolean(apiConfig.projectId && apiConfig.projectId.trim());
+          const imageId = `image-${Date.now()}`;
+          const hasFlowCredential =
+            Boolean(apiConfig.bearerToken && apiConfig.bearerToken.trim()) &&
+            Boolean(apiConfig.projectId && apiConfig.projectId.trim());
 
-    const screenCenter = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    };
-    const flowPosition = screenToFlowPosition(screenCenter);
-    
+          const screenCenter = {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+          };
+          const flowPosition = screenToFlowPosition(screenCenter);
+          
     const maxWidth = 500;
     const scale = width > maxWidth ? maxWidth / width : 1;
     const imageWidth = width * scale;
     const imageHeight = height * scale;
           
-    const newImage: ImageElement = {
-      id: imageId,
-      type: 'image',
+          const newImage: ImageElement = {
+            id: imageId,
+            type: 'image',
       src: dataUrl,
-      position: {
+            position: {
         x: flowPosition.x - imageWidth / 2,
-        y: flowPosition.y - imageHeight / 2,
-      },
-      size: {
-        width: imageWidth,
-        height: imageHeight,
-      },
-      generatedFrom: {
+              y: flowPosition.y - imageHeight / 2,
+            },
+            size: {
+              width: imageWidth,
+              height: imageHeight,
+            },
+            generatedFrom: {
         type: 'input',
-      },
+            },
       uploadState: hasFlowCredential ? 'syncing' : 'local',
-    };
+          };
 
-    addElement(newImage);
+          addElement(newImage);
 
-    if (!hasFlowCredential) {
-      console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
+          if (!hasFlowCredential) {
+            console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
       alert(
         '图片已添加，但未配置 Flow 的 Bearer Token 或 Project ID，无法进行图生图，请先在设置中填写'
       );
-      return;
-    }
+            return;
+          }
 
-    try {
+          try {
       const result = await registerUploadedImage(
         dataUrl,
         flowAspectMap[aspect]
       );
-      updateElement(imageId, {
-        mediaGenerationId: result.mediaGenerationId || undefined,
-        alt: result.caption || newImage.alt,
-        caption: result.caption,
-        uploadState: 'synced',
-        uploadMessage: undefined,
-      } as Partial<ImageElement>);
-    } catch (error: any) {
-      console.error('上传图片注册 Flow 失败:', error);
-      const message =
-        error?.message || '上传图片注册 Flow 失败，请检查网络或凭证配置';
-      updateElement(imageId, {
-        uploadState: 'error',
-        uploadMessage: message,
-      } as Partial<ImageElement>);
-      alert(message);
-    }
-  };
+            updateElement(imageId, {
+              mediaGenerationId: result.mediaGenerationId || undefined,
+              alt: result.caption || newImage.alt,
+              caption: result.caption,
+              uploadState: 'synced',
+              uploadMessage: undefined,
+            } as Partial<ImageElement>);
+          } catch (error: any) {
+            console.error('上传图片注册 Flow 失败:', error);
+            const message =
+              error?.message || '上传图片注册 Flow 失败，请检查网络或凭证配置';
+            updateElement(imageId, {
+              uploadState: 'error',
+              uploadMessage: message,
+            } as Partial<ImageElement>);
+            alert(message);
+          }
+    };
     
   const handleCropConfirm = async (result: CroppedImageResult) => {
     closeCropper();
@@ -286,20 +286,20 @@ export default function Toolbar() {
           {toolGroups.map((group, groupIndex) => (
             <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100' : ''}`}>
               {group.items.map((tool, btnIndex) => {
-                const Icon = tool.icon;
-                
-                return (
+        const Icon = tool.icon;
+
+        return (
                   <div key={tool.id} className="relative group/btn">
-                    <button
-                      onClick={tool.action}
+          <button
+            onClick={tool.action}
                       className={`
                         relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300
                         ${tool.isActive 
                           ? 'bg-gray-100 text-gray-900 shadow-inner' 
                           : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:scale-105 active:scale-95'}
                       `}
-                    >
-                      <Icon 
+          >
+            <Icon 
                         className={`w-5 h-5 transition-all duration-300 ${tool.isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} 
                       />
                       
@@ -307,7 +307,7 @@ export default function Toolbar() {
                       {tool.isActive && (
                         <span className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${tool.dotColor || 'bg-blue-500'} shadow-sm animate-pulse`} />
                       )}
-                    </button>
+          </button>
 
                     {/* Tooltip - 右侧弹出 */}
                     <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-sm text-white text-xs font-medium rounded-lg opacity-0 invisible translate-x-2 group-hover/btn:opacity-100 group-hover/btn:visible group-hover/btn:translate-x-0 transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
@@ -316,9 +316,9 @@ export default function Toolbar() {
                       <div className="absolute top-1/2 -translate-y-1/2 -left-1 w-2 h-2 bg-gray-900/90 rotate-45" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
+        );
+      })}
+    </div>
           ))}
         </div>
       </div>
