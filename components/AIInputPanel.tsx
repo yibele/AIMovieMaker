@@ -73,6 +73,20 @@ export default function AIInputPanel() {
     // 可以在这里添加逻辑，例如当面板首次加载时聚焦
   }, []);
 
+  // 点击外部区域（如画布）时收起面板
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const showSelectedThumbnails = selectedImages.length > 0;
   
   // 行级注释：检查是否有正在处理的选中项
