@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
-import { Settings, Plus, Search, Bell, LogOut, RefreshCw, LayoutGrid, User, Sparkles } from 'lucide-react';
+import { Settings, Plus, Search, Bell, LogOut, RefreshCw, LayoutGrid, User, Sparkles, Zap, Play } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -37,158 +37,212 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-slate-900 font-sans pb-24 transition-all duration-500 selection:bg-violet-100 selection:text-violet-900">
-            {/* Background Elements - 极简光效 */}
+        <div className="min-h-screen bg-[#f2f3f5] text-slate-900 font-sans pb-24 transition-all duration-500 selection:bg-violet-200 selection:text-violet-900">
+            {/* Background Elements - 更具流动感和深度的背景 */}
             <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-                <div className="absolute top-[-10%] right-[-5%] w-[40rem] h-[40rem] rounded-full bg-gradient-to-b from-violet-100/40 to-transparent blur-[100px] animate-pulse-slow"></div>
-                <div className="absolute bottom-[-10%] left-[-5%] w-[30rem] h-[30rem] rounded-full bg-gradient-to-t from-blue-50/40 to-transparent blur-[80px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+                {/* 主光晕 - 更加柔和且多彩 */}
+                <div className="absolute top-[-20%] left-[-10%] w-[50rem] h-[50rem] rounded-full bg-gradient-to-br from-purple-100/60 via-blue-50/40 to-transparent blur-[120px] animate-pulse-slow opacity-70"></div>
+                <div className="absolute top-[10%] right-[-20%] w-[45rem] h-[45rem] rounded-full bg-gradient-to-bl from-indigo-100/50 via-violet-50/30 to-transparent blur-[100px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
+                <div className="absolute bottom-[-20%] left-[20%] w-[60rem] h-[40rem] rounded-full bg-gradient-to-t from-white via-blue-50/20 to-transparent blur-[140px]"></div>
+                
+                {/* 网格纹理 - 增加科技感 */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
             </div>
 
-            {/* Top Navigation - 悬浮极简导航 */}
+            {/* Top Navigation - 更加精致的毛玻璃 */}
             <header className={`
                 fixed top-0 left-0 right-0 z-50 px-8 py-5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                ${scrolled ? 'bg-white/70 backdrop-blur-xl shadow-[0_2px_20px_-10px_rgba(0,0,0,0.05)]' : 'bg-transparent'}
+                ${scrolled ? 'bg-white/60 backdrop-blur-2xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.1)] border-b border-white/20' : 'bg-transparent'}
             `}>
-                <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-12">
-                        {/* Logo */}
-                        <div className="flex items-center gap-3 group cursor-pointer select-none">
-                            <div className="w-9 h-9 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/20 group-hover:rotate-12 group-hover:scale-105 transition-all duration-300 ease-out">
-                                <Sparkles className="w-4 h-4" />
+                <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-14">
+                        {/* Logo Area */}
+                        <div className="flex items-center gap-3 group cursor-pointer select-none relative">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-600 blur-lg opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-xl"></div>
+                                <div className="relative w-10 h-10 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl flex items-center justify-center shadow-xl ring-1 ring-white/20 group-hover:rotate-[10deg] group-hover:scale-110 transition-all duration-500 ease-out">
+                                    <Zap className="w-5 h-5 fill-current" />
+                                </div>
                             </div>
-                            <span className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-slate-700 transition-colors">Morpheus</span>
+                            <div className="flex flex-col">
+                                <span className="text-lg font-bold tracking-tight text-slate-900 leading-none">Morpheus</span>
+                                <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-0.5 group-hover:text-violet-600 transition-colors">Studio</span>
+                            </div>
                         </div>
                         
-                        {/* Nav Links - 极简风格 */}
-                        <nav className="hidden md:flex items-center gap-1 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50 shadow-sm">
-                            <button className="px-5 py-1.5 text-sm font-semibold text-slate-900 bg-white rounded-full shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] transition-all">Flows</button>
-                            <button className="px-5 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-all hover:bg-white/50 rounded-full">Assets</button>
+                        {/* Nav Links - 悬浮胶囊设计 */}
+                        <nav className="hidden md:flex items-center bg-white/40 backdrop-blur-md p-1.5 rounded-full border border-white/40 shadow-sm ring-1 ring-black/5">
+                            <button className="relative px-6 py-2 text-sm font-bold text-slate-900 rounded-full transition-all overflow-hidden group">
+                                <span className="relative z-10">Projects</span>
+                                <div className="absolute inset-0 bg-white shadow-sm rounded-full transition-transform duration-300 ease-out opacity-100"></div>
+                            </button>
+                            <button className="relative px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 rounded-full transition-all overflow-hidden group">
+                                <span className="relative z-10">Assets</span>
+                                <div className="absolute inset-0 bg-white/0 group-hover:bg-white/50 rounded-full transition-colors duration-300"></div>
+                            </button>
+                            <button className="relative px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 rounded-full transition-all overflow-hidden group">
+                                <span className="relative z-10">Community</span>
+                                <div className="absolute inset-0 bg-white/0 group-hover:bg-white/50 rounded-full transition-colors duration-300"></div>
+                            </button>
                         </nav>
                     </div>
 
-                    <div className="flex items-center gap-5">
-                        {/* Search - 极简线条风格 */}
-                        <div className="hidden md:flex items-center w-64 group relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-0 transition-colors group-focus-within:text-slate-900" />
+                    <div className="flex items-center gap-6">
+                        {/* Search - 极简胶囊 */}
+                        <div className="hidden lg:flex items-center w-80 group relative transition-all duration-300 focus-within:w-96">
+                            <div className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 shadow-sm group-focus-within:bg-white/80 group-focus-within:shadow-lg transition-all duration-300"></div>
+                            <Search className="w-4 h-4 text-slate-400 absolute left-4 relative z-10 transition-colors group-focus-within:text-violet-600" />
                             <input 
                                 type="text" 
-                                placeholder="Search..." 
-                                className="w-full bg-transparent border-b border-slate-200 py-2 pl-7 pr-2 text-sm outline-none focus:border-slate-900 transition-all placeholder:text-slate-300 text-slate-700" 
+                                placeholder="Search your imagination..." 
+                                className="w-full bg-transparent relative z-10 py-2.5 pl-10 pr-4 text-sm font-medium outline-none text-slate-700 placeholder:text-slate-400" 
                             />
+                            <div className="absolute right-3 relative z-10 flex items-center gap-1 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300">
+                                <span className="text-[10px] font-bold text-slate-300 bg-white px-1.5 py-0.5 rounded border border-slate-100">⌘K</span>
+                            </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-4 pl-4 border-l border-slate-200/60">
-                            <button className="relative p-2 text-slate-400 hover:text-slate-900 transition-colors group">
-                                <Bell className="w-5 h-5" />
-                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-[#f8f9fa] scale-0 group-hover:scale-100 transition-transform duration-300"></span>
+                        <div className="flex items-center gap-3 pl-6 border-l border-slate-200/50">
+                            <button className="relative p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group">
+                                <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#f2f3f5] scale-0 group-hover:scale-100 transition-transform duration-300"></span>
                             </button>
 
-                            <div className="flex items-center gap-3 group cursor-pointer">
-                                <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden ring-2 ring-white shadow-sm transition-transform group-hover:scale-105">
+                            <div className="h-10 w-10 rounded-2xl p-[2px] bg-gradient-to-tr from-violet-500/20 to-indigo-500/20 cursor-pointer hover:from-violet-500 hover:to-indigo-500 transition-colors duration-300 group">
+                                <div className="h-full w-full rounded-[14px] bg-white overflow-hidden relative">
                                     {avatarUrl ? (
-                                        <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
+                                        <img src={avatarUrl} alt="User" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                                            <User className="w-4 h-4" />
+                                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
+                                            <User className="w-5 h-5" />
                                         </div>
                                     )}
                                 </div>
-                                <button 
-                                    onClick={onLogout} 
-                                    className="p-2 text-slate-300 hover:text-red-500 transition-colors" 
-                                    title="Logout"
-                                >
-                                    <LogOut className="w-4 h-4" />
-                                </button>
                             </div>
+                            
+                            <button 
+                                onClick={onLogout} 
+                                className="p-3 text-slate-300 hover:text-red-500 bg-white/0 hover:bg-red-50 rounded-2xl transition-all duration-300 group" 
+                                title="Logout"
+                            >
+                                <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                            </button>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-[1400px] mx-auto px-8 pt-36">
+            <main className="max-w-[1600px] mx-auto px-8 pt-40">
 
-                {/* Hero Section - 更加极简大气 */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
-                    <div className="space-y-1 relative">
-                        <h2 className="text-[3.5rem] font-bold text-slate-900 tracking-tight leading-tight">
-                            Workspace
-                        </h2>
-                        <div className="h-1.5 w-12 bg-slate-900 rounded-full mt-2"></div>
-                    </div>
+                {/* Hero Section - 极具冲击力的排版 */}
+                <div className="relative mb-24 animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="px-3 py-1 rounded-full bg-violet-100/50 text-violet-700 text-[11px] font-bold tracking-widest uppercase border border-violet-200/50 backdrop-blur-sm">
+                                    Workspace
+                                </span>
+                                <div className="h-px w-16 bg-gradient-to-r from-violet-200 to-transparent"></div>
+                            </div>
+                            <h2 className="text-[5rem] font-black text-slate-900 tracking-tight leading-[0.9] mb-6 drop-shadow-sm">
+                                Create<br/>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 animate-gradient-x">Something</span><br/>
+                                Extraordinary.
+                            </h2>
+                            <p className="text-lg text-slate-500 font-medium max-w-lg leading-relaxed">
+                                Unleash your creativity with AI-powered tools. Build immersive stories, generate stunning visuals, and bring your ideas to life.
+                            </p>
+                        </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-5 relative z-10 pb-4">
+                            <div className="flex items-center bg-white/50 backdrop-blur-xl p-2 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
+                                <button
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    className="p-4 text-slate-400 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 group"
+                                    title="Settings"
+                                >
+                                    <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
+                                </button>
+                                <div className="w-px h-8 bg-slate-200/60 mx-1"></div>
+                                <button
+                                    onClick={onRefreshProjects}
+                                    disabled={isLoading}
+                                    className="p-4 text-slate-400 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    title="Refresh"
+                                >
+                                    <RefreshCw className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                                </button>
+                            </div>
+                            
                             <button
-                                onClick={() => setIsSettingsOpen(true)}
-                                className="p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all active:scale-95"
-                                title="Settings"
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="group relative flex items-center gap-4 bg-slate-900 text-white pl-8 pr-10 py-6 rounded-[2rem] hover:bg-black hover:scale-[1.02] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-500 ease-out overflow-hidden"
                             >
-                                <Settings className="w-5 h-5" />
-                            </button>
-                            <div className="w-px h-4 bg-slate-200"></div>
-                            <button
-                                onClick={onRefreshProjects}
-                                disabled={isLoading}
-                                className="p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Refresh"
-                            >
-                                <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <div className="relative z-10 flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
+                                    <Plus className="w-6 h-6" />
+                                </div>
+                                <div className="relative z-10 flex flex-col items-start">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 group-hover:opacity-80 mb-0.5">New Project</span>
+                                    <span className="text-lg font-bold tracking-wide">Start Creating</span>
+                                </div>
+                                <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-10 group-hover:-translate-x-4 transition-all duration-500 delay-100">
+                                    <Sparkles className="w-24 h-24 text-white rotate-12" />
+                                </div>
                             </button>
                         </div>
-                        
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="group flex items-center gap-3 bg-slate-900 text-white pl-5 pr-6 py-3.5 rounded-2xl hover:bg-black hover:scale-105 hover:shadow-xl hover:shadow-slate-900/20 active:scale-95 transition-all duration-300 ease-out"
-                        >
-                            <div className="bg-white/20 p-1 rounded-lg group-hover:rotate-90 transition-transform duration-500">
-                                <Plus className="w-4 h-4" />
-                            </div>
-                            <span className="font-semibold tracking-wide">New Project</span>
-                        </button>
                     </div>
                 </div>
 
-                {/* Projects Grid - 优化间距和卡片展示 */}
+                {/* Projects Grid - 高级质感卡片 */}
                 {projects.length === 0 ? (
-                    <div className="relative overflow-hidden text-center py-40 bg-white/40 backdrop-blur-md border border-dashed border-slate-200 rounded-[2.5rem] animate-in zoom-in-95 duration-700 ease-out group hover:border-slate-300 transition-colors">
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/30 to-white/60 pointer-events-none" />
-                        <div className="relative z-10 flex flex-col items-center">
+                    <div className="relative overflow-hidden py-40 rounded-[3rem] group transition-all duration-700">
+                        <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[inset_0_0_100px_rgba(255,255,255,0.5)] rounded-[3rem] group-hover:shadow-[inset_0_0_100px_rgba(255,255,255,0.8),0_20px_40px_-10px_rgba(0,0,0,0.05)] transition-all duration-700"></div>
+                        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6">
                             {authStatus === 'valid' ? (
                                 <>
-                                    <div className="w-24 h-24 bg-white rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.08)] flex items-center justify-center mb-8 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500">
-                                        <LayoutGrid className="w-10 h-10 text-slate-900" strokeWidth={1.5} />
+                                    <div className="relative w-32 h-32 mb-10 group-hover:scale-110 transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-violet-500 to-indigo-500 rounded-[2rem] rotate-6 opacity-20 blur-xl group-hover:rotate-12 transition-all duration-700"></div>
+                                        <div className="absolute inset-0 bg-white rounded-[2rem] shadow-xl flex items-center justify-center border border-white/50">
+                                            <Play className="w-12 h-12 text-slate-900 fill-slate-900 ml-1" />
+                                        </div>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-3">Start Creating</h3>
-                                    <p className="text-slate-500 mb-10 max-w-sm mx-auto leading-relaxed">Ready to bring your ideas to life? Create your first project now.</p>
+                                    <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Your Canvas is Empty</h3>
+                                    <p className="text-lg text-slate-500 mb-12 max-w-md leading-relaxed font-medium">
+                                        The best stories are yet to be told. Begin your journey by creating your first project.
+                                    </p>
                                     <button
                                         onClick={() => setIsCreateModalOpen(true)}
-                                        className="inline-flex items-center gap-2 text-slate-900 bg-white px-8 py-3.5 rounded-2xl font-semibold shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100"
+                                        className="inline-flex items-center gap-3 text-white bg-slate-900 hover:bg-black px-10 py-4 rounded-2xl font-bold text-sm shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                                     >
-                                        <Plus className="w-4 h-4" />
-                                        Create Project
+                                        <Plus className="w-5 h-5" />
+                                        Create New Project
                                     </button>
                                 </>
                             ) : (
                                 <>
-                                    <div className="w-24 h-24 bg-orange-50 rounded-[2rem] flex items-center justify-center mb-8 border-2 border-orange-100 animate-pulse">
-                                        <Settings className="w-10 h-10 text-orange-500" />
+                                    <div className="relative w-32 h-32 mb-10 animate-pulse">
+                                        <div className="absolute inset-0 bg-orange-500/20 rounded-[2rem] rotate-6 blur-xl"></div>
+                                        <div className="absolute inset-0 bg-white rounded-[2rem] shadow-xl flex items-center justify-center border-2 border-orange-50">
+                                            <Settings className="w-12 h-12 text-orange-500 animate-spin-slow" />
+                                        </div>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                                        {authStatus === 'missing' ? 'Configuration Needed' : 'Session Expired'}
+                                    <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">
+                                        {authStatus === 'missing' ? 'Setup Required' : 'Session Expired'}
                                     </h3>
-                                    <p className="text-slate-500 mb-10 max-w-md mx-auto leading-relaxed">
+                                    <p className="text-lg text-slate-500 mb-12 max-w-md leading-relaxed font-medium">
                                         {authStatus === 'missing'
-                                            ? 'Please configure your API settings to start creating.'
-                                            : 'Your session has expired. Please update your credentials.'}
+                                            ? 'Configure your API settings to unlock the full potential of Morpheus Studio.'
+                                            : 'Your creative session has ended. Please refresh your credentials to continue.'}
                                     </p>
                                     <button
                                         onClick={() => setIsSettingsOpen(true)}
-                                        className="bg-slate-900 text-white px-10 py-3.5 rounded-2xl font-semibold shadow-xl shadow-slate-900/10 hover:bg-black hover:-translate-y-1 transition-all duration-300"
+                                        className="inline-flex items-center gap-3 bg-white text-slate-900 hover:bg-slate-50 border border-slate-200 px-10 py-4 rounded-2xl font-bold text-sm shadow-lg shadow-slate-200/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                                     >
-                                        Open Settings
+                                        <Settings className="w-5 h-5" />
+                                        Open Configuration
                                     </button>
                                 </>
                             )}
@@ -199,8 +253,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                         {projects.map((project, index) => (
                             <div
                                 key={project.id}
-                                className="group animate-in fade-in slide-in-from-bottom-12 duration-700 fill-mode-backwards"
-                                style={{ animationDelay: `${index * 80}ms` }}
+                                className="group animate-in fade-in slide-in-from-bottom-16 duration-1000 fill-mode-backwards"
+                                style={{ animationDelay: `${index * 100}ms` }}
                             >
                                 <ProjectCard project={project} onProjectClick={onProjectClick} />
                             </div>
