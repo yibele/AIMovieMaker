@@ -59,6 +59,53 @@ const saveUserProjectIds = async (projectIds: string[]) => {
   }
 };
 
+// 添加单个项目ID到 localStorage
+const addProjectIdToCache = async (projectId: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      console.log('⚠️ 无法添加项目ID：未获取到用户 email');
+      return;
+    }
+    
+    const userEmail = session.user.email;
+    const storageKey = `user_projects_${userEmail}`;
+    const existingData = localStorage.getItem(storageKey);
+    const existingIds: string[] = existingData ? JSON.parse(existingData) : [];
+    
+    // 避免重复添加
+    if (!existingIds.includes(projectId)) {
+      existingIds.unshift(projectId); // 添加到列表开头
+      localStorage.setItem(storageKey, JSON.stringify(existingIds));
+      console.log('✅ 已添加新项目到缓存:', { email: userEmail, projectId });
+    }
+  } catch (error) {
+    console.error('❌ 添加项目ID失败:', error);
+  }
+};
+
+// 从 localStorage 移除项目ID
+const removeProjectIdFromCache = async (projectId: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      console.log('⚠️ 无法移除项目ID：未获取到用户 email');
+      return;
+    }
+    
+    const userEmail = session.user.email;
+    const storageKey = `user_projects_${userEmail}`;
+    const existingData = localStorage.getItem(storageKey);
+    const existingIds: string[] = existingData ? JSON.parse(existingData) : [];
+    
+    const filteredIds = existingIds.filter(id => id !== projectId);
+    localStorage.setItem(storageKey, JSON.stringify(filteredIds));
+    console.log('✅ 已从缓存移除项目:', { email: userEmail, projectId });
+  } catch (error) {
+    console.error('❌ 移除项目ID失败:', error);
+  }
+};
+
 // 生成符合 Flow 命名习惯的项目标题
 const formatProjectTitle = () => {
   const now = new Date(); // 当前时间
@@ -498,6 +545,12 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
         }
 
         throw new Error(errorMessage); // 统一错误
+      }
+
+      // 🔥 立即将新项目ID添加到缓存，确保用户可以马上访问
+      if (data?.project?.projectId) {
+        await addProjectIdToCache(data.project.projectId);
+        console.log('🎉 新项目已添加到缓存，用户可以立即访问:', data.project.projectId);
       }
 
       await fetchProjects(true); // 创建成功后强制刷新列表
