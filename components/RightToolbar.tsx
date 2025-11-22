@@ -74,8 +74,8 @@ export default function RightToolbar() {
 
   return (
     <>
-      {/* 右侧工具栏 - 悬浮胶囊设计 */}
-      <div className="absolute right-6 top-6 z-40 flex flex-col gap-4 pointer-events-none">
+      {/* 右侧工具栏 - 悬浮胶囊设计 - 垂直居中 */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4 pointer-events-none">
         
         {/* 主工具栏 */}
         <div className="pointer-events-auto bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-white/60 p-2 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
