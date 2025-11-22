@@ -4,12 +4,12 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
 import { MaterialsIcon } from './icons/MaterialsIcon';
-import PrefixPromptModal from './PrefixPromptModal';
+import PromptLibraryModal from './PromptLibraryModal';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
   const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
-  const [isPrefixPromptOpen, setIsPrefixPromptOpen] = useState(false);
+  const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
   const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
 
   // 按钮配置
@@ -27,7 +27,7 @@ export default function RightToolbar() {
         },
         {
           icon: Sparkles,
-          onClick: () => setIsPrefixPromptOpen(true),
+          onClick: () => setIsPromptLibraryOpen(true),
           title: prefixPrompt ? `前置提示词：${prefixPrompt.slice(0, 20)}...` : '提示词库',
           isActive: Boolean(prefixPrompt),
           dotColor: 'bg-purple-500'
@@ -126,10 +126,10 @@ export default function RightToolbar() {
         onClose={() => setIsMaterialsPanelOpen(false)}
       />
 
-      {/* 前置提示词 - 模态框 */}
-      <PrefixPromptModal
-        isOpen={isPrefixPromptOpen}
-        onClose={() => setIsPrefixPromptOpen(false)}
+      {/* 提示词库 - 模态框 */}
+      <PromptLibraryModal
+        isOpen={isPromptLibraryOpen}
+        onClose={() => setIsPromptLibraryOpen(false)}
       />
     </>
   );
