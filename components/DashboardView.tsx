@@ -157,6 +157,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                 <div className={`relative animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out transition-all duration-700 ${projects.length > 0 ? 'mb-12 md:mb-16' : 'mb-16 md:mb-24'}`}>
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 lg:gap-10">
                         <div className="relative z-10 max-w-3xl">
+                            {/* Decorative Background Elements for Text */}
+                            <div className="absolute -left-20 -top-20 w-[600px] h-[600px] bg-gradient-to-tr from-violet-200/40 via-indigo-100/20 to-transparent rounded-full blur-3xl -z-10 animate-pulse-slow pointer-events-none mix-blend-multiply"></div>
+                            <div className="absolute left-10 top-0 w-32 h-32 bg-pink-200/30 rounded-full blur-2xl -z-10 pointer-events-none"></div>
+                            <div className="absolute right-20 bottom-20 w-40 h-40 bg-blue-200/30 rounded-full blur-2xl -z-10 pointer-events-none animate-bounce-slow" style={{ animationDuration: '4s' }}></div>
+                            
+                            {/* Grid Decoration behind text */}
+                            <div className="absolute -left-10 top-10 opacity-20 -z-10 pointer-events-none">
+                                <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M20 20H180V180H20V20Z" stroke="currentColor" strokeWidth="1" className="text-slate-900" strokeDasharray="4 4"/>
+                                    <circle cx="20" cy="20" r="4" fill="currentColor" className="text-violet-500"/>
+                                    <circle cx="180" cy="20" r="4" fill="currentColor" className="text-violet-500"/>
+                                    <circle cx="20" cy="180" r="4" fill="currentColor" className="text-violet-500"/>
+                                    <circle cx="180" cy="180" r="4" fill="currentColor" className="text-violet-500"/>
+                                </svg>
+                            </div>
+
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="px-3 py-1 rounded-full bg-violet-100/50 text-violet-700 text-[10px] md:text-[11px] font-bold tracking-widest uppercase border border-violet-200/50 backdrop-blur-sm">
                                     Workspace
