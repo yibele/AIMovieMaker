@@ -288,7 +288,7 @@ export default function AIInputPanel() {
               {/* 提示词增强 */}
               <div className="space-y-2.5">
                 <label className="text-[11px] uppercase tracking-wider font-bold text-gray-400 ml-1 flex items-center gap-1.5">
-                  <Type size={12} className="text-gray-400" /> 智能增强
+                  <Type size={12} className="text-gray-400" /> 前置提示词
                 </label>
                 <button
                   onClick={() => setPrefixPromptEnabled(!prefixPromptEnabled)}
@@ -300,7 +300,7 @@ export default function AIInputPanel() {
                   `}
                 >
                   <Sparkles size={18} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 scale-100"}`} />
-                  {prefixPromptEnabled ? '已启用优化' : '点击启用优化'}
+                  {prefixPromptEnabled ? '已启用' : '点击启用'}
                 </button>
               </div>
 
