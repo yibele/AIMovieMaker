@@ -12,9 +12,17 @@ import { useCanvasStore } from './store';
  * @returns 完整的提示词
  */
 function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
+  // 行级注释：检查前置提示词是否启用
+  const store = useCanvasStore.getState();
+  const isEnabled = store.prefixPromptEnabled;
+  
+  if (!isEnabled) {
+    return userPrompt; // 未启用，直接返回用户提示词
+  }
+  
   const prefix = prefixPrompt !== undefined 
     ? prefixPrompt 
-    : useCanvasStore.getState().currentPrefixPrompt;
+    : store.currentPrefixPrompt;
   
   if (!prefix || !prefix.trim()) {
     return userPrompt;
@@ -739,12 +747,10 @@ export async function runImageRecipe(
     throw new Error('至少需要两张包含 mediaId 或 mediaGenerationId 的图片才能进行多图编辑');
   }
 
-  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
-  const finalInstruction = buildFinalPrompt(instruction);
-
+  // 行级注释：业务层 - 多图融合不使用前置提示词（风格已由参考图确定）
   console.log(
     '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
-    finalInstruction,
+    instruction,
     aspectRatio,
     accountTier,
     imageModel,
@@ -752,11 +758,11 @@ export async function runImageRecipe(
     `生成数量: ${count || apiConfig.generationCount || 1}`
   );
 
-  // 行级注释：调用层 - 调用纯 API 函数
+  // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateImageDirectly } = await import('./direct-google-api');
 
   const result = await generateImageDirectly(
-    finalInstruction,
+    instruction, // 行级注释：多图融合直接使用原始 instruction，不附加前置提示词
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
@@ -835,16 +841,14 @@ export async function imageToImage(
     throw new Error('图生图需要提供原始图片的 mediaId 或 mediaGenerationId');
   }
 
-  // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
-  const finalPrompt = buildFinalPrompt(prompt);
+  // 行级注释：业务层 - 图生图不使用前置提示词（风格已由参考图确定）
+  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
-  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', finalPrompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
-
-  // 行级注释：调用层 - 调用纯 API 函数
+  // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateImageDirectly } = await import('./direct-google-api');
 
   const result = await generateImageDirectly(
-    finalPrompt,
+    prompt, // 行级注释：图生图直接使用原始 prompt，不附加前置提示词
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,
@@ -1099,9 +1103,8 @@ export async function generateVideoFromImages(
   // 行级注释：业务层 - 推断视频宽高比
   const aspectRatio = inferVideoAspectRatio(startImage, endImage);
   
-  // 行级注释：业务层 - 处理提示词（附加前置提示词）
-  const userPrompt = (prompt ?? '').trim() || 'Seamless transition between scenes';
-  const finalPrompt = buildFinalPrompt(userPrompt);
+  // 行级注释：业务层 - 图生视频不使用前置提示词（风格已由参考图确定）
+  const promptText = (prompt ?? '').trim() || 'Seamless transition between scenes';
   
   // 行级注释：业务层 - 生成场景 ID
   const sceneId =
@@ -1113,17 +1116,17 @@ export async function generateVideoFromImages(
     startImageId,
     endImageId: endImageId || '无尾帧',
     hasEndImage: !!endMediaId,
-    prompt: finalPrompt,
+    prompt: promptText,
     aspectRatio,
     accountTier,
     sceneId,
   });
 
-  // 行级注释：调用层 - 调用纯 API 函数
+  // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateVideoImageDirectly } = await import('./direct-google-api');
 
   const generationTask = await generateVideoImageDirectly(
-    finalPrompt,
+    promptText, // 行级注释：图生视频直接使用原始 prompt，不附加前置提示词
     apiConfig.bearerToken,
     apiConfig.projectId,
     sessionId,

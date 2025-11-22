@@ -77,8 +77,7 @@ interface ImageAnnotatorModalProps {
     result: ImageAnnotatorResult, 
     annotatedImageDataUrl: string, 
     mainImage?: any, 
-    referenceImages?: any[],
-    usePrefixPrompt?: boolean // 是否使用前置提示词
+    referenceImages?: any[]
   ) => void | Promise<void>;
 }
 
@@ -139,7 +138,6 @@ export default function ImageAnnotatorModal({
   const [promptText, setPromptText] = useState('');
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false); // 是否正在生成
-  const [usePrefixPrompt, setUsePrefixPrompt] = useState(true); // 行级注释：是否使用前置提示词（默认开启）
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
   // 行级注释：内部管理主图和参考图状态（允许用户切换）
@@ -157,7 +155,6 @@ export default function ImageAnnotatorModal({
       setCurrentReferenceImages(referenceImages);
       setAnnotations([]); // 清空标注
       setPromptText(''); // 清空提示词
-      setUsePrefixPrompt(true); // 行级注释：重置前置提示词开关为默认开启
       
       // 保存所有图片的原始顺序（位置不变）
       if (mainImage) {
@@ -588,7 +585,7 @@ export default function ImageAnnotatorModal({
       await onConfirm({
         annotations: payload,
         promptText: currentPrompt,
-      }, annotatedImageDataUrl, currentMainImage, currentReferenceImages, usePrefixPrompt);
+      }, annotatedImageDataUrl, currentMainImage, currentReferenceImages);
       
       // 不自动关闭！让用户可以继续编辑
       
@@ -1124,24 +1121,6 @@ export default function ImageAnnotatorModal({
               </div>
             </div>
           )}
-
-          {/* 行级注释：前置提示词开关 */}
-          <div className="flex-shrink-0 flex items-center justify-between px-1 py-2">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={usePrefixPrompt}
-                onChange={(e) => setUsePrefixPrompt(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
-              />
-              <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors select-none">
-                使用前置提示词
-              </span>
-            </label>
-            <span className="text-xs text-gray-400">
-              {usePrefixPrompt ? '✓ 已启用' : '✗ 已禁用'}
-            </span>
-          </div>
 
           <div className="flex-shrink-0 relative">
             <textarea

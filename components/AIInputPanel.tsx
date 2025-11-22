@@ -14,6 +14,8 @@ export default function AIInputPanel() {
   const apiConfig = useCanvasStore((state) => state.apiConfig);
   const setApiConfig = useCanvasStore((state) => state.setApiConfig);
   const onGenerateFromInput = useCanvasStore((state) => state.onGenerateFromInput);
+  const prefixPromptEnabled = useCanvasStore((state) => state.prefixPromptEnabled);
+  const setPrefixPromptEnabled = useCanvasStore((state) => state.setPrefixPromptEnabled);
   
   const generationCount = apiConfig.generationCount || 1;
   const imageModel = apiConfig.imageModel || 'nanobanana';
@@ -197,6 +199,33 @@ export default function AIInputPanel() {
             >
               Banana Pro
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+            </button>
+          </div>
+
+          {/* 前置提示词开关 */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/30 hover:bg-white/40 backdrop-blur-md rounded-xl text-sm font-medium text-gray-700 transition-all shadow-sm border border-gray-200/50">
+            <span className="text-xs text-gray-500">前置词</span>
+            <button
+              onClick={() => setPrefixPromptEnabled(true)}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                prefixPromptEnabled
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="启用前置提示词（文生图/文生视频）"
+            >
+              启用
+            </button>
+            <button
+              onClick={() => setPrefixPromptEnabled(false)}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                !prefixPromptEnabled
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="禁用前置提示词"
+            >
+              禁用
             </button>
           </div>
         </div>

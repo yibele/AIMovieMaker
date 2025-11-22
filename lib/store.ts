@@ -49,6 +49,8 @@ interface CanvasStore {
   projectPrefixPrompts: Record<string, string>;
   // 当前项目的前置提示词
   currentPrefixPrompt: string;
+  // 前置提示词是否启用（默认启用）
+  prefixPromptEnabled: boolean;
   // 行级注释：视频积分状态
   credits: number | null;
 
@@ -66,6 +68,7 @@ interface CanvasStore {
   setApiConfig: (config: Partial<ApiConfig>) => void;
   setPrefixPrompt: (prompt: string) => void;
   loadProjectPrefixPrompt: (projectId: string) => void;
+  setPrefixPromptEnabled: (enabled: boolean) => void; // 行级注释：设置前置提示词启用状态
   setIsSettingsOpen: (isOpen: boolean) => void;
   getElementByIds: (ids: string[]) => CanvasElement[];
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
@@ -210,6 +213,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     isSettingsOpen: false,
     projectPrefixPrompts: loadProjectPrefixPrompts(),
     currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
+    prefixPromptEnabled: true, // 行级注释：默认启用前置提示词
     triggerVideoGeneration: undefined,
     onGenerateFromInput: undefined,
 
@@ -287,6 +291,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
         apiConfig: { ...get().apiConfig, projectId }
       });
     },
+
+    setPrefixPromptEnabled: (enabled) => set({ prefixPromptEnabled: enabled }),
 
     setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
 
