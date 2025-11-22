@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
-import { Settings, Plus, Search, Bell, LogOut, RefreshCw, User, Zap, Sparkles, Play, ArrowDown } from 'lucide-react';
+import { Settings, Plus, Search, Bell, LogOut, RefreshCw, User, Zap, Sparkles, Play, ArrowDown, LayoutGrid } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -58,24 +58,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                 </div>
 
                 {/* Giant Hero Text */}
-                <div className="relative z-10 text-center px-6 max-w-5xl mx-auto -translate-y-20 select-none">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 text-xs font-bold tracking-[0.2em] uppercase mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="relative z-10 text-center px-6 max-w-5xl mx-auto -translate-y-32 select-none">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs font-bold tracking-[0.2em] uppercase mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 shadow-lg">
                         <Sparkles className="w-3 h-3" />
                         Morpheus Workspace
                     </div>
-                    <h1 className="text-[5rem] md:text-[7rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-slate-800 to-transparent tracking-tighter leading-[0.85] mb-6 animate-in fade-in zoom-in-50 duration-1000 delay-100">
+                    <h1 className="text-[5rem] md:text-[8rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-slate-900 via-slate-800 to-transparent tracking-tighter leading-[0.85] mb-8 animate-in fade-in zoom-in-50 duration-1000 delay-100 drop-shadow-sm">
                         Create<br />
                         Something<br />
                         Extraordinary.
                     </h1>
-                    <p className="text-lg md:text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+                    <p className="text-lg md:text-2xl text-slate-700 font-medium max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 drop-shadow-sm">
                         Unleash your creativity with AI-powered tools. Build immersive stories, generate stunning visuals, and bring your ideas to life.
                     </p>
                 </div>
 
                 {/* Scroll Indicator */}
-                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce cursor-pointer text-slate-400 hover:text-slate-900 transition-colors" onClick={scrollToProjects}>
-                    <ArrowDown className="w-6 h-6" />
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce cursor-pointer text-slate-500 hover:text-slate-900 transition-colors p-4" onClick={scrollToProjects}>
+                    <ArrowDown className="w-8 h-8" />
                 </div>
             </div>
 
@@ -127,13 +127,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
             </header>
 
             {/* Layer 2: Scrolling Content */}
-            <div className="relative z-10 pt-[85vh] md:pt-[90vh]">
+            <div className="relative z-10 pt-[100vh]">
                 {/* Gradient Mask for smooth transition */}
-                <div className="h-40 bg-gradient-to-b from-transparent to-[#f2f3f5]"></div>
+                <div className="h-64 bg-gradient-to-b from-transparent via-[#f2f3f5]/50 to-[#f2f3f5]"></div>
                 
                 <main 
                     ref={mainRef}
-                    className="bg-[#f2f3f5] min-h-screen px-6 md:px-10 pb-32 relative shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.1)] rounded-t-[3rem]"
+                    className="bg-[#f2f3f5] min-h-screen px-6 md:px-10 pb-32 relative shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.1)]"
                 >
                     <div className="max-w-[1800px] mx-auto">
                         
