@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw, FolderOpen, Filter } from 'lucide-react';
+import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw, FolderOpen } from 'lucide-react';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { useCanvasStore } from '@/lib/store';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
@@ -20,14 +20,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     selectedMaterials,
     isLoading,
     loadingMessage,
-    searchQuery,
     activeTab,
-    sortBy,
-    sortOrder,
-    setSearchQuery,
     setActiveTab,
-    setSortBy,
-    setSortOrder,
     selectMaterial,
     selectMaterials,
     clearSelection,
@@ -48,36 +42,12 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       })
       // 按类型过滤
       .filter((m) => m.type === activeTab)
-      // 按搜索词过滤
-      .filter((m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-      // 排序
+      // 排序 - 默认按时间倒序
       .sort((a, b) => {
-        let comparison = 0;
-
-        switch (sortBy) {
-          case 'name':
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case 'type':
-            comparison = a.type.localeCompare(b.type);
-            break;
-          case 'createdAt':
-            comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-            break;
-        }
-
-        return sortOrder === 'asc' ? comparison : -comparison;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [materials, currentProjectId, searchQuery, activeTab, sortBy, sortOrder]);
+  }, [materials, currentProjectId, activeTab]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  // 处理搜索
-  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, [setSearchQuery]);
 
   const handleSyncMaterials = useCallback(async () => {
     if (!currentProjectId) {
@@ -263,7 +233,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       {/* 面板 - 右侧抽屉 */}
       <div
         className={`
-          fixed right-0 top-0 bottom-0 w-[420px] bg-white/80 backdrop-blur-2xl z-[50] 
+          fixed right-0 top-0 bottom-0 w-[380px] bg-white/80 backdrop-blur-2xl z-[50] 
           border-l border-white/50 shadow-[-20px_0_60px_rgba(0,0,0,0.05)]
           transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
           flex flex-col
@@ -324,71 +294,42 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
           </div>
         </div>
 
-        {/* 工具栏 */}
+        {/* 工具栏 - 极简版 */}
         <div className="px-6 pb-4 flex items-center justify-between gap-3">
-          {/* 搜索框 */}
-          <div className="flex-1 relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleSearch}
-              placeholder="搜索素材..."
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
-            />
-          </div>
+          
+          {/* 左侧：刷新按钮 */}
+          <button
+            onClick={handleSyncMaterials}
+            disabled={!currentProjectId || isLoading || isSyncing}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border
+              ${isSyncing 
+                ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}
+            `}
+            title="同步最新素材"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? '同步中...' : '同步素材'}
+          </button>
 
-          {/* 视图切换 */}
+          {/* 右侧：视图切换 */}
           <div className="flex items-center bg-gray-50 rounded-lg border border-gray-100 p-0.5">
             <button
               className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
               onClick={() => setViewMode('grid')}
+              title="网格视图"
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
               onClick={() => setViewMode('list')}
+              title="列表视图"
             >
               <List className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        {/* 过滤器与排序 (折叠式) */}
-        <div className="px-6 pb-2 flex items-center justify-between text-xs text-gray-500">
-           <div className="flex items-center gap-2">
-              <Filter className="w-3 h-3" />
-              <span>排序:</span>
-              <select
-                value={`${sortBy}_${sortOrder}`}
-                onChange={(e) => {
-                  const [sort, order] = e.target.value.split('_');
-                  setSortBy(sort as any);
-                  setSortOrder(order as any);
-                }}
-                className="bg-transparent border-none p-0 text-gray-700 font-medium focus:ring-0 cursor-pointer hover:text-blue-600"
-              >
-                <option value="createdAt_desc">最新添加</option>
-                <option value="createdAt_asc">最早添加</option>
-                <option value="name_asc">名称 (A-Z)</option>
-                <option value="name_desc">名称 (Z-A)</option>
-              </select>
-           </div>
-
-           <div className="flex items-center gap-2">
-             <button
-                onClick={handleSyncMaterials}
-                disabled={!currentProjectId || isLoading || isSyncing}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${
-                  isSyncing ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-600'
-                }`}
-                title="同步最新素材"
-              >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? '同步中' : '刷新'}
-              </button>
-           </div>
         </div>
 
         {(loadingMessage || syncError) && (
@@ -436,7 +377,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
           ) : filteredMaterials.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
               <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
-                <MaterialsIcon className="w-8 h-8 opacity-20" />
+                <FolderOpen className="w-8 h-8 opacity-20" />
               </div>
               <p className="text-sm font-medium text-gray-500">暂无{activeTab === 'image' ? '图片' : '视频'}素材</p>
               <p className="text-xs text-gray-400 mt-1">上传或生成内容后将在此显示</p>
