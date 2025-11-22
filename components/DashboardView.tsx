@@ -40,10 +40,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
         <div className="min-h-screen bg-[#f2f3f5] text-slate-900 font-sans pb-24 transition-all duration-500 selection:bg-violet-200 selection:text-violet-900">
             {/* Background Elements - 更具流动感和深度的背景 */}
             <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-                {/* 主光晕 - 更加柔和且多彩 */}
-                <div className="absolute top-[-20%] left-[-10%] w-[50rem] h-[50rem] rounded-full bg-gradient-to-br from-purple-100/60 via-blue-50/40 to-transparent blur-[120px] animate-pulse-slow opacity-70"></div>
-                <div className="absolute top-[10%] right-[-20%] w-[45rem] h-[45rem] rounded-full bg-gradient-to-bl from-indigo-100/50 via-violet-50/30 to-transparent blur-[100px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
-                <div className="absolute bottom-[-20%] left-[20%] w-[60rem] h-[40rem] rounded-full bg-gradient-to-t from-white via-blue-50/20 to-transparent blur-[140px]"></div>
+                {/* 主光晕 - 更加柔和且多彩，添加 will-change-transform 优化性能 */}
+                <div className="absolute top-[-20%] left-[-10%] w-[50rem] h-[50rem] rounded-full bg-gradient-to-br from-purple-100/60 via-blue-50/40 to-transparent blur-[120px] animate-pulse-slow opacity-70 will-change-transform"></div>
+                <div className="absolute top-[10%] right-[-20%] w-[45rem] h-[45rem] rounded-full bg-gradient-to-bl from-indigo-100/50 via-violet-50/30 to-transparent blur-[100px] animate-pulse-slow will-change-transform" style={{ animationDelay: '3s' }}></div>
+                <div className="absolute bottom-[-20%] left-[20%] w-[60rem] h-[40rem] rounded-full bg-gradient-to-t from-white via-blue-50/20 to-transparent blur-[140px] will-change-transform"></div>
                 
                 {/* 网格纹理 - 增加科技感 */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
@@ -51,21 +51,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
 
             {/* Top Navigation - 更加精致的毛玻璃 */}
             <header className={`
-                fixed top-0 left-0 right-0 z-50 px-8 py-5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-3 md:py-5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                 ${scrolled ? 'bg-white/60 backdrop-blur-2xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.1)] border-b border-white/20' : 'bg-transparent'}
             `}>
                 <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-14">
+                    <div className="flex items-center gap-8 md:gap-14">
                         {/* Logo Area */}
                         <div className="flex items-center gap-3 group cursor-pointer select-none relative">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-indigo-600 blur-lg opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-xl"></div>
-                                <div className="relative w-10 h-10 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl flex items-center justify-center shadow-xl ring-1 ring-white/20 group-hover:rotate-[10deg] group-hover:scale-110 transition-all duration-500 ease-out">
-                                    <Zap className="w-5 h-5 fill-current" />
+                                <div className="relative w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl flex items-center justify-center shadow-xl ring-1 ring-white/20 group-hover:rotate-[10deg] group-hover:scale-110 transition-all duration-500 ease-out">
+                                    <Zap className="w-4 h-4 md:w-5 md:h-5 fill-current" />
                                 </div>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-lg font-bold tracking-tight text-slate-900 leading-none">Morpheus</span>
+                                <span className="text-base md:text-lg font-bold tracking-tight text-slate-900 leading-none">Morpheus</span>
                                 <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-0.5 group-hover:text-violet-600 transition-colors">Studio</span>
                             </div>
                         </div>
@@ -87,7 +87,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                         </nav>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4 md:gap-6">
                         {/* Search - 极简胶囊 */}
                         <div className="hidden lg:flex items-center w-80 group relative transition-all duration-300 focus-within:w-96">
                             <div className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 shadow-sm group-focus-within:bg-white/80 group-focus-within:shadow-lg transition-all duration-300"></div>
@@ -95,27 +95,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                             <input 
                                 type="text" 
                                 placeholder="Search your imagination..." 
-                                className="w-full bg-transparent relative z-10 py-2.5 pl-10 pr-4 text-sm font-medium outline-none text-slate-700 placeholder:text-slate-400" 
+                                className="w-full bg-transparent relative z-10 py-2.5 pl-10 pr-4 text-sm font-medium outline-none text-slate-700 placeholder:text-slate-500" 
                             />
                             <div className="absolute right-3 relative z-10 flex items-center gap-1 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300">
-                                <span className="text-[10px] font-bold text-slate-300 bg-white px-1.5 py-0.5 rounded border border-slate-100">⌘K</span>
+                                <span className="text-[10px] font-bold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-100">⌘K</span>
                             </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-3 pl-6 border-l border-slate-200/50">
-                            <button className="relative p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group">
-                                <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#f2f3f5] scale-0 group-hover:scale-100 transition-transform duration-300"></span>
+                        <div className="flex items-center gap-2 md:gap-3 pl-4 md:pl-6 border-l border-slate-200/50">
+                            <button className="relative p-2 md:p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group">
+                                <Bell className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
+                                <span className="absolute top-2 md:top-3 right-2 md:right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#f2f3f5] scale-0 group-hover:scale-100 transition-transform duration-300"></span>
                             </button>
 
-                            <div className="h-10 w-10 rounded-2xl p-[2px] bg-gradient-to-tr from-violet-500/20 to-indigo-500/20 cursor-pointer hover:from-violet-500 hover:to-indigo-500 transition-colors duration-300 group">
-                                <div className="h-full w-full rounded-[14px] bg-white overflow-hidden relative">
+                            <div className="h-8 w-8 md:h-10 md:w-10 rounded-2xl p-[2px] bg-gradient-to-tr from-violet-500/20 to-indigo-500/20 cursor-pointer hover:from-violet-500 hover:to-indigo-500 transition-colors duration-300 group">
+                                <div className="h-full w-full rounded-[12px] md:rounded-[14px] bg-white overflow-hidden relative">
                                     {avatarUrl ? (
                                         <img src={avatarUrl} alt="User" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
-                                            <User className="w-5 h-5" />
+                                            <User className="w-4 h-4 md:w-5 md:h-5" />
                                         </div>
                                     )}
                                 </div>
@@ -123,10 +123,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                             
                             <button 
                                 onClick={onLogout} 
-                                className="p-3 text-slate-300 hover:text-red-500 bg-white/0 hover:bg-red-50 rounded-2xl transition-all duration-300 group" 
+                                className="p-2 md:p-3 text-slate-400 hover:text-red-500 bg-white/0 hover:bg-red-50 rounded-2xl transition-all duration-300 group" 
                                 title="Logout"
                             >
-                                <LogOut className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                                <LogOut className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-0.5 transition-transform" />
                             </button>
                         </div>
                     </div>
@@ -134,61 +134,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
             </header>
 
             {/* Main Content */}
-            <main className="max-w-[1600px] mx-auto px-8 pt-40">
+            <main className={`max-w-[1600px] mx-auto px-4 md:px-8 transition-all duration-700 ${projects.length > 0 ? 'pt-28 md:pt-32' : 'pt-32 md:pt-40'}`}>
 
-                {/* Hero Section - 极具冲击力的排版 */}
-                <div className="relative mb-24 animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+                {/* Hero Section - 响应式 & 状态自适应 */}
+                <div className={`relative animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out transition-all duration-700 ${projects.length > 0 ? 'mb-12 md:mb-16' : 'mb-16 md:mb-24'}`}>
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 lg:gap-10">
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-4">
-                                <span className="px-3 py-1 rounded-full bg-violet-100/50 text-violet-700 text-[11px] font-bold tracking-widest uppercase border border-violet-200/50 backdrop-blur-sm">
+                                <span className="px-3 py-1 rounded-full bg-violet-100/50 text-violet-700 text-[10px] md:text-[11px] font-bold tracking-widest uppercase border border-violet-200/50 backdrop-blur-sm">
                                     Workspace
                                 </span>
-                                <div className="h-px w-16 bg-gradient-to-r from-violet-200 to-transparent"></div>
+                                <div className="h-px w-12 md:w-16 bg-gradient-to-r from-violet-200 to-transparent"></div>
                             </div>
-                            <h2 className="text-[5rem] font-black text-slate-900 tracking-tight leading-[0.9] mb-6 drop-shadow-sm">
-                                Create<br/>
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 animate-gradient-x">Something</span><br/>
+                            <h2 className={`
+                                font-black text-slate-900 tracking-tight leading-[0.95] md:leading-[0.9] mb-4 md:mb-6 drop-shadow-sm transition-all duration-700
+                                ${projects.length > 0 
+                                    ? 'text-4xl sm:text-5xl md:text-6xl' // Compact mode for existing users
+                                    : 'text-5xl sm:text-6xl md:text-7xl lg:text-[5rem]' // Grand mode for new users
+                                }
+                            `}>
+                                Create<br className="hidden md:block"/>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 animate-gradient-x mr-2 md:mr-0">Something</span>
+                                <br className="hidden md:block"/>
                                 Extraordinary.
                             </h2>
-                            <p className="text-lg text-slate-500 font-medium max-w-lg leading-relaxed">
+                            <p className={`
+                                text-slate-500 font-medium max-w-lg leading-relaxed transition-all duration-700
+                                ${projects.length > 0 ? 'text-sm md:text-base' : 'text-base md:text-lg'}
+                            `}>
                                 Unleash your creativity with AI-powered tools. Build immersive stories, generate stunning visuals, and bring your ideas to life.
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-5 relative z-10 pb-4">
-                            <div className="flex items-center bg-white/50 backdrop-blur-xl p-2 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
+                        <div className="flex flex-wrap items-center gap-4 md:gap-5 relative z-10 pb-2 md:pb-4">
+                            <div className="flex items-center bg-white/50 backdrop-blur-xl p-1.5 md:p-2 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
                                 <button
                                     onClick={() => setIsSettingsOpen(true)}
-                                    className="p-4 text-slate-400 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 group"
+                                    className="p-3 md:p-4 text-slate-500 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 group"
                                     title="Settings"
                                 >
-                                    <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
+                                    <Settings className="w-5 h-5 md:w-6 md:h-6 group-hover:rotate-90 transition-transform duration-500" />
                                 </button>
-                                <div className="w-px h-8 bg-slate-200/60 mx-1"></div>
+                                <div className="w-px h-6 md:h-8 bg-slate-200/60 mx-1"></div>
                                 <button
                                     onClick={onRefreshProjects}
                                     disabled={isLoading}
-                                    className="p-4 text-slate-400 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    className="p-3 md:p-4 text-slate-500 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
                                     title="Refresh"
                                 >
-                                    <RefreshCw className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                                    <RefreshCw className={`w-5 h-5 md:w-6 md:h-6 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                                 </button>
                             </div>
                             
                             <button
                                 onClick={() => setIsCreateModalOpen(true)}
-                                className="group relative flex items-center gap-4 bg-slate-900 text-white pl-8 pr-10 py-6 rounded-[2rem] hover:bg-black hover:scale-[1.02] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-500 ease-out overflow-hidden"
+                                className="group relative flex-1 md:flex-none items-center justify-center gap-3 md:gap-4 bg-slate-900 text-white px-6 md:pl-8 md:pr-10 py-4 md:py-6 rounded-[2rem] hover:bg-black hover:scale-[1.02] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-500 ease-out overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="relative z-10 flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
-                                    <Plus className="w-6 h-6" />
+                                <div className="relative z-10 flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-xl group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
+                                    <Plus className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
-                                <div className="relative z-10 flex flex-col items-start">
+                                <div className="relative z-10 flex flex-col items-start text-left">
                                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 group-hover:opacity-80 mb-0.5">New Project</span>
-                                    <span className="text-lg font-bold tracking-wide">Start Creating</span>
+                                    <span className="text-base md:text-lg font-bold tracking-wide leading-none">Start Creating</span>
                                 </div>
-                                <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-10 group-hover:-translate-x-4 transition-all duration-500 delay-100">
+                                <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-10 group-hover:-translate-x-4 transition-all duration-500 delay-100 hidden md:block">
                                     <Sparkles className="w-24 h-24 text-white rotate-12" />
                                 </div>
                             </button>
