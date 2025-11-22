@@ -7,6 +7,7 @@ import { useCanvasStore } from '@/lib/store';
 import SettingsPanel from '@/components/SettingsPanel';
 import { DashboardView } from './DashboardView';
 import { Project } from '../types/morpheus';
+import { supabase } from '@/lib/supabaseClient';
 
 // Flow 项目返回结构
 interface FlowProject {
@@ -39,6 +40,24 @@ interface CachedProjectsData {
 const PROJECT_PAGE_SIZE = 20; // 默认分页大小
 const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 缓存有效期：5分钟
 const CACHE_KEY = 'flow_projects_cache'; // localStorage 键名
+
+// 存储用户的项目ID列表到 localStorage
+const saveUserProjectIds = async (projectIds: string[]) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) {
+      console.log('⚠️ 无法保存项目列表：未获取到用户 email');
+      return;
+    }
+    
+    const userEmail = session.user.email;
+    const storageKey = `user_projects_${userEmail}`;
+    localStorage.setItem(storageKey, JSON.stringify(projectIds));
+    console.log('✅ 已保存用户项目列表到 localStorage:', { email: userEmail, count: projectIds.length });
+  } catch (error) {
+    console.error('❌ 保存项目列表失败:', error);
+  }
+};
 
 // 生成符合 Flow 命名习惯的项目标题
 const formatProjectTitle = () => {
@@ -318,6 +337,10 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
 
       // 缓存新数据
       setCachedProjects(normalizedProjects, data?.cursor);
+
+      // 存储项目 ID 列表到 localStorage（用于项目权限验证）
+      const projectIds = normalizedProjects.map((p: LocalProjectCard) => p.id);
+      await saveUserProjectIds(projectIds);
 
       // 显示加载完成提示
       if (!forceRefresh && cachedData && cachedData.projects.length > 0) {
