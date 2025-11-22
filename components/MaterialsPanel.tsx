@@ -233,7 +233,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       {/* 面板 - 右侧抽屉 */}
       <div
         className={`
-          fixed right-0 top-0 bottom-0 w-[380px] bg-white/80 backdrop-blur-2xl z-[50] 
+          fixed right-0 top-0 bottom-0 w-[480px] bg-white/80 backdrop-blur-2xl z-[50] 
           border-l border-white/50 shadow-[-20px_0_60px_rgba(0,0,0,0.05)]
           transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
           flex flex-col
