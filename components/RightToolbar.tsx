@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette } from 'lucide-react';
+import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
-import { MaterialsIcon } from './icons/MaterialsIcon';
 import PromptLibraryModal from './PromptLibraryModal';
 import { useCanvasStore } from '@/lib/store';
 
@@ -19,7 +18,7 @@ export default function RightToolbar() {
       id: 'assets',
       items: [
         {
-          icon: MaterialsIcon,
+          icon: FolderOpen, // 替换为 FolderOpen
           onClick: () => setIsMaterialsPanelOpen(!isMaterialsPanelOpen),
           title: '素材库',
           isActive: isMaterialsPanelOpen,
@@ -43,12 +42,14 @@ export default function RightToolbar() {
           onClick: () => console.log('缩小画布'), // 这里应该连接实际的画布控制逻辑
           title: '缩小',
           isActive: false,
+          dotColor: undefined // 添加可选属性
         },
         {
           icon: Maximize2,
           onClick: () => console.log('适应画布'), // 这里应该连接实际的画布控制逻辑
           title: '适应画布',
           isActive: false,
+          dotColor: undefined // 添加可选属性
         },
       ]
     },
@@ -61,12 +62,14 @@ export default function RightToolbar() {
           onClick: () => console.log('保存项目'),
           title: '保存',
           isActive: false,
+          dotColor: undefined // 添加可选属性
         },
         {
           icon: Download,
           onClick: () => console.log('导出项目'),
           title: '导出',
           isActive: false,
+          dotColor: undefined // 添加可选属性
         },
       ]
     }
