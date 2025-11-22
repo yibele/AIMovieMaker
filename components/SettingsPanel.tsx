@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X } from 'lucide-react';
+import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -39,7 +39,7 @@ export default function SettingsPanel() {
     const context = regenerateFlowContext();
     setWorkflowId(context.workflowId);
     setSessionId(context.sessionId);
-    toast.success('已生成新的 Workflow ID 和 Session ID');
+    toast.success('New session context generated');
   };
 
   // 保存设置 - 只更新修改的字段，保留其他配置
@@ -56,143 +56,152 @@ export default function SettingsPanel() {
       // 行级注释：保留 generationCount 和 imageModel，不在设置面板中修改它们
     });
     setIsOpen(false);
-    toast.success('API 配置已保存');
+    toast.success('Configuration saved successfully');
   };
 
   return (
     <>
       {/* 设置面板 */}
-      {isOpen && (
-        <>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
           {/* 遮罩层 */}
           <div
-            className="fixed inset-0 bg-black/50 z-50"
+            className={`absolute inset-0 bg-white/60 backdrop-blur-xl transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => setIsOpen(false)}
           />
 
           {/* 设置对话框 */}
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6">
+          <div className={`relative bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] w-full max-w-2xl overflow-hidden border border-slate-100 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'}`}>
+            
             {/* 标题栏 */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">API 设置</h2>
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-slate-100 rounded-xl">
+                    <Settings className="w-5 h-5 text-slate-900" />
+                </div>
+                <div>
+                    <h2 className="text-lg font-bold text-slate-900">Settings</h2>
+                    <p className="text-xs text-slate-500 font-medium">Configure your API preferences</p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* 表单 */}
-            <div className="space-y-6">
-              {/* 行级注释：API Key、Bearer Token、Cookie、Project ID 已隐藏，由系统自动配置 */}
-
+            {/* 表单内容 */}
+            <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              
               {/* 账号类型 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  账号类型
-                  <span className="text-red-500 ml-1">*</span>
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <Shield className="w-4 h-4 text-violet-500" />
+                  Account Tier
                 </label>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => setAccountTier('pro')}
-                    className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       accountTier === 'pro'
-                        ? 'bg-blue-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    🎨 Pro
+                    <div className="font-bold mb-1">Pro Plan</div>
+                    <div className={`text-xs ${accountTier === 'pro' ? 'text-slate-300' : 'text-slate-400'}`}>Standard generation speed</div>
+                    {accountTier === 'pro' && <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
                   </button>
                   <button
                     onClick={() => setAccountTier('ultra')}
-                    className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       accountTier === 'ultra'
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-gradient-to-br from-violet-600 to-indigo-600 border-transparent text-white shadow-lg shadow-violet-500/30'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    ✨ Ultra
+                    <div className="font-bold mb-1">Ultra Plan</div>
+                    <div className={`text-xs ${accountTier === 'ultra' ? 'text-violet-200' : 'text-slate-400'}`}>Fastest generation speed</div>
+                    {accountTier === 'ultra' && <div className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full animate-pulse" />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  选择你的 Google Labs 账号类型（Pro 或 Ultra），不同账号使用不同的视频模型
-                </p>
               </div>
 
               {/* 代理设置 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  代理地址（可选）
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <Globe className="w-4 h-4 text-blue-500" />
+                  Proxy Configuration
                 </label>
-                <input
-                  type="text"
-                  value={proxy}
-                  onChange={(e) => setProxy(e.target.value)}
-                  placeholder="http://127.0.0.1:10808"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  如需通过代理访问 API，请输入代理地址（格式：http://host:port 或 socks5://host:port）
-                </p>
+                <div className="relative">
+                    <input
+                    type="text"
+                    value={proxy}
+                    onChange={(e) => setProxy(e.target.value)}
+                    placeholder="http://127.0.0.1:10808"
+                    className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-200/50 px-2 py-1 rounded">OPTIONAL</div>
+                </div>
               </div>
 
               {/* Workflow & Session */}
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    Flow 工作流上下文
-                  </h3>
-                  <button
-                    onClick={handleGenerateContext}
-                    className="px-3 py-1.5 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors"
-                  >
-                    生成新的 ID
-                  </button>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                        <Workflow className="w-4 h-4 text-orange-500" />
+                        Flow Context
+                    </label>
+                    <button
+                        onClick={handleGenerateContext}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 rounded-lg transition-colors"
+                    >
+                        <RefreshCw className="w-3 h-3" />
+                        Regenerate
+                    </button>
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                      Workflow ID
-                    </label>
-                    <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg font-mono text-sm text-gray-700 break-all">
-                      {workflowId || '尚未生成'}
+                
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Workflow ID</span>
+                        <div className="px-3 py-2.5 bg-white rounded-xl border border-slate-200/50 font-mono text-xs text-slate-600 truncate shadow-sm">
+                            {workflowId || 'Not Generated'}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Session ID</span>
+                        <div className="px-3 py-2.5 bg-white rounded-xl border border-slate-200/50 font-mono text-xs text-slate-600 truncate shadow-sm">
+                            {sessionId || 'Not Generated'}
+                        </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                      Session ID
-                    </label>
-                    <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg font-mono text-sm text-gray-700 break-all">
-                      {sessionId || '尚未生成'}
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    所有 Flow 请求都会复用以上 ID，可提升多图融合的连贯性。如需重新设定，请点击“生成新的 ID”。
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                    Context IDs ensure continuity across multiple generations. Regenerate if you encounter consistency issues.
                   </p>
                 </div>
               </div>
+            </div>
 
-              {/* 按钮 */}
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  保存配置
-                </button>
-              </div>
+            {/* 底部按钮 */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50/30 flex justify-end gap-3">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 px-8 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300"
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
+              </button>
             </div>
           </div>
-        </>
-      )}
+      </div>
     </>
   );
 }
-
