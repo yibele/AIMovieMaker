@@ -73,7 +73,13 @@ interface ImageAnnotatorModalProps {
   mainImage?: any; // 主图信息（完整的 ImageElement）
   referenceImages?: any[]; // 参考图列表（从外部传入）
   onClose: () => void;
-  onConfirm?: (result: ImageAnnotatorResult, annotatedImageDataUrl: string, mainImage?: any, referenceImages?: any[]) => void | Promise<void>;
+  onConfirm?: (
+    result: ImageAnnotatorResult, 
+    annotatedImageDataUrl: string, 
+    mainImage?: any, 
+    referenceImages?: any[],
+    usePrefixPrompt?: boolean // 是否使用前置提示词
+  ) => void | Promise<void>;
 }
 
 const toolDefinitions: {
@@ -133,20 +139,30 @@ export default function ImageAnnotatorModal({
   const [promptText, setPromptText] = useState('');
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false); // 是否正在生成
+  const [usePrefixPrompt, setUsePrefixPrompt] = useState(true); // 行级注释：是否使用前置提示词（默认开启）
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
   // 行级注释：内部管理主图和参考图状态（允许用户切换）
   const [currentMainImage, setCurrentMainImage] = useState<any>(mainImage);
   const [currentReferenceImages, setCurrentReferenceImages] = useState<any[]>(referenceImages);
   const [switchingImage, setSwitchingImage] = useState(false); // 是否正在切换图片
+  
+  // 行级注释：保存所有图片的原始顺序（主图 + 参考图），用于固定显示位置
+  const [allImagesInOrder, setAllImagesInOrder] = useState<any[]>([]);
 
-  // 行级注释：当外部主图和参考图变化时，重置内部状态
+  // 行级注释：当外部主图和参考图变化时，重置内部状态并保存原始顺序
   useEffect(() => {
     if (open) {
       setCurrentMainImage(mainImage);
       setCurrentReferenceImages(referenceImages);
       setAnnotations([]); // 清空标注
       setPromptText(''); // 清空提示词
+      setUsePrefixPrompt(true); // 行级注释：重置前置提示词开关为默认开启
+      
+      // 保存所有图片的原始顺序（位置不变）
+      if (mainImage) {
+        setAllImagesInOrder([mainImage, ...referenceImages]);
+      }
     }
   }, [open, mainImage, referenceImages]);
 
@@ -172,7 +188,7 @@ export default function ImageAnnotatorModal({
     return () => observer.disconnect();
   }, [open, imageSrc]);
 
-  // 行级注释：切换主图 - 将某个参考图设为主图（确保加载 base64 数据）
+  // 行级注释：切换主图 - 只改变主图状态，不改变图片显示顺序（UX 优化）
   const handleSetMainImage = async (newMainImage: any) => {
     if (!newMainImage || switchingImage) return;
     
@@ -190,7 +206,7 @@ export default function ImageAnnotatorModal({
           ? newMainImage.base64
           : `data:image/png;base64,${newMainImage.base64}`;
         
-        // 交换主图和参考图
+        // 行级注释：更新参考图列表（移除新主图，加入旧主图）
         const oldMainImage = currentMainImage;
         const newReferenceImages = currentReferenceImages.filter(img => img.id !== newMainImage.id);
         
@@ -198,7 +214,7 @@ export default function ImageAnnotatorModal({
           newReferenceImages.push(oldMainImage);
         }
         
-        // 更新主图为 base64 版本
+        // 行级注释：只更新主图状态，图片显示顺序保持不变（通过 allImagesInOrder）
         setCurrentMainImage({
           ...newMainImage,
           src: imageDataUrl,
@@ -572,7 +588,7 @@ export default function ImageAnnotatorModal({
       await onConfirm({
         annotations: payload,
         promptText: currentPrompt,
-      }, annotatedImageDataUrl, currentMainImage, currentReferenceImages);
+      }, annotatedImageDataUrl, currentMainImage, currentReferenceImages, usePrefixPrompt);
       
       // 不自动关闭！让用户可以继续编辑
       
@@ -1048,71 +1064,84 @@ export default function ImageAnnotatorModal({
           </div>
 
           {/* 参考图列表（包含主图） */}
-          {(currentMainImage || (currentReferenceImages && currentReferenceImages.length > 0)) && (
+          {allImagesInOrder.length > 0 && (
             <div className="flex-shrink-0 border-t border-gray-200 pt-3 mb-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-gray-700">
-                  图片列表
+                  图片列表 ({allImagesInOrder.length}张)
                 </span>
                 <span className="text-xs text-gray-500">
-                  可在提示词中使用"主图"、"图1"、"图2"等引用，点击图片可切换主图
+                  点击图片即可切换主图 · 可在提示词中使用"主图"、"图1"、"图2"等引用
                 </span>
               </div>
               
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {/* 主图 */}
-                {currentMainImage && (
-                  <div 
-                    className="relative flex-shrink-0 group"
-                    title="当前主图（正在编辑的图片）"
-                  >
-                    <img
-                      src={currentMainImage.src}
-                      alt="主图"
-                      className="w-24 h-24 rounded-lg object-cover border-3 border-blue-500 shadow-md"
-                    />
-                    <span className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded font-bold shadow-sm">
-                      主图
-                    </span>
-                    <div className="absolute bottom-1 left-1 right-1 bg-gradient-to-t from-black/60 to-transparent rounded-b-lg pt-4 pb-1 px-1">
-                      <span className="text-white text-[10px] font-medium block text-center">
-                        正在编辑
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* 参考图列表 */}
-                {currentReferenceImages.map((ref: any, index: number) => (
-                  <div 
-                    key={ref.id} 
-                    className="relative flex-shrink-0 group cursor-pointer"
-                    title={`参考图 ${index + 1} - 点击设为主图`}
-                  >
-                    <img
-                      src={ref.src}
-                      alt={`参考图 ${index + 1}`}
-                      className="w-24 h-24 rounded-lg object-cover border-2 border-gray-300 group-hover:border-purple-400 transition-all"
-                    />
-                    <span className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded font-medium">
-                      图{index + 1}
-                    </span>
-                    
-                    {/* 切换主图按钮 */}
-                    <button
-                      onClick={() => handleSetMainImage(ref)}
-                      disabled={switchingImage}
-                      className="absolute bottom-1 left-1 right-1 bg-gradient-to-t from-black/70 to-transparent rounded-b-lg py-1.5 px-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                {/* 行级注释：按原始顺序显示所有图片，点击即可切换主图 */}
+                {allImagesInOrder.map((img: any, index: number) => {
+                  const isMainImage = currentMainImage?.id === img.id;
+                  
+                  // 行级注释：计算参考图编号（跳过主图，从 1 开始）
+                  const refImagesBefore = allImagesInOrder.slice(0, index).filter(i => i.id !== currentMainImage?.id);
+                  const referenceNumber = refImagesBefore.length + 1;
+                  
+                  return (
+                    <div 
+                      key={img.id} 
+                      onClick={() => !isMainImage && !switchingImage && handleSetMainImage(img)}
+                      className={`relative flex-shrink-0 group transition-all ${
+                        isMainImage 
+                          ? 'cursor-default' 
+                          : 'cursor-pointer hover:scale-105'
+                      } ${switchingImage ? 'opacity-50 pointer-events-none' : ''}`}
+                      title={isMainImage ? "当前主图（正在编辑的图片）" : `点击切换为主图`}
                     >
-                      <span className="text-white text-[10px] font-bold block text-center">
-                        {switchingImage ? '切换中...' : '设为主图'}
-                      </span>
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={img.src}
+                        alt={isMainImage ? "主图" : `参考图 ${referenceNumber}`}
+                        className={`w-24 h-24 rounded-lg object-cover transition-all ${
+                          isMainImage 
+                            ? 'border-3 border-blue-500 shadow-lg' 
+                            : 'border-2 border-gray-300 group-hover:border-blue-400 group-hover:shadow-md'
+                        }`}
+                      />
+                      
+                      {/* 行级注释：主图标签（固定显示） */}
+                      {isMainImage && (
+                        <span className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded font-bold shadow-sm">
+                          主图
+                        </span>
+                      )}
+                      
+                      {/* 行级注释：参考图标签 */}
+                      {!isMainImage && (
+                        <span className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded font-medium group-hover:bg-purple-600 transition-colors">
+                          图{referenceNumber}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
+
+          {/* 行级注释：前置提示词开关 */}
+          <div className="flex-shrink-0 flex items-center justify-between px-1 py-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={usePrefixPrompt}
+                onChange={(e) => setUsePrefixPrompt(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors select-none">
+                使用前置提示词
+              </span>
+            </label>
+            <span className="text-xs text-gray-400">
+              {usePrefixPrompt ? '✓ 已启用' : '✗ 已禁用'}
+            </span>
+          </div>
 
           <div className="flex-shrink-0 relative">
             <textarea

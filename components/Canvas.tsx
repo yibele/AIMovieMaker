@@ -1079,7 +1079,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     result: ImageAnnotatorResult, 
     annotatedImageDataUrl: string,
     finalMainImage?: ImageElement,
-    finalReferenceImages?: ImageElement[]
+    finalReferenceImages?: ImageElement[],
+    usePrefixPrompt?: boolean // 行级注释：是否使用前置提示词
   ) => {
     // 行级注释：使用用户最终确认的主图和参考图（可能被切换过）
     const currentMainImage = finalMainImage || annotatorTarget;
@@ -1150,57 +1151,76 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       const uploadResult = await registerUploadedImage(base64Data);
       if (!uploadResult.mediaGenerationId) throw new Error('上传标注图失败');
 
+      // 行级注释：根据用户选择，临时设置或清空前置提示词
+      const originalPrefixPrompt = useCanvasStore.getState().currentPrefixPrompt;
+      const shouldUsePrefixPrompt = usePrefixPrompt !== false; // 默认为 true
+      
+      if (!shouldUsePrefixPrompt) {
+        console.log('🚫 用户选择不使用前置提示词，临时清空');
+        useCanvasStore.setState({ currentPrefixPrompt: '' });
+      } else {
+        console.log('✅ 使用前置提示词:', originalPrefixPrompt);
+      }
+
       let imageResult;
 
-      if (hasReferenceImages) {
-        // 行级注释：多图编辑 - 使用 runImageRecipe
-        console.log('🧩 多图融合模式，参考图数量:', referenceImages.length);
+      try {
+        if (hasReferenceImages) {
+          // 行级注释：多图编辑 - 使用 runImageRecipe
+          console.log('🧩 多图融合模式，参考图数量:', referenceImages.length);
 
-        const { runImageRecipe } = await import('@/lib/api-mock');
+          const { runImageRecipe } = await import('@/lib/api-mock');
 
-        // 构建参考图列表
-        const references = [
-          // 主图（标注后）
-          {
-            mediaId: uploadResult.mediaGenerationId,
-          caption: '标注后的主图',
-          mediaCategory: 'MEDIA_CATEGORY_BOARD',
-        },
-        // 参考图
-        ...currentReferenceImages.map((ref, index) => ({
-            mediaId: ref.mediaId || ref.mediaGenerationId,
-            caption: ref.caption || `参考图${index + 1}`,
-            mediaCategory: 'MEDIA_CATEGORY_SUBJECT',
-          }))
-        ];
+          // 构建参考图列表
+          const references = [
+            // 主图（标注后）
+            {
+              mediaId: uploadResult.mediaGenerationId,
+            caption: '标注后的主图',
+            mediaCategory: 'MEDIA_CATEGORY_BOARD',
+          },
+          // 参考图
+          ...currentReferenceImages.map((ref, index) => ({
+              mediaId: ref.mediaId || ref.mediaGenerationId,
+              caption: ref.caption || `参考图${index + 1}`,
+              mediaCategory: 'MEDIA_CATEGORY_SUBJECT',
+            }))
+          ];
 
-        // 检查所有图片是否有 mediaId
-        for (const ref of references) {
-          if (!ref.mediaId) {
-            throw new Error('存在未同步到 Flow 的参考图，请稍后重试');
+          // 检查所有图片是否有 mediaId
+          for (const ref of references) {
+            if (!ref.mediaId) {
+              throw new Error('存在未同步到 Flow 的参考图，请稍后重试');
+            }
           }
+
+          imageResult = await runImageRecipe(
+            result.promptText,
+            references,
+            aspectRatio,
+            undefined,
+            1
+          );
+
+        } else {
+          // 行级注释：单图编辑 - 使用 imageToImage
+          console.log('🎨 单图编辑模式');
+
+          imageResult = await imageToImage(
+            result.promptText,
+            annotatedImageDataUrl,
+            aspectRatio,
+            '',
+            uploadResult.mediaGenerationId,
+            1
+          );
         }
-
-        imageResult = await runImageRecipe(
-          result.promptText,
-          references,
-          aspectRatio,
-          undefined,
-          1
-        );
-
-      } else {
-        // 行级注释：单图编辑 - 使用 imageToImage
-        console.log('🎨 单图编辑模式');
-
-        imageResult = await imageToImage(
-          result.promptText,
-          annotatedImageDataUrl,
-          aspectRatio,
-          '',
-          uploadResult.mediaGenerationId,
-          1
-        );
+      } finally {
+        // 行级注释：恢复原始的前置提示词（无论成功还是失败）
+        if (!shouldUsePrefixPrompt) {
+          useCanvasStore.setState({ currentPrefixPrompt: originalPrefixPrompt });
+          console.log('🔄 已恢复前置提示词');
+        }
       }
 
       // 更新图片

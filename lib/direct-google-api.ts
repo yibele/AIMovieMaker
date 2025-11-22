@@ -124,7 +124,7 @@ export async function uploadImageDirectly(
  * 返回 base64，不通过 Vercel 服务器，节省 Fast Origin Transfer
  */
 export async function generateImageDirectly(
-  prompt: string,
+  prompt: string, // 行级注释：已拼接好的完整 prompt（由 api-mock 层处理业务逻辑）
   bearerToken: string,
   projectId: string,
   sessionId: string,
@@ -133,7 +133,6 @@ export async function generateImageDirectly(
   references?: Array<{ mediaId?: string; mediaGenerationId?: string }>,
   seed?: number,
   count?: number,
-  prefixPrompt?: string,
   model?: 'nanobanana' | 'nanobananapro'
 ): Promise<{
   images: Array<{
@@ -161,11 +160,6 @@ export async function generateImageDirectly(
   const imageModelName = model === 'nanobananapro' 
     ? 'GEM_PIX_2' 
     : 'GEM_PIX';
-
-  // 构建最终提示词
-  const finalPrompt = prefixPrompt && prefixPrompt.trim()
-    ? `${prefixPrompt.trim()}, ${prompt}`
-    : prompt;
 
   // 处理参考图
   const imageInputs =
@@ -196,7 +190,7 @@ export async function generateImageDirectly(
       seed: requestSeed,
       imageModelName: imageModelName,
       imageAspectRatio: normalizedAspect,
-      prompt: finalPrompt,
+      prompt: prompt,
       imageInputs,
     };
   });
@@ -274,7 +268,7 @@ export async function generateImageDirectly(
           mediaId,
           mediaGenerationId: generatedImage?.mediaGenerationId,
           workflowId,
-          prompt: generatedImage?.prompt || finalPrompt,
+          prompt: generatedImage?.prompt || prompt,
           seed: generatedImage?.seed,
           mimeType,
           fifeUrl,

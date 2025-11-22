@@ -2,6 +2,64 @@ import { GenerationMode, ImageElement } from './types';
 import { useCanvasStore } from './store';
 
 // ============================================================================
+// 业务逻辑工具函数
+// ============================================================================
+
+/**
+ * 拼接用户提示词和前置提示词（前置提示词实际后置）
+ * @param userPrompt 用户输入的提示词
+ * @param prefixPrompt 前置提示词（可选，默认从 store 读取）
+ * @returns 完整的提示词
+ */
+function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
+  const prefix = prefixPrompt !== undefined 
+    ? prefixPrompt 
+    : useCanvasStore.getState().currentPrefixPrompt;
+  
+  if (!prefix || !prefix.trim()) {
+    return userPrompt;
+  }
+  
+  // 行级注释：前置提示词实际后置（附加在用户提示词之后）
+  return `${userPrompt}, ${prefix.trim()}`;
+}
+
+/**
+ * 获取 API 配置和会话信息
+ */
+function getApiContext() {
+  const apiConfig = useCanvasStore.getState().apiConfig;
+  
+  let sessionId = apiConfig.sessionId;
+  if (!sessionId || !sessionId.trim()) {
+    const context = useCanvasStore.getState().regenerateFlowContext();
+    sessionId = context.sessionId;
+  }
+  
+  const accountTier = apiConfig.accountTier || 'pro';
+  const imageModel = apiConfig.imageModel || 'nanobanana';
+  
+  return {
+    apiConfig,
+    sessionId,
+    accountTier,
+    imageModel,
+  };
+}
+
+/**
+ * 更新会话上下文（如果 sessionId 变化）
+ */
+function updateSessionContext(newSessionId?: string) {
+  if (!newSessionId) return;
+  
+  const apiConfig = useCanvasStore.getState().apiConfig;
+  if (newSessionId !== apiConfig.sessionId) {
+    useCanvasStore.getState().setApiConfig({ sessionId: newSessionId });
+  }
+}
+
+// ============================================================================
 // Flow API 类型定义和工具函数（从 flow-api.ts 合并）
 // ============================================================================
 
