@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
     // 确保生成数量在 1-4 之间
     const generationCount = Math.max(1, Math.min(4, typeof count === 'number' ? count : 1));
 
-    // 构建最终提示词：如果有前置提示词，则添加到前面
+    // 构建最终提示词：如果有前置提示词（实际上作为后置风格修饰），则添加到后面
     const finalPrompt = prefixPrompt && prefixPrompt.trim()
-      ? `${prefixPrompt.trim()}, ${prompt}`
+      ? `${prompt}, ${prefixPrompt.trim()}`
       : prompt;
 
     const imageInputs =

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
-import PromptLibraryModal from './PromptLibraryModal';
+import PromptLibraryPanel from './PromptLibraryPanel';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
@@ -129,8 +129,8 @@ export default function RightToolbar() {
         onClose={() => setIsMaterialsPanelOpen(false)}
       />
 
-      {/* 提示词库 - 模态框 */}
-      <PromptLibraryModal
+      {/* 提示词库 - 左侧面板 */}
+      <PromptLibraryPanel
         isOpen={isPromptLibraryOpen}
         onClose={() => setIsPromptLibraryOpen(false)}
       />

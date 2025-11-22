@@ -178,12 +178,7 @@ export default function AIInputPanel() {
               className="w-full pl-5 pr-14 py-3.5 bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-transparent focus:border-violet-200/50 rounded-2xl outline-none text-gray-800 placeholder-gray-400 transition-all duration-300 text-[15px] leading-relaxed shadow-inner focus:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.1)]"
             />
             
-            {/* Enter 提示 */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 delay-100">
-              <kbd className="hidden sm:inline-flex h-6 items-center gap-1 rounded border border-gray-200 bg-gray-100 px-2 font-sans text-[10px] font-medium text-gray-400 shadow-sm">
-                Enter
-              </kbd>
-            </div>
+           
           </div>
 
           {/* 生成按钮 */}
