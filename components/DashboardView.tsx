@@ -104,6 +104,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 md:gap-3 pl-4 md:pl-6 border-l border-slate-200/50">
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="hidden md:flex relative p-2 md:p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group"
+                                title="Settings"
+                            >
+                                <Settings className="w-4 h-4 md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-500" />
+                            </button>
+                            
+                            <button
+                                onClick={onRefreshProjects}
+                                disabled={isLoading}
+                                className="hidden md:flex relative p-2 md:p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Refresh Projects"
+                            >
+                                <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                            </button>
+
                             <button className="relative p-2 md:p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group">
                                 <Bell className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
                                 <span className="absolute top-2 md:top-3 right-2 md:right-3 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#f2f3f5] scale-0 group-hover:scale-100 transition-transform duration-300"></span>
@@ -139,7 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                 {/* Hero Section - 响应式 & 状态自适应 */}
                 <div className={`relative animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out transition-all duration-700 ${projects.length > 0 ? 'mb-12 md:mb-16' : 'mb-16 md:mb-24'}`}>
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 lg:gap-10">
-                        <div className="relative z-10">
+                        <div className="relative z-10 max-w-3xl">
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="px-3 py-1 rounded-full bg-violet-100/50 text-violet-700 text-[10px] md:text-[11px] font-bold tracking-widest uppercase border border-violet-200/50 backdrop-blur-sm">
                                     Workspace
@@ -164,10 +181,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                             `}>
                                 Unleash your creativity with AI-powered tools. Build immersive stories, generate stunning visuals, and bring your ideas to life.
                             </p>
+
+                            {/* CTA Button - Moved to Left */}
+                            <div className="mt-8 md:mt-10 flex items-center gap-4">
+                                <button
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                    className="group relative flex items-center justify-center gap-3 md:gap-4 bg-slate-900 text-white px-8 md:pl-8 md:pr-10 py-4 md:py-5 rounded-[2rem] hover:bg-black hover:scale-[1.02] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-500 ease-out overflow-hidden shadow-xl shadow-slate-900/10"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                    <div className="relative z-10 flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-xl group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
+                                        <Plus className="w-5 h-5 md:w-6 md:h-6" />
+                                    </div>
+                                    <div className="relative z-10 flex flex-col items-start text-left">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 group-hover:opacity-80 mb-0.5">New Project</span>
+                                        <span className="text-base md:text-lg font-bold tracking-wide leading-none">Start Creating</span>
+                                    </div>
+                                    <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-10 group-hover:-translate-x-4 transition-all duration-500 delay-100 hidden md:block">
+                                        <Sparkles className="w-16 h-16 text-white rotate-12" />
+                                    </div>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 md:gap-5 relative z-10 pb-2 md:pb-4">
-                            <div className="flex items-center bg-white/50 backdrop-blur-xl p-1.5 md:p-2 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
+                        <div className="flex flex-col items-end gap-4 relative z-10 pb-2 md:pb-4">
+                            {/* Mobile Controls */}
+                            <div className="flex md:hidden items-center bg-white/50 backdrop-blur-xl p-1.5 md:p-2 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
                                 <button
                                     onClick={() => setIsSettingsOpen(true)}
                                     className="p-3 md:p-4 text-slate-500 hover:text-slate-900 hover:bg-white rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 group"
@@ -186,22 +224,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                                 </button>
                             </div>
                             
-                            <button
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="group relative flex-1 md:flex-none items-center justify-center gap-3 md:gap-4 bg-slate-900 text-white px-6 md:pl-8 md:pr-10 py-4 md:py-6 rounded-[2rem] hover:bg-black hover:scale-[1.02] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] active:scale-[0.98] transition-all duration-500 ease-out overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="relative z-10 flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-xl group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
-                                    <Plus className="w-5 h-5 md:w-6 md:h-6" />
+                            {/* Hero Image Card - Desktop Only */}
+                            <div className="hidden lg:flex relative group cursor-pointer" onClick={() => setIsCreateModalOpen(true)}>
+                                {/* Abstract shapes behind */}
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-200 rounded-full blur-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
+                                <div className="absolute -bottom-5 -left-5 w-32 h-32 bg-blue-200 rounded-full blur-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
+                                
+                                {/* Main Image Card */}
+                                <div className="relative w-[320px] h-[400px] bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2.5rem] shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-4 transition-all duration-500 hover:scale-[1.02] hover:rotate-1 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] flex flex-col">
+                                    {/* Image Container */}
+                                    <div className="flex-1 relative rounded-[2rem] overflow-hidden bg-white shadow-inner">
+                                        <img 
+                                            src="/hero-illustration.png" 
+                                            alt="AI Generated Art" 
+                                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                        {/* Overlay Badge */}
+                                        <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full border border-white/20">
+                                            Generated with AI
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Bottom Controls */}
+                                    <div className="mt-4 px-2 pb-1">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-white shadow-sm rounded-full text-violet-600">
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-700">Try a Style</span>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Quick Start</span>
+                                        </div>
+                                        
+                                        {/* Style Tags - Compact Grid */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {['Cyberpunk', '3D Render', 'Watercolor', 'Ghibli'].map((style, i) => (
+                                                <div 
+                                                    key={style}
+                                                    className="px-3 py-2 bg-white/50 hover:bg-white text-[11px] font-semibold text-slate-600 hover:text-violet-700 text-center rounded-xl transition-all duration-300 border border-white/40"
+                                                >
+                                                    {style}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="relative z-10 flex flex-col items-start text-left">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 group-hover:opacity-80 mb-0.5">New Project</span>
-                                    <span className="text-base md:text-lg font-bold tracking-wide leading-none">Start Creating</span>
-                                </div>
-                                <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-10 group-hover:-translate-x-4 transition-all duration-500 delay-100 hidden md:block">
-                                    <Sparkles className="w-24 h-24 text-white rotate-12" />
-                                </div>
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>
