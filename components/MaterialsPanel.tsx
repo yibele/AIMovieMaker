@@ -48,8 +48,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       });
   }, [materials, currentProjectId, activeTab]);
   
-  // 强制切换为列表视图，以匹配 Prompt Library 的卡片样式
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  // 默认使用 grid 视图，满足用户“每行三个”的需求
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const handleSyncMaterials = useCallback(async () => {
     if (!currentProjectId) {
@@ -163,7 +163,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               onClick={handleSyncMaterials}
               disabled={!currentProjectId || isLoading || isSyncing}
               className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border w-full justify-center
+                flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border flex-1 justify-center
                 ${isSyncing 
                   ? 'bg-blue-50 text-blue-600 border-blue-100' 
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
@@ -173,6 +173,24 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? '同步中...' : '同步远端素材'}
             </button>
+            
+            {/* 视图切换按钮 - 恢复显示 */}
+            <div className="flex items-center bg-gray-100/80 rounded-lg p-0.5">
+              <button
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                onClick={() => setViewMode('grid')}
+                title="网格视图"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                onClick={() => setViewMode('list')}
+                title="列表视图"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           
           {(loadingMessage || syncError) && (
@@ -225,10 +243,67 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               <p className="text-xs text-gray-400 mt-1">上传或生成内容后将在此显示</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className={`
+               ${viewMode === 'grid' ? 'grid grid-cols-3 gap-3' : 'flex flex-col gap-3'}
+               animate-in fade-in duration-500
+            `}>
               {filteredMaterials.map((material) => {
                 const isSelected = selectedMaterials.includes(material.id);
                 
+                if (viewMode === 'grid') {
+                  return (
+                    <div 
+                      key={material.id}
+                      onClick={() => handleMaterialClick(material)}
+                      onDoubleClick={() => handleMaterialDoubleClick(material)}
+                      className={`
+                        group relative aspect-square bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden
+                        ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100 hover:border-blue-200'}
+                      `}
+                    >
+                       {material.type === 'image' ? (
+                        <img 
+                          src={material.thumbnail || material.src} 
+                          alt={material.name} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-image.svg';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                          <Video className="text-gray-300" size={24} />
+                        </div>
+                      )}
+                      
+                      {/* 悬浮遮罩 */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-2">
+                         <div className="flex justify-between items-end w-full">
+                           <span className="text-[10px] text-white/90 font-medium truncate max-w-[70%]">{material.name}</span>
+                           <button
+                             onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
+                             }}
+                             className="p-1 bg-white/20 hover:bg-red-500/80 rounded text-white backdrop-blur-sm transition-colors"
+                           >
+                             <Trash2 size={10} />
+                           </button>
+                         </div>
+                      </div>
+
+                      {/* 选中标记 */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 bg-blue-500 rounded-full p-0.5 shadow-sm z-10">
+                           <Check size={10} className="text-white" strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // List View
                 return (
                   <div 
                     key={material.id}
@@ -240,7 +315,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                     `}
                   >
                     {/* 左侧：小封面图 */}
-                    <div className="w-24 h-24 relative flex-shrink-0 bg-gray-100">
+                    <div className="w-20 h-20 relative flex-shrink-0 bg-gray-100">
                       {material.type === 'image' ? (
                         <img 
                           src={material.thumbnail || material.src} 

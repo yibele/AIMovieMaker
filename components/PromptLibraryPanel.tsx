@@ -240,9 +240,8 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
         {/* 内容区域 - 滚动列表 */}
         <div className="flex-1 overflow-y-auto p-4 bg-gray-50/30">
           {displayedPrompts.length > 0 ? (
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-500">
               {displayedPrompts.map((prompt) => {
-                const isContentLong = prompt.content.length > 60;
                 const isActive = currentPrefixPrompt === prompt.content;
 
                 return (
@@ -250,74 +249,56 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
                     key={prompt.id}
                     onClick={() => handleUsePrompt(prompt)}
                     className={`
-                      group relative bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden flex
-                      ${isActive ? 'border-violet-500 ring-1 ring-violet-500/20' : 'border-gray-100 hover:border-violet-200'}
+                      group relative aspect-square bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden
+                      ${isActive ? 'border-violet-500 ring-2 ring-violet-500/20' : 'border-gray-100 hover:border-violet-200'}
                     `}
                   >
-                    {/* 左侧：小封面图 */}
-                    <div className="w-24 h-24 relative flex-shrink-0 bg-gray-100">
+                    {/* 背景图片 */}
+                    <div className="absolute inset-0 bg-gray-100">
                       {prompt.coverImage ? (
                         <img 
                           src={prompt.coverImage} 
                           alt={prompt.title} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                          <Sparkles className="text-gray-300" size={20} />
-                        </div>
-                      )}
-                      {/* 激活标记 */}
-                      {isActive && (
-                        <div className="absolute inset-0 bg-violet-500/20 flex items-center justify-center backdrop-blur-[1px]">
-                           <div className="bg-white rounded-full p-1 shadow-sm">
-                             <Check size={12} className="text-violet-600" strokeWidth={3} />
-                           </div>
+                          <Sparkles className="text-gray-300" size={24} />
                         </div>
                       )}
                     </div>
 
-                    {/* 右侧：内容 */}
-                    <div className="flex-1 p-3 min-w-0 flex flex-col">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h3 className={`font-bold text-sm truncate ${isActive ? 'text-violet-700' : 'text-gray-900'}`}>
-                          {prompt.title}
-                        </h3>
-                        
-                        {/* 操作按钮 */}
-                        {activeTab === 'user' && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                            <button 
-                              onClick={(e) => handleEditPrompt(e, prompt)}
-                              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                            <button 
-                              onClick={(e) => handleDeletePrompt(e, prompt.id)}
-                              className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-3 font-mono bg-gray-50 p-1.5 rounded border border-gray-50 group-hover:border-gray-100 transition-colors">
-                        {prompt.content}
-                      </p>
-                      
-                      {prompt.category && (
-                        <div className="mt-auto pt-2 flex justify-between items-center">
-                          <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                            {prompt.category}
-                          </span>
-                          <span className="text-[10px] text-violet-500 font-medium opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                            应用 <ArrowRight size={10} />
-                          </span>
-                        </div>
-                      )}
+                    {/* 悬浮遮罩和标题 */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-all duration-300 flex flex-col justify-end p-2">
+                       <div className="flex justify-between items-end w-full gap-1">
+                         <span className="text-[11px] text-white font-semibold truncate leading-tight">{prompt.title}</span>
+                         
+                         {/* 操作按钮 (仅用户模式显示) */}
+                         {activeTab === 'user' && (
+                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                             <button 
+                               onClick={(e) => handleEditPrompt(e, prompt)}
+                               className="p-1 bg-white/20 hover:bg-white/40 rounded text-white backdrop-blur-sm transition-colors"
+                             >
+                               <Edit2 size={10} />
+                             </button>
+                             <button 
+                               onClick={(e) => handleDeletePrompt(e, prompt.id)}
+                               className="p-1 bg-white/20 hover:bg-red-500/80 rounded text-white backdrop-blur-sm transition-colors"
+                             >
+                               <Trash2 size={10} />
+                             </button>
+                           </div>
+                         )}
+                       </div>
                     </div>
+
+                    {/* 激活标记 */}
+                    {isActive && (
+                      <div className="absolute top-2 right-2 bg-violet-500 rounded-full p-0.5 shadow-sm z-10">
+                         <Check size={10} className="text-white" strokeWidth={3} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -442,4 +423,3 @@ function PromptEditor({
     </div>
   );
 }
-

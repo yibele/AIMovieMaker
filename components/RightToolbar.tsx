@@ -19,16 +19,22 @@ export default function RightToolbar() {
       items: [
         {
           icon: FolderOpen, // 替换为 FolderOpen
-          onClick: () => setIsMaterialsPanelOpen(!isMaterialsPanelOpen),
+          onClick: () => {
+            setIsMaterialsPanelOpen(!isMaterialsPanelOpen);
+            if (!isMaterialsPanelOpen) setIsPromptLibraryOpen(false); // 互斥：打开素材库时关闭提示词库
+          },
           title: '素材库',
           isActive: isMaterialsPanelOpen,
           dotColor: 'bg-blue-500'
         },
         {
           icon: Sparkles,
-          onClick: () => setIsPromptLibraryOpen(true),
+          onClick: () => {
+            setIsPromptLibraryOpen(!isPromptLibraryOpen); // 允许 toggle
+            if (!isPromptLibraryOpen) setIsMaterialsPanelOpen(false); // 互斥：打开提示词库时关闭素材库
+          },
           title: prefixPrompt ? `前置提示词：${prefixPrompt.slice(0, 20)}...` : '提示词库',
-          isActive: Boolean(prefixPrompt),
+          isActive: isPromptLibraryOpen || Boolean(prefixPrompt), // 当面板打开或有内容时高亮
           dotColor: 'bg-purple-500'
         }
       ]
