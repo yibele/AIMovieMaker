@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 规范化媒体类型
-    const normalizedMediaType = 
-      mediaType.toUpperCase() === 'IMAGE' 
-        ? 'MEDIA_TYPE_IMAGE' 
+    const normalizedMediaType =
+      mediaType.toUpperCase() === 'IMAGE'
+        ? 'MEDIA_TYPE_IMAGE'
         : 'MEDIA_TYPE_VIDEO';
 
     // 构建查询参数
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     const normalizedWorkflows = workflows.map((workflow: any) => {
       const workflowStep = workflow.workflowSteps?.[0];
       const mediaGeneration = workflowStep?.mediaGenerations?.[0];
-      
+
       // 行级注释：解析 mediaGenerationId - 这对于视频延长功能至关重要
       // 结构通常是 { mediaType: 'VIDEO', projectId: '...', workflowId: '...', workflowStepId: '...', mediaKey: '...' }
       // 但有时也会包含嵌套的 mediaGenerationId 字符串
@@ -131,12 +131,12 @@ export async function GET(request: NextRequest) {
       if (!mediaGenerationId) {
         mediaGenerationId = mediaGeneration?.mediaGenerationId?.mediaKey;
       }
-      
+
       // 3. 再次尝试直接获取 mediaGenerationId 字符串（如果有的话）
       if (!mediaGenerationId && typeof mediaGeneration?.mediaGenerationId === 'string') {
         mediaGenerationId = mediaGeneration.mediaGenerationId;
       }
-      
+
       // 4. 如果是对象且包含 mediaGenerationId 属性
       if (!mediaGenerationId && mediaGeneration?.mediaGenerationId?.mediaGenerationId) {
         mediaGenerationId = mediaGeneration.mediaGenerationId.mediaGenerationId;
@@ -145,6 +145,17 @@ export async function GET(request: NextRequest) {
       // 5. 最后的回退：使用 mediaId 或 workflowId
       if (!mediaGenerationId) {
         mediaGenerationId = mediaGeneration?.mediaId || workflow.workflowId;
+      }
+
+      // 行级注释：调试日志 - 查看提取结果
+      if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
+        console.log('视频 mediaGenerationId 提取:', {
+          workflowId: workflow.workflowId,
+          最终值: mediaGenerationId,
+          来源: mediaGeneration?.mediaData?.videoData?.generatedVideo?.mediaGenerationId ? '来自generatedVideo' :
+            mediaGeneration?.mediaGenerationId?.mediaKey ? '来自mediaKey' :
+              mediaGeneration?.mediaId ? '来自mediaId' : '使用workflowId',
+        });
       }
 
       if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
