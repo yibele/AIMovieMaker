@@ -114,11 +114,38 @@ export async function GET(request: NextRequest) {
     const normalizedWorkflows = workflows.map((workflow: any) => {
       const workflowStep = workflow.workflowSteps?.[0];
       const mediaGeneration = workflowStep?.mediaGenerations?.[0];
-      const mediaGenerationId =
-        mediaGeneration?.mediaGenerationId?.mediaKey ||
-        mediaGeneration?.mediaGenerationId?.mediaGenerationId ||
-        mediaGeneration?.mediaId ||
-        workflow.workflowId;
+      
+      // 行级注释：解析 mediaGenerationId - 这对于视频延长功能至关重要
+      // 结构通常是 { mediaType: 'VIDEO', projectId: '...', workflowId: '...', workflowStepId: '...', mediaKey: '...' }
+      // 但有时也会包含嵌套的 mediaGenerationId 字符串
+      let mediaGenerationId = null;
+
+      // 1. 优先尝试从 generatedVideo/generatedImage 中获取（通常在 mediaData 中）
+      if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
+        mediaGenerationId = mediaGeneration?.mediaData?.videoData?.generatedVideo?.mediaGenerationId;
+      } else {
+        // 图片通常没有 mediaGenerationId，或者位置不同
+      }
+
+      // 2. 如果上面没找到，尝试从 mediaGenerationId 对象中获取 mediaKey (对于某些操作可能足够)
+      if (!mediaGenerationId) {
+        mediaGenerationId = mediaGeneration?.mediaGenerationId?.mediaKey;
+      }
+      
+      // 3. 再次尝试直接获取 mediaGenerationId 字符串（如果有的话）
+      if (!mediaGenerationId && typeof mediaGeneration?.mediaGenerationId === 'string') {
+        mediaGenerationId = mediaGeneration.mediaGenerationId;
+      }
+      
+      // 4. 如果是对象且包含 mediaGenerationId 属性
+      if (!mediaGenerationId && mediaGeneration?.mediaGenerationId?.mediaGenerationId) {
+        mediaGenerationId = mediaGeneration.mediaGenerationId.mediaGenerationId;
+      }
+
+      // 5. 最后的回退：使用 mediaId 或 workflowId
+      if (!mediaGenerationId) {
+        mediaGenerationId = mediaGeneration?.mediaId || workflow.workflowId;
+      }
 
       if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
         // 视频数据格式
