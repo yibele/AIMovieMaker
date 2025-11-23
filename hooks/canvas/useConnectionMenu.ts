@@ -141,6 +141,23 @@ export function useConnectionMenu() {
     }));
   }, []);
 
+  // 行级注释：显示延长视频输入界面
+  const showExtendVideoSubmenu = useCallback(() => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      activeSubmenu: 'extendVideo',
+      pendingExtendPrompt: '',
+    }));
+  }, []);
+
+  // 行级注释：更新延长视频提示词
+  const updateExtendPrompt = useCallback((prompt: string) => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      pendingExtendPrompt: prompt,
+    }));
+  }, []);
+
   return {
     connectionMenu,
     promptMenuInputRef,
@@ -155,6 +172,8 @@ export function useConnectionMenu() {
     prepareConnectionMenu,
     showCameraControlSubmenu,
     showCameraPositionSubmenu,
+    showExtendVideoSubmenu,
+    updateExtendPrompt,
   };
 }
 

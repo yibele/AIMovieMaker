@@ -12,8 +12,9 @@ export type ConnectionMenuState = {
   position: { x: number; y: number };
   sourceNodeId: string | null;
   sourceNodeType: CanvasElement['type'] | null;
-  activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | null;
+  activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | 'extendVideo' | null;
   pendingImageConfig: ImagePromptConfig | null;
+  pendingExtendPrompt?: string; // 行级注释：延长视频的提示词
 };
 
 // 行级注释：连线菜单的操作回调类型
@@ -31,5 +32,9 @@ export type ConnectionMenuCallbacks = {
   onShowCameraControlSubmenu: () => void;
   onShowCameraPositionSubmenu: () => void;
   onGenerateReshoot: (motionType: ReshootMotionType) => void;
+  // 新增：视频延长回调
+  onShowExtendVideoSubmenu: () => void;
+  onExtendPromptChange: (value: string) => void;
+  onConfirmExtend: () => void;
 };
 

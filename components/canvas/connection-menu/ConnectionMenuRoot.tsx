@@ -4,7 +4,8 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move } from 'lucide-react';
+import ExtendVideoInput from './ExtendVideoInput';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -80,7 +81,7 @@ export default function ConnectionMenuRoot({
                 </button>
                 <button
                   onClick={callbacks.onShowCameraPositionSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left group"
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
                     <Move size={18} />
@@ -88,6 +89,18 @@ export default function ConnectionMenuRoot({
                   <div>
                     <div className="font-medium text-gray-900 text-sm">镜头位置</div>
                     <div className="text-xs text-gray-500">Camera Position</div>
+                  </div>
+                </button>
+                <button
+                  onClick={callbacks.onShowExtendVideoSubmenu}
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">延长视频</div>
+                    <div className="text-xs text-gray-500">Extend Video</div>
                   </div>
                 </button>
               </>
@@ -138,6 +151,17 @@ export default function ConnectionMenuRoot({
             type="position"
             onBack={callbacks.onBackToMain}
             onSelect={callbacks.onGenerateReshoot}
+          />
+        )}
+
+        {/* 行级注释：延长视频输入界面 */}
+        {state.activeSubmenu === 'extendVideo' && (
+          <ExtendVideoInput
+            prompt={state.pendingExtendPrompt ?? ''}
+            inputRef={promptInputRef}
+            onPromptChange={callbacks.onExtendPromptChange}
+            onConfirm={callbacks.onConfirmExtend}
+            onBack={callbacks.onBackToMain}
           />
         )}
       </div>

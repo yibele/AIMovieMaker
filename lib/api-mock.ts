@@ -1307,3 +1307,80 @@ export async function generateVideoReshoot(
     status: 'COMPLETED',
   };
 }
+
+/**
+ * 延长视频 - 基于现有视频生成延续内容
+ */
+export async function generateVideoExtend(
+  originalMediaId: string,
+  prompt: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  startFrameIndex?: number,
+  endFrameIndex?: number,
+  seed?: number
+): Promise<{
+  videoUrl: string;
+  thumbnail: string;
+  duration: number;
+  mediaGenerationId?: string;
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 行级注释：校验层 - 校验输入参数
+  if (!originalMediaId) {
+    throw new Error('缺少原始视频 mediaId');
+  }
+  if (!prompt || !prompt.trim()) {
+    throw new Error('缺少延长提示词');
+  }
+
+  // 行级注释：配置层 - 获取 API 配置
+  const apiConfig = useCanvasStore.getState().apiConfig;
+  const sessionId = apiConfig.sessionId;
+  const accountTier = apiConfig.accountTier || 'pro';
+  const videoModel = apiConfig.videoModel || 'quality';
+
+  if (!apiConfig.bearerToken) {
+    throw new Error('缺少 Bearer Token，请在设置中配置');
+  }
+
+  // 行级注释：调用层 - 调用纯 API 函数
+  const { generateVideoExtendDirectly } = await import('./direct-google-api');
+
+  const generationTask = await generateVideoExtendDirectly(
+    originalMediaId,
+    prompt,
+    apiConfig.bearerToken,
+    sessionId,
+    apiConfig.projectId,
+    aspectRatio,
+    accountTier,
+    videoModel,
+    startFrameIndex,
+    endFrameIndex,
+    seed
+  );
+
+  console.log('✅ 视频延长任务已提交:', generationTask);
+
+  const videoResult = await pollFlowVideoOperation(
+    generationTask.operationName,
+    apiConfig.bearerToken,
+    generationTask.sceneId,
+    apiConfig.proxy
+  );
+
+  console.log('🎞️ 视频延长生成完成:', videoResult);
+
+  return {
+    videoUrl: videoResult.videoUrl,
+    thumbnail: videoResult.thumbnailUrl,
+    duration: videoResult.duration,
+    mediaGenerationId: videoResult.mediaGenerationId,
+    operationName: generationTask.operationName,
+    sceneId: generationTask.sceneId,
+    status: 'COMPLETED',
+  };
+}
