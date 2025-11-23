@@ -637,8 +637,28 @@ function VideoNode({ data, selected, id }: NodeProps) {
           >
             <Sparkles className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
           </Handle>
+        ) : videoData.generatedFrom?.type === 'extend' ? (
+          // 行级注释：延长视频 - 只显示一个简单的输入点
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+            style={{ left: '-6px', top: '50%', zIndex: '30' }}
+            isConnectable={true}
+            title="原始视频"
+          />
+        ) : videoData.generatedFrom?.type === 'reshoot' ? (
+          // 行级注释：镜头控制重拍 - 只显示一个简单的输入点
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+            style={{ left: '-6px', top: '50%', zIndex: '30' }}
+            isConnectable={true}
+            title="原始视频"
+          />
         ) : (
-          // 行级注释：普通视频 - 只显示首帧和尾帧输入点（不再显示文本输入）
+          // 行级注释：普通视频 - 显示首帧和尾帧输入点
           <>
             <Handle
               id="start-image"
