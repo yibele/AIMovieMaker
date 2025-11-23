@@ -205,12 +205,12 @@ export default function AIInputPanel() {
           ${isExpanded ? 'grid-rows-[1fr] mt-5 pt-5 border-t border-gray-100 opacity-100' : 'grid-rows-[0fr] mt-0 pt-0 border-t-0 border-transparent opacity-0'}
         `}>
           <div className="overflow-hidden min-h-0">
-            <div className={`grid grid-cols-1 gap-5 pb-1 ${apiConfig.accountTier === 'ultra' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+            <div className="grid grid-cols-1 gap-5 pb-1 md:grid-cols-3">
 
-              {/* 比例和数量选择 */}
+              {/* 1. 比例和数量 */}
               <div className="space-y-3">
                 {/* 比例选择 */}
-                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
+                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                   {[
                     { id: '16:9', label: '横屏', icon: RectangleHorizontal },
                     { id: '9:16', label: '竖屏', icon: RectangleVertical },
@@ -220,7 +220,7 @@ export default function AIInputPanel() {
                       key={item.id}
                       onClick={() => setAspectRatio(item.id as any)}
                       className={`
-                        flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium rounded-xl transition-all duration-200
+                        flex-1 h-full flex flex-col items-center justify-center gap-1 text-[10px] font-medium rounded-xl transition-all duration-200
                         ${aspectRatio === item.id
                           ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5 scale-100'
                           : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
@@ -239,7 +239,7 @@ export default function AIInputPanel() {
                       key={count}
                       onClick={() => setApiConfig({ generationCount: count })}
                       className={`
-                        flex-1 h-10 flex items-center justify-center text-sm font-bold rounded-xl transition-all duration-200
+                        flex-1 h-full flex items-center justify-center text-sm font-bold rounded-xl transition-all duration-200
                         ${generationCount === count
                           ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5 scale-110 z-10'
                           : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
@@ -251,88 +251,80 @@ export default function AIInputPanel() {
                 </div>
               </div>
 
-              {/* 模型选择 */}
-              <div className="space-y-2.5 md:col-span-1">
-
-                <div className="flex flex-col gap-1.5">
+              {/* 2. 模型设置 */}
+              <div className="space-y-3">
+                {/* 图片模型 */}
+                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                   <button
                     onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
                     className={`
-                      flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border
+                      flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                       ${imageModel === 'nanobanana'
-                        ? 'bg-violet-50 border-violet-200 text-violet-700'
-                        : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                        ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
                     `}
                   >
-                    <div className={`w-2 h-2 rounded-full mr-2 ${imageModel === 'nanobanana' ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobanana' ? 'bg-violet-500' : 'bg-gray-300'}`} />
                     Banana
                   </button>
                   <button
                     onClick={() => setApiConfig({ imageModel: 'nanobananapro' })}
                     className={`
-                      flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border relative overflow-hidden
+                      flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200 relative overflow-hidden
                       ${imageModel === 'nanobananapro'
-                        ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 border-fuchsia-200 text-fuchsia-700 shadow-sm'
-                        : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                        ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-fuchsia-700 shadow-sm ring-1 ring-fuchsia-200'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
                     `}
                   >
-                    <div className="flex items-center relative z-10">
-                      <div className={`w-2 h-2 rounded-full mr-2 ${imageModel === 'nanobananapro' ? 'bg-fuchsia-500' : 'bg-gray-300'}`} />
-                      Banana Pro
-                    </div>
-                    {imageModel === 'nanobananapro' && (
-                      <span className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-fuchsia-100/50 to-transparent pointer-events-none" />
-                    )}
+                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobananapro' ? 'bg-fuchsia-500' : 'bg-gray-300'}`} />
+                    Pro
                   </button>
                 </div>
-              </div>
 
-              {/* 视频模型选择 - 仅 Ultra 用户可见 */}
-              {apiConfig.accountTier === 'ultra' && (
-                <div className="space-y-2.5 md:col-span-1">
-                  <div className="flex flex-col gap-1.5">
+                {/* 视频模型 (Ultra) */}
+                {apiConfig.accountTier === 'ultra' && (
+                  <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                     <button
                       onClick={() => setApiConfig({ videoModel: 'quality' })}
                       className={`
-                        flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border
+                        flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                         ${videoModel === 'quality'
-                          ? 'bg-violet-50 border-violet-200 text-violet-700'
-                          : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                          ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
                       `}
                     >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                      <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300'}`} />
                       Quality
                     </button>
                     <button
                       onClick={() => setApiConfig({ videoModel: 'fast' })}
                       className={`
-                        flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border
+                        flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                         ${videoModel === 'fast'
-                          ? 'bg-blue-50 border-blue-200 text-blue-700'
-                          : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                          ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
                       `}
                     >
-                      <div className={`w-2 h-2 rounded-full mr-2 ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                      <div className={`w-2 h-2 rounded-full ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300'}`} />
                       Fast
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* 提示词增强 */}
-              <div className="space-y-2.5">
-
+              {/* 3. 风格 */}
+              <div className="h-full">
                 <button
                   onClick={() => setPrefixPromptEnabled(!prefixPromptEnabled)}
                   className={`
-                    w-full h-[62px] flex flex-col items-center justify-center gap-1.5 p-2 rounded-2xl text-xs font-medium transition-all duration-300 border
+                    w-full h-full min-h-[136px] flex flex-col items-center justify-center gap-2 p-2 rounded-2xl text-xs font-medium transition-all duration-300 border
                     ${prefixPromptEnabled
                       ? 'bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200 text-violet-700 shadow-sm'
                       : 'bg-gray-50/50 border-dashed border-gray-200 text-gray-400 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-500'}
                   `}
                 >
-                  <Sparkles size={18} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 scale-100"}`} />
-                  {prefixPromptEnabled ? '风格' : '风格'}
+                  <Sparkles size={24} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 scale-100"}`} />
+                  {prefixPromptEnabled ? '风格增强' : '风格增强'}
                 </button>
               </div>
 
