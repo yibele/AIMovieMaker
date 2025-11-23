@@ -4,7 +4,6 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import ExtendVideoInput from './ExtendVideoInput';
 import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
@@ -151,17 +150,6 @@ export default function ConnectionMenuRoot({
             type="position"
             onBack={callbacks.onBackToMain}
             onSelect={callbacks.onGenerateReshoot}
-          />
-        )}
-
-        {/* 行级注释：延长视频输入界面 */}
-        {state.activeSubmenu === 'extendVideo' && (
-          <ExtendVideoInput
-            prompt={state.pendingExtendPrompt ?? ''}
-            inputRef={promptInputRef}
-            onPromptChange={callbacks.onExtendPromptChange}
-            onConfirm={callbacks.onConfirmExtend}
-            onBack={callbacks.onBackToMain}
           />
         )}
       </div>

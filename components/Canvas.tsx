@@ -107,8 +107,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     prepareConnectionMenu,
     showCameraControlSubmenu,
     showCameraPositionSubmenu,
-    showExtendVideoSubmenu,
-    updateExtendPrompt,
   } = useConnectionMenu();
 
   // 行级注释：使用图片生成 Hooks
@@ -1487,122 +1485,60 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, updateElement, reactFlowInstance, resetConnectionMenu]
   );
 
-  // 处理延长视频提示词变化
-  const handleExtendPromptChange = useCallback((value: string) => {
-    updateExtendPrompt(value);
-  }, [updateExtendPrompt]);
+  // 处理延长视频 - 创建 pending 节点
+  const handleShowExtendVideo = useCallback(() => {
+    const sourceNodeId = connectionMenu.sourceNodeId;
+    if (!sourceNodeId) return;
 
-  // 处理确认延长视频
-  const handleConfirmExtend = useCallback(
-    async () => {
-      const sourceNodeId = connectionMenu.sourceNodeId;
-      const prompt = connectionMenu.pendingExtendPrompt;
+    const sourceNode = elements.find((el) => el.id === sourceNodeId) as VideoElement | undefined;
+    if (!sourceNode) return;
 
-      if (!sourceNodeId || !prompt || !prompt.trim()) return;
+    resetConnectionMenu();
 
-      const sourceNode = elements.find((el) => el.id === sourceNodeId) as VideoElement | undefined;
-      if (!sourceNode) return;
+    // 1. 创建 pending 状态的视频节点（用户稍后输入提示词）
+    const newVideoId = `video-${Date.now()}`;
+    const flowPosition = reactFlowInstance.screenToFlowPosition({
+      x: connectionMenu.position.x,
+      y: connectionMenu.position.y,
+    });
 
-      resetConnectionMenu();
+    const newVideo: VideoElement = {
+      id: newVideoId,
+      type: 'video',
+      src: '',
+      thumbnail: '',
+      duration: 0,
+      status: 'pending', // 行级注释：pending 状态会触发 VideoNode 显示输入面板
+      progress: 0,
+      position: { x: flowPosition.x, y: flowPosition.y },
+      size: sourceNode.size || VIDEO_NODE_DEFAULT_SIZE,
+      readyForGeneration: false,
+      generatedFrom: {
+        type: 'extend',
+        sourceIds: [sourceNode.id],
+      },
+    };
 
-      // 1. 创建新的视频节点
-      const newVideoId = `video-${Date.now()}`;
-      const flowPosition = reactFlowInstance.screenToFlowPosition({
-        x: connectionMenu.position.x,
-        y: connectionMenu.position.y,
-      });
+    addElement(newVideo);
 
-      const newVideo: VideoElement = {
-        id: newVideoId,
-        type: 'video',
-        src: '',
-        thumbnail: '',
-        duration: 0,
-        status: 'generating',
-        progress: 0,
-        position: { x: flowPosition.x, y: flowPosition.y },
-        size: sourceNode.size || VIDEO_NODE_DEFAULT_SIZE,
-        promptText: prompt.trim(),
-        generatedFrom: {
-          type: 'extend',
-          sourceIds: [sourceNode.id],
-          prompt: prompt.trim(),
-        },
-      };
+    // 2. 创建连线
+    const edgeId = `edge-${sourceNode.id}-${newVideoId}-extend`;
+    // @ts-ignore
+    setEdges((eds: any[]) => [
+      ...eds,
+      {
+        id: edgeId,
+        source: sourceNode.id,
+        target: newVideoId,
+        type: 'default',
+        animated: false,
+        style: { stroke: '#a855f7', strokeWidth: 1 },
+        label: '延长',
+      },
+    ]);
 
-      addElement(newVideo);
-
-      // 2. 创建连线
-      const edgeId = `edge-${sourceNode.id}-${newVideoId}-extend`;
-      // @ts-ignore
-      setEdges((eds: any[]) => [
-        ...eds,
-        {
-          id: edgeId,
-          source: sourceNode.id,
-          target: newVideoId,
-          type: 'default',
-          animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 1 },
-          label: '延长视频',
-        },
-      ]);
-
-      // 3. 调用 API 生成
-      try {
-        const effectiveMediaId = sourceNode.mediaGenerationId;
-
-        if (!effectiveMediaId) {
-          throw new Error('源视频缺少 mediaGenerationId');
-        }
-
-        const aspectRatio = sourceNode.size?.width && sourceNode.size?.height
-          ? (Math.abs(sourceNode.size.width / sourceNode.size.height - 16 / 9) < 0.1 ? '16:9' :
-            Math.abs(sourceNode.size.width / sourceNode.size.height - 1) < 0.1 ? '1:1' : '9:16')
-          : '16:9';
-
-        const { generateVideoExtend } = await import('@/lib/api-mock');
-        const result = await generateVideoExtend(
-          effectiveMediaId,
-          prompt.trim(),
-          aspectRatio as any
-        );
-
-        updateElement(newVideoId, {
-          status: 'ready',
-          src: result.videoUrl,
-          thumbnail: result.thumbnail,
-          duration: result.duration,
-          mediaGenerationId: result.mediaGenerationId,
-          progress: 100,
-          readyForGeneration: true,
-        } as Partial<VideoElement>);
-
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === edgeId
-              ? { ...edge, animated: false }
-              : edge
-          )
-        );
-
-        console.log('✅ 延长视频生成成功');
-      } catch (error) {
-        console.error('❌ 延长视频生成失败:', error);
-        updateElement(newVideoId, { status: 'error' } as Partial<VideoElement>);
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === edgeId
-              ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
-              : edge
-          )
-        );
-      }
-    },
-    [connectionMenu.sourceNodeId, connectionMenu.position, connectionMenu.pendingExtendPrompt, elements, addElement, setEdges, updateElement, reactFlowInstance, resetConnectionMenu, updateExtendPrompt]
-  );
+    console.log('✅ 延长视频节点已创建，等待用户输入提示词');
+  }, [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, reactFlowInstance, resetConnectionMenu]);
 
   // 处理连线连接（生成视频）
   const handleConnect = useCallback(
@@ -1797,9 +1733,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onShowCameraControlSubmenu: showCameraControlSubmenu,
           onShowCameraPositionSubmenu: showCameraPositionSubmenu,
           onGenerateReshoot: handleGenerateReshoot,
-          onShowExtendVideoSubmenu: showExtendVideoSubmenu,
-          onExtendPromptChange: handleExtendPromptChange,
-          onConfirmExtend: handleConfirmExtend,
+          onShowExtendVideoSubmenu: handleShowExtendVideo,
+          onExtendPromptChange: () => { }, // 行级注释：不再需要，保留接口兼容性
+          onConfirmExtend: () => { }, // 行级注释：不再需要，保留接口兼容性
         }}
         promptInputRef={promptMenuInputRef}
       />

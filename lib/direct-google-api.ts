@@ -937,7 +937,8 @@ export async function generateVideoExtendDirectly(
       : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
 
   // 行级注释：根据宽高比、账号类型和视频模型选择 videoModelKey
-  // 格式：veo_3_1_extend_{quality|fast}_{landscape|portrait|square}_{ultra|}
+  // quality 模式：veo_3_1_extend_{aspect}_{ultra|}
+  // fast 模式：veo_3_1_extend_fast_{aspect}_{ultra|}
   const aspectSuffix = aspectRatio === '9:16'
     ? 'portrait'
     : aspectRatio === '1:1'
@@ -945,7 +946,9 @@ export async function generateVideoExtendDirectly(
       : 'landscape';
 
   const tierSuffix = accountTier === 'ultra' ? '_ultra' : '';
-  const videoModelKey = `veo_3_1_extend_${videoModel}_${aspectSuffix}${tierSuffix}`;
+  const videoModelKey = videoModel === 'fast'
+    ? `veo_3_1_extend_fast_${aspectSuffix}${tierSuffix}`
+    : `veo_3_1_extend_${aspectSuffix}${tierSuffix}`;
 
   const requestSeed = typeof seed === 'number'
     ? seed
