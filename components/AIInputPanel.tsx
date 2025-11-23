@@ -207,9 +207,9 @@ export default function AIInputPanel() {
           <div className="overflow-hidden min-h-0">
             <div className={`grid grid-cols-1 gap-5 pb-1 ${apiConfig.accountTier === 'ultra' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
 
-              {/* 比例选择 */}
-              <div className="space-y-2.5">
-
+              {/* 比例和数量选择 */}
+              <div className="space-y-3">
+                {/* 比例选择 */}
                 <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
                   {[
                     { id: '16:9', label: '横屏', icon: RectangleHorizontal },
@@ -231,11 +231,8 @@ export default function AIInputPanel() {
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {/* 数量选择 */}
-              <div className="space-y-2.5">
-
+                {/* 数量选择 */}
                 <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                   {[1, 2, 3, 4].map((count) => (
                     <button
