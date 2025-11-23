@@ -47,7 +47,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [materials, currentProjectId, activeTab]);
-  
+
   // 默认使用 grid 视图，满足用户“每行三个”的需求
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -102,7 +102,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
   return (
     <>
       {/* 移除遮罩层，实现非模态 */}
-      
+
       {/* 面板 - 右侧抽屉 - 调整宽度和位置 */}
       <div
         className={`
@@ -164,8 +164,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               disabled={!currentProjectId || isLoading || isSyncing}
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border flex-1 justify-center
-                ${isSyncing 
-                  ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                ${isSyncing
+                  ? 'bg-blue-50 text-blue-600 border-blue-100'
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
               `}
               title="同步最新素材"
@@ -173,7 +173,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? '同步中...' : '同步远端素材'}
             </button>
-            
+
             {/* 视图切换按钮 - 恢复显示 */}
             <div className="flex items-center bg-gray-100/80 rounded-lg p-0.5">
               <button
@@ -192,38 +192,37 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               </button>
             </div>
           </div>
-          
+
           {(loadingMessage || syncError) && (
-             <div className={`px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${
-               syncError ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
-             }`}>
-               <div className={`w-1.5 h-1.5 rounded-full ${syncError ? 'bg-red-500' : 'bg-blue-500 animate-pulse'}`} />
-               {syncError || loadingMessage}
-             </div>
+            <div className={`px-3 py-2 rounded-lg text-xs flex items-center gap-2 ${syncError ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${syncError ? 'bg-red-500' : 'bg-blue-500 animate-pulse'}`} />
+              {syncError || loadingMessage}
+            </div>
           )}
         </div>
 
         {/* 批量操作栏 (浮动) */}
         {selectedMaterials.length > 0 && (
           <div className="px-6 pb-3 pt-2">
-             <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <span className="text-xs font-medium pl-1">已选中 {selectedMaterials.length} 项</span>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={clearSelection}
-                    className="px-3 py-1 text-xs text-gray-400 hover:text-white transition-colors"
-                  >
-                    取消
-                  </button>
-                  <button 
-                    onClick={handleBatchDelete}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-medium transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    删除
-                  </button>
-                </div>
-             </div>
+            <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <span className="text-xs font-medium pl-1">已选中 {selectedMaterials.length} 项</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={clearSelection}
+                  className="px-3 py-1 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleBatchDelete}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  删除
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -249,10 +248,10 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             `}>
               {filteredMaterials.map((material) => {
                 const isSelected = selectedMaterials.includes(material.id);
-                
+
                 if (viewMode === 'grid') {
                   return (
-                    <div 
+                    <div
                       key={material.id}
                       onClick={() => handleMaterialClick(material)}
                       onDoubleClick={() => handleMaterialDoubleClick(material)}
@@ -261,10 +260,10 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                         ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100 hover:border-blue-200'}
                       `}
                     >
-                       {material.type === 'image' ? (
-                        <img 
-                          src={material.thumbnail || material.src} 
-                          alt={material.name} 
+                      {material.type === 'image' ? (
+                        <img
+                          src={material.thumbnail || material.src}
+                          alt={material.name}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
@@ -272,31 +271,37 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                          <Video className="text-gray-300" size={24} />
-                        </div>
+                        <img
+                          src={material.thumbnail || material.src}
+                          alt={material.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-image.svg';
+                          }}
+                        />
                       )}
-                      
+
                       {/* 悬浮遮罩 */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-2">
-                         <div className="flex justify-between items-end w-full">
-                           <span className="text-[10px] text-white/90 font-medium truncate max-w-[70%]">{material.name}</span>
-                           <button
-                             onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
-                             }}
-                             className="p-1 bg-white/20 hover:bg-red-500/80 rounded text-white backdrop-blur-sm transition-colors"
-                           >
-                             <Trash2 size={10} />
-                           </button>
-                         </div>
+                        <div className="flex justify-between items-end w-full">
+                          <span className="text-[10px] text-white/90 font-medium truncate max-w-[70%]">{material.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
+                            }}
+                            className="p-1 bg-white/20 hover:bg-red-500/80 rounded text-white backdrop-blur-sm transition-colors"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* 选中标记 */}
                       {isSelected && (
                         <div className="absolute top-2 right-2 bg-blue-500 rounded-full p-0.5 shadow-sm z-10">
-                           <Check size={10} className="text-white" strokeWidth={3} />
+                          <Check size={10} className="text-white" strokeWidth={3} />
                         </div>
                       )}
                     </div>
@@ -305,7 +310,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
                 // List View
                 return (
-                  <div 
+                  <div
                     key={material.id}
                     onClick={() => handleMaterialClick(material)}
                     onDoubleClick={() => handleMaterialDoubleClick(material)}
@@ -317,9 +322,9 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                     {/* 左侧：小封面图 */}
                     <div className="w-20 h-20 relative flex-shrink-0 bg-gray-100">
                       {material.type === 'image' ? (
-                        <img 
-                          src={material.thumbnail || material.src} 
-                          alt={material.name} 
+                        <img
+                          src={material.thumbnail || material.src}
+                          alt={material.name}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
@@ -327,16 +332,22 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                          <Video className="text-gray-300" size={24} />
-                        </div>
+                        <img
+                          src={material.thumbnail || material.src}
+                          alt={material.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-image.svg';
+                          }}
+                        />
                       )}
                       {/* 选中标记 */}
                       {isSelected && (
                         <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
-                           <div className="bg-white rounded-full p-1 shadow-sm">
-                             <Check size={12} className="text-blue-600" strokeWidth={3} />
-                           </div>
+                          <div className="bg-white rounded-full p-1 shadow-sm">
+                            <Check size={12} className="text-blue-600" strokeWidth={3} />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -347,13 +358,13 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                         <h3 className={`font-bold text-sm truncate ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
                           {material.name}
                         </h3>
-                        
+
                         {/* 悬浮操作 (只在Hover时显示) */}
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                          <button 
+                          <button
                             onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
+                              e.stopPropagation();
+                              if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
                             }}
                             className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
                             title="删除"
@@ -362,12 +373,12 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                           </button>
                         </div>
                       </div>
-                      
+
                       <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
-                         <span className="px-1.5 py-0.5 bg-gray-50 rounded border border-gray-100 uppercase text-[10px] font-medium tracking-wider">{material.type}</span>
-                         <span>{new Date(material.createdAt).toLocaleDateString()}</span>
+                        <span className="px-1.5 py-0.5 bg-gray-50 rounded border border-gray-100 uppercase text-[10px] font-medium tracking-wider">{material.type}</span>
+                        <span>{new Date(material.createdAt).toLocaleDateString()}</span>
                       </p>
-                      
+
                       <div className="mt-auto pt-2 flex justify-end items-center">
                         <span className="text-[10px] text-blue-500 font-medium opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
                           添加到画布 <Plus size={10} />
