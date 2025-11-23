@@ -266,38 +266,59 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           const addElement = useCanvasStore.getState().addElement;
           addElement(newVideo);
 
-          // 行级注释：创建连线到图片节点
-          if (startImageId) {
-            const edgeId = `edge-${startImageId}-${newVideoId}-start`;
-            setEdges((eds: any[]) => [
-              ...eds,
-              {
-                id: edgeId,
-                source: startImageId,
-                sourceHandle: null,
-                target: newVideoId,
-                targetHandle: 'start-image',
-                type: 'default',
-                animated: true,
-                style: { stroke: '#3b82f6', strokeWidth: 2 },
-              },
-            ]);
-          }
-          if (endImageId && endImageId !== startImageId) {
-            const edgeId = `edge-${endImageId}-${newVideoId}-end`;
-            setEdges((eds: any[]) => [
-              ...eds,
-              {
-                id: edgeId,
-                source: endImageId,
-                sourceHandle: null,
-                target: newVideoId,
-                targetHandle: 'end-image',
-                type: 'default',
-                animated: true,
-                style: { stroke: '#3b82f6', strokeWidth: 2 },
-              },
-            ]);
+          // 行级注释：创建连线
+          if (videoElement.generatedFrom?.type === 'extend' || videoElement.generatedFrom?.type === 'reshoot') {
+            // 行级注释：延长/重拍视频 - 连接到源视频节点
+            const sourceVideoId = videoElement.generatedFrom.sourceIds[0];
+            if (sourceVideoId) {
+              const edgeId = `edge-${sourceVideoId}-${newVideoId}-${videoElement.generatedFrom.type}`;
+              setEdges((eds: any[]) => [
+                ...eds,
+                {
+                  id: edgeId,
+                  source: sourceVideoId,
+                  target: newVideoId,
+                  type: 'default',
+                  animated: true,
+                  style: { stroke: '#a855f7', strokeWidth: 1 },
+                  label: videoElement.generatedFrom?.type === 'extend' ? '延长' : '镜头控制',
+                },
+              ]);
+            }
+          } else {
+            // 行级注释：图生视频 - 连接到图片节点
+            if (startImageId) {
+              const edgeId = `edge-${startImageId}-${newVideoId}-start`;
+              setEdges((eds: any[]) => [
+                ...eds,
+                {
+                  id: edgeId,
+                  source: startImageId,
+                  sourceHandle: null,
+                  target: newVideoId,
+                  targetHandle: 'start-image',
+                  type: 'default',
+                  animated: true,
+                  style: { stroke: '#3b82f6', strokeWidth: 2 },
+                },
+              ]);
+            }
+            if (endImageId && endImageId !== startImageId) {
+              const edgeId = `edge-${endImageId}-${newVideoId}-end`;
+              setEdges((eds: any[]) => [
+                ...eds,
+                {
+                  id: edgeId,
+                  source: endImageId,
+                  sourceHandle: null,
+                  target: newVideoId,
+                  targetHandle: 'end-image',
+                  type: 'default',
+                  animated: true,
+                  style: { stroke: '#3b82f6', strokeWidth: 2 },
+                },
+              ]);
+            }
           }
 
           console.log('✅ 创建额外视频节点:', newVideoId);
