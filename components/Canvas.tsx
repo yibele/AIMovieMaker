@@ -333,11 +333,40 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       try {
         let result;
-        let generationType: 'text-to-video' | 'image-to-image' = 'text-to-video';
+        let generationType: 'text-to-video' | 'image-to-image' | 'extend' | 'reshoot' = 'text-to-video';
         const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
 
-        // 行级注释：判断是图生视频还是文生视频
-        if (hasAtLeastOneImage) {
+        // 行级注释：判断视频类型并调用对应 API
+        if (videoElement.generatedFrom?.type === 'extend') {
+          // 行级注释：延长视频
+          const sourceVideoId = videoElement.generatedFrom.sourceIds[0];
+          if (!sourceVideoId) {
+            throw new Error('缺少源视频节点ID');
+          }
+
+          const sourceVideo = storeElements.find(el => el.id === sourceVideoId) as VideoElement | undefined;
+          if (!sourceVideo || !sourceVideo.mediaGenerationId) {
+            throw new Error('源视频缺少 mediaGenerationId');
+          }
+
+          const aspectRatio = videoElement.size?.width && videoElement.size?.height
+            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16 / 9) < 0.1 ? '16:9'
+              : Math.abs(videoElement.size.width / videoElement.size.height - 1) < 0.1 ? '1:1'
+                : '9:16')
+            : '16:9';
+
+          const { generateVideoExtend } = await import('@/lib/api-mock');
+          result = await generateVideoExtend(
+            sourceVideo.mediaGenerationId,
+            promptText || '',
+            aspectRatio as any
+          );
+          generationType = 'extend';
+        } else if (videoElement.generatedFrom?.type === 'reshoot') {
+          // 行级注释：镜头控制重拍（已在其他地方处理，这里不应该进入）
+          console.warn('⚠️ Reshoot 视频不应该通过 maybeStartVideo 生成');
+          return;
+        } else if (hasAtLeastOneImage) {
           // 行级注释：图生视频 - 使用首尾帧
           const actualStartId = startImageId || endImageId!;
           const actualEndId = startImageId && endImageId ? endImageId : undefined;
