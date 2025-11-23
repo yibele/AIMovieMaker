@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen } from 'lucide-react';
+import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen, Bot } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
 import PromptLibraryPanel from './PromptLibraryPanel';
+import GrokAssistantPanel from './GrokAssistantPanel';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
   const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
   const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
+  const isAssistantOpen = useCanvasStore((state) => state.isAssistantOpen);
+  const setIsAssistantOpen = useCanvasStore((state) => state.setIsAssistantOpen);
 
   // 按钮配置
   const mainGroups = [
@@ -36,6 +39,20 @@ export default function RightToolbar() {
           title: prefixPrompt ? `风格库：${prefixPrompt.slice(0, 20)}...` : '风格库',
           isActive: isPromptLibraryOpen || Boolean(prefixPrompt), // 当面板打开或有内容时高亮
           dotColor: 'bg-purple-500'
+        },
+        {
+          icon: Bot,
+          onClick: () => {
+            setIsAssistantOpen(!isAssistantOpen);
+            // 互斥：打开助手时关闭其他面板
+            if (!isAssistantOpen) {
+                setIsMaterialsPanelOpen(false);
+                setIsPromptLibraryOpen(false);
+            }
+          },
+          title: 'Grok 助手',
+          isActive: isAssistantOpen,
+          dotColor: 'bg-black'
         }
       ]
     },
@@ -140,6 +157,9 @@ export default function RightToolbar() {
         isOpen={isPromptLibraryOpen}
         onClose={() => setIsPromptLibraryOpen(false)}
       />
+
+      {/* Grok 助手面板 */}
+      <GrokAssistantPanel />
     </>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Handle, Position, type NodeProps, NodeToolbar } from '@xyflow/react';
-import { RefreshCw, Copy, Download, Trash2, Square, Edit3 } from 'lucide-react';
-import type { ImageElement } from '@/lib/types';
+import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
+import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2 } from 'lucide-react';
+import type { ImageElement, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput } from '@/lib/input-panel-generator';
@@ -23,6 +23,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
+
+  const reactFlowInstance = useReactFlow();
 
   // 行级注释：图生图状态
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -386,6 +388,88 @@ function ImageNode({ data, selected, id }: NodeProps) {
     );
   }, [imageData, promptsHistory, addElement, updateElement, deleteElement, addPromptHistory]);
 
+  // 视觉识别
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleVisionAnalysis = useCallback(async () => {
+    if (!imageData.src) {
+      toast.error('图片内容为空，无法识别');
+      return;
+    }
+
+    const prompt = window.prompt('请输入对这张图片的分析指令：', '描述这张图片');
+    if (!prompt) return;
+
+    const apiConfig = useCanvasStore.getState().apiConfig;
+    if (!apiConfig.dashScopeApiKey) {
+      toast.error('请先在设置中配置 DashScope API Key');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    const toastId = toast.loading('正在分析图片...');
+
+    try {
+      const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiConfig.dashScopeApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'qwen-vl-plus',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: imageData.src } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        })
+      });
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) throw new Error('未获取到分析结果');
+
+      // 创建 TextNode
+      const textId = `text-${Date.now()}`;
+      const newTextNode: TextElement = {
+        id: textId,
+        type: 'text',
+        text: content,
+        position: {
+          x: imageData.position.x + (imageData.size?.width || 400) + 50,
+          y: imageData.position.y
+        },
+        size: { width: 300, height: 200 }
+      };
+
+      addElement(newTextNode);
+
+      // 连接 ImageNode -> TextNode
+      const edgeId = `edge-${id}-${textId}-vision`;
+      reactFlowInstance.addEdges({
+        id: edgeId,
+        source: id,
+        target: textId,
+        type: 'default',
+        style: { stroke: '#10b981', strokeWidth: 2, strokeDasharray: '5,5' },
+        animated: true
+      });
+
+      toast.success('分析完成', { id: toastId });
+
+    } catch (error) {
+      console.error('Vision analysis failed:', error);
+      toast.error('识别失败，请检查 API Key 或重试', { id: toastId });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [imageData.src, imageData.position, imageData.size, id, addElement, reactFlowInstance]);
+
   // 行级注释：计算图片和Loading的透明度，用于 Cross-Fade
   // Loading 只有在处理中时完全不透明，处理完（有图）后透明度为 0
   const loadingOpacity = isProcessing ? 1 : 0;
@@ -409,6 +493,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       >
         <ToolbarButton icon={<RefreshCw className="w-3 h-3" />} label="再次生成" onClick={handleRegenerate} />
         <ToolbarButton icon={<Edit3 className="w-3 h-3" />} label="图片编辑" onClick={handleAnnotate} />
+        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} label="视觉识别" onClick={handleVisionAnalysis} disabled={isAnalyzing} />
         <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />

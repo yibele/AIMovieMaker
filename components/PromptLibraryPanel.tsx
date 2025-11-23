@@ -232,7 +232,7 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
       <div 
         className={`
           fixed right-[80px] top-4 bottom-4 w-[440px] max-w-[90vw] bg-white/90 backdrop-blur-2xl z-[50]
-          rounded-3xl border border-white/50 shadow-[0_20px_60px_rgba(0,0,0,0.05)]
+          rounded-3xl border border-white/50 shadow-[0_20px_60px_rgba(0,0,0,0.05)] overflow-hidden
           transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
           flex flex-col
           ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'}

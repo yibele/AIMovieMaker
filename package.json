@@ -40,6 +40,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-easy-crop": "^5.5.3",
+    "react-markdown": "^10.1.0",
     "socks-proxy-agent": "^8.0.5",
     "sonner": "^2.0.7",
     "tailwindcss": "^4.1.17",

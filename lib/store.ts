@@ -18,6 +18,7 @@ interface ApiConfig {
   apiKey: string; // Flow API Key
   bearerToken: string;
   cookie: string;
+  dashScopeApiKey: string; // 阿里云 DashScope API Key
   proxy: string; // 代理地址，例如 http://127.0.0.1:10808
   projectId: string;
   workflowId: string;
@@ -70,6 +71,7 @@ interface CanvasStore {
   loadProjectPrefixPrompt: (projectId: string) => void;
   setPrefixPromptEnabled: (enabled: boolean) => void; // 行级注释：设置前置提示词启用状态
   setIsSettingsOpen: (isOpen: boolean) => void;
+  setIsAssistantOpen: (isOpen: boolean) => void;
   getElementByIds: (ids: string[]) => CanvasElement[];
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
   triggerVideoGeneration?: (videoId: string) => void;
@@ -105,6 +107,7 @@ const loadApiConfig = (): ApiConfig => {
       apiKey: '',
       bearerToken: '',
       cookie: '',
+      dashScopeApiKey: '',
       proxy: '',
       projectId: '',
       workflowId: context.workflowId,
@@ -124,6 +127,7 @@ const loadApiConfig = (): ApiConfig => {
         apiKey: parsed?.apiKey || '',
         bearerToken: parsed?.bearerToken || '',
         cookie: parsed?.cookie || '',
+        dashScopeApiKey: parsed?.dashScopeApiKey || '',
         proxy: parsed?.proxy || '',
         projectId: parsed?.projectId || '',
         workflowId: parsed?.workflowId || context.workflowId,
@@ -142,6 +146,7 @@ const loadApiConfig = (): ApiConfig => {
     apiKey: '',
     bearerToken: '',
     cookie: '',
+    dashScopeApiKey: '',
     proxy: '',
     projectId: '',
     workflowId: context.workflowId,
@@ -295,6 +300,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     setPrefixPromptEnabled: (enabled) => set({ prefixPromptEnabled: enabled }),
 
     setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+    
+    isAssistantOpen: false,
+    setIsAssistantOpen: (isOpen: boolean) => set({ isAssistantOpen: isOpen }),
 
     getElementByIds: (ids) => {
       const { elements } = get();
@@ -323,4 +331,3 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     setIsLoadingAnnotatorImage: (loading) => set({ isLoadingAnnotatorImage: loading }),
   };
 });
-

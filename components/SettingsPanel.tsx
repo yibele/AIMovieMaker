@@ -17,6 +17,7 @@ export default function SettingsPanel() {
   const [apiKey, setApiKey] = useState(apiConfig.apiKey || '');
   const [bearerToken, setBearerToken] = useState(apiConfig.bearerToken || '');
   const [cookie, setCookie] = useState(apiConfig.cookie || '');
+  const [dashScopeApiKey, setDashScopeApiKey] = useState(apiConfig.dashScopeApiKey || '');
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
   const [projectId, setProjectId] = useState(apiConfig.projectId || '');
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
@@ -28,6 +29,7 @@ export default function SettingsPanel() {
     setApiKey(apiConfig.apiKey || '');
     setBearerToken(apiConfig.bearerToken || '');
     setCookie(apiConfig.cookie || '');
+    setDashScopeApiKey(apiConfig.dashScopeApiKey || '');
     setProxy(apiConfig.proxy || '');
     setProjectId(apiConfig.projectId || '');
     setWorkflowId(apiConfig.workflowId || '');
@@ -48,6 +50,7 @@ export default function SettingsPanel() {
       apiKey: apiKey.trim(),
       bearerToken: bearerToken.trim(),
       cookie: cookie.trim(),
+      dashScopeApiKey: dashScopeApiKey.trim(),
       proxy: proxy.trim(),
       projectId: projectId.trim(),
       workflowId: workflowId.trim(),
@@ -144,6 +147,22 @@ export default function SettingsPanel() {
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-200/50 px-2 py-1 rounded">OPTIONAL</div>
                 </div>
+              </div>
+
+              {/* DashScope Configuration */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <span className="w-4 h-4 flex items-center justify-center text-[10px] bg-orange-500 text-white rounded font-mono">Q</span>
+                  DashScope (Qwen)
+                </label>
+                <p className="text-xs text-slate-500 font-medium">API Key for Qwen AI Assistant.</p>
+                <input
+                  type="password"
+                  value={dashScopeApiKey}
+                  onChange={(e) => setDashScopeApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
+                />
               </div>
 
               {/* Workflow & Session */}
