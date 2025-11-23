@@ -1,4 +1,4 @@
-import { GenerationMode, ImageElement } from './types';
+import { GenerationMode, ImageElement, ReshootMotionType } from './types';
 import { useCanvasStore } from './store';
 
 // ============================================================================
@@ -15,19 +15,19 @@ function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
   // 行级注释：检查前置提示词是否启用
   const store = useCanvasStore.getState();
   const isEnabled = store.prefixPromptEnabled;
-  
+
   if (!isEnabled) {
     return userPrompt; // 未启用，直接返回用户提示词
   }
-  
-  const prefix = prefixPrompt !== undefined 
-    ? prefixPrompt 
+
+  const prefix = prefixPrompt !== undefined
+    ? prefixPrompt
     : store.currentPrefixPrompt;
-  
+
   if (!prefix || !prefix.trim()) {
     return userPrompt;
   }
-  
+
   // 行级注释：前置提示词实际后置（附加在用户提示词之后）
   return `${userPrompt}, ${prefix.trim()}`;
 }
@@ -37,21 +37,22 @@ function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
  */
 function getApiContext() {
   const apiConfig = useCanvasStore.getState().apiConfig;
-  
+
   let sessionId = apiConfig.sessionId;
   if (!sessionId || !sessionId.trim()) {
     const context = useCanvasStore.getState().regenerateFlowContext();
     sessionId = context.sessionId;
   }
-  
+
   const accountTier = apiConfig.accountTier || 'pro';
   const imageModel = apiConfig.imageModel || 'nanobanana';
-  
+
   return {
     apiConfig,
     sessionId,
     accountTier,
     imageModel,
+    videoModel: apiConfig.videoModel || 'quality',
   };
 }
 
@@ -60,7 +61,7 @@ function getApiContext() {
  */
 function updateSessionContext(newSessionId?: string) {
   if (!newSessionId) return;
-  
+
   const apiConfig = useCanvasStore.getState().apiConfig;
   if (newSessionId !== apiConfig.sessionId) {
     useCanvasStore.getState().setApiConfig({ sessionId: newSessionId });
@@ -471,10 +472,10 @@ export async function pollFlowVideoOperation(
 ): Promise<FlowVideoResult> {
   // 行级注释：视频状态查询直接调用 Google API（绕过 Vercel）
   const { checkVideoStatusDirectly } = await import('./direct-google-api');
-  
+
   for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
     console.log(`🔁 视频生成轮询第 ${attempt} 次`);
-    
+
     try {
       // 行级注释：直接调用 Google API 查询状态
       const result = await checkVideoStatusDirectly(
@@ -495,25 +496,25 @@ export async function pollFlowVideoOperation(
       // 行级注释：成功状态 - 直接返回视频数据
       if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
         console.log('🎉 视频生成成功！');
-        
+
         if (!result.videoUrl) {
           throw new Error('Flow 返回缺少视频地址');
         }
-        
+
         // 行级注释：更新积分到 store
         if (typeof result.remainingCredits === 'number') {
           const { useCanvasStore } = await import('@/lib/store');
           useCanvasStore.getState().setCredits(result.remainingCredits);
           console.log('💎 积分已更新:', result.remainingCredits);
         }
-        
+
         console.log('✅ 视频数据解析成功:', {
           videoUrl: result.videoUrl,
           thumbnailUrl: result.thumbnailUrl,
           duration: result.duration,
           mediaGenerationId: result.mediaGenerationId,
         });
-        
+
         return {
           videoUrl: result.videoUrl,
           thumbnailUrl: result.thumbnailUrl || '',
@@ -524,11 +525,11 @@ export async function pollFlowVideoOperation(
 
       // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
       console.log('⏳ 视频还在生成中，等待下次轮询...');
-      
+
     } catch (error: any) {
       console.error(`❌ 轮询第 ${attempt} 次出错:`, error);
       console.error('错误详情:', error.message, error.stack);
-      
+
       // 行级注释：直接抛出错误，不要继续轮询了
       throw error;
     }
@@ -968,7 +969,7 @@ export async function generateVideoFromText(
   mediaGenerationId?: string;
 }> {
   // 行级注释：业务层 - 获取上下文和配置
-  const { apiConfig, sessionId, accountTier } = getApiContext();
+  const { apiConfig, sessionId, accountTier, videoModel } = getApiContext();
 
   // 行级注释：业务层 - 验证必要配置
   if (!apiConfig.bearerToken?.trim()) {
@@ -999,6 +1000,7 @@ export async function generateVideoFromText(
     sessionId,
     aspectRatio,
     accountTier,
+    videoModel,
     seed,
     sceneId
   );
@@ -1058,7 +1060,7 @@ export async function generateVideoFromImages(
   mediaGenerationId?: string;
 }> {
   // 行级注释：业务层 - 获取上下文和配置
-  const { apiConfig, sessionId, accountTier } = getApiContext();
+  const { apiConfig, sessionId, accountTier, videoModel } = getApiContext();
 
   // 行级注释：业务层 - 验证必要配置
   if (!apiConfig.bearerToken?.trim()) {
@@ -1102,10 +1104,10 @@ export async function generateVideoFromImages(
 
   // 行级注释：业务层 - 推断视频宽高比
   const aspectRatio = inferVideoAspectRatio(startImage, endImage);
-  
+
   // 行级注释：业务层 - 图生视频不使用前置提示词（风格已由参考图确定）
   const promptText = (prompt ?? '').trim() || 'Seamless transition between scenes';
-  
+
   // 行级注释：业务层 - 生成场景 ID
   const sceneId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -1132,6 +1134,7 @@ export async function generateVideoFromImages(
     sessionId,
     aspectRatio,
     accountTier,
+    videoModel,
     startMediaId,
     resolvedEndMediaId,
     undefined, // seed
@@ -1239,3 +1242,68 @@ export async function generateVideoUpsample(
   return result;
 }
 
+
+// 行级注释：视频镜头控制重拍 - 直接调用 Google API
+export async function generateVideoReshoot(
+  originalMediaId: string,
+  reshootMotionType: ReshootMotionType,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  seed?: number
+): Promise<{
+  videoUrl: string;
+  thumbnail: string;
+  duration: number;
+  mediaGenerationId?: string;
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier } = getApiContext();
+
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
+    throw new Error('缺少 Bearer Token');
+  }
+  if (!originalMediaId?.trim()) {
+    throw new Error('缺少原始视频的 mediaId');
+  }
+
+  console.log('🎬 直接调用 Google API 镜头控制重拍（绕过 Vercel）:', originalMediaId, reshootMotionType);
+
+  // 行级注释：调用层 - 调用纯 API 函数
+  const { generateVideoReshootDirectly } = await import('./direct-google-api');
+
+  const generationTask = await generateVideoReshootDirectly(
+    originalMediaId,
+    reshootMotionType,
+    apiConfig.bearerToken,
+    sessionId,
+    apiConfig.projectId,
+    aspectRatio,
+    accountTier,
+    seed
+  );
+
+  console.log('✅ 镜头控制重拍任务已提交:', generationTask);
+
+  const videoResult = await pollFlowVideoOperation(
+    generationTask.operationName,
+    apiConfig.bearerToken,
+    generationTask.sceneId,
+    apiConfig.proxy
+  );
+
+  console.log('🎞️ 镜头控制重拍生成完成:', videoResult);
+
+  return {
+    videoUrl: videoResult.videoUrl,
+    thumbnail: videoResult.thumbnailUrl,
+    duration: videoResult.duration,
+    mediaGenerationId: videoResult.mediaGenerationId,
+    operationName: generationTask.operationName,
+    sceneId: generationTask.sceneId,
+    status: 'COMPLETED',
+  };
+}

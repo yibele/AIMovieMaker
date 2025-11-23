@@ -112,7 +112,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
     });
 
     // 行级注释：生成时同步 promptText 和 generationCount 到 store，并设置状态为 queued
-    updateElement(id, { 
+    updateElement(id, {
       promptText: promptInput.trim(),
       generationCount: generationCount,
       status: 'queued' // 行级注释：设置为 queued 状态，触发生成流程
@@ -128,13 +128,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const handleRegenerate = useCallback(() => {
     const newVideoId = `video-${Date.now()}`;
     const size = videoData.size || { width: 480, height: 270 };
-    
+
     // 行级注释：新节点位置在原节点右侧
     const newPosition = {
       x: videoData.position.x + size.width + 50,
       y: videoData.position.y,
     };
-    
+
     // 行级注释：创建新视频节点，复制原节点的配置
     const newVideo: VideoElement = {
       id: newVideoId,
@@ -152,13 +152,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
       readyForGeneration: true,
       generatedFrom: videoData.generatedFrom, // 复制生成来源信息
     };
-    
+
     addElement(newVideo);
-    
+
     // 行级注释：复制连线 - 查找原节点的输入连线
     const currentEdges = getEdges();
     const incomingEdges = currentEdges.filter((edge: any) => edge.target === id);
-    
+
     // 行级注释：为新节点创建相同的连线
     if (incomingEdges.length > 0) {
       setEdges((eds: any[]) => [
@@ -170,7 +170,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         })),
       ]);
     }
-    
+
     // 行级注释：触发新节点的生成
     setTimeout(() => {
       triggerVideoGeneration?.(newVideoId);
@@ -548,7 +548,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       alert('视频正在生成中，无法删除');
       return;
     }
-    
+
     const deleteElement = useCanvasStore.getState().deleteElement;
     deleteElement(id);
   }, [id, videoData.status]);
@@ -557,7 +557,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const isGenerating = videoData.status === 'queued' || videoData.status === 'generating';
   const isReady = videoData.status === 'ready';
   const hasSource = Boolean(videoData.src);
-  
+
   // 动画控制透明度
   const loadingOpacity = isGenerating ? 1 : 0;
   const contentOpacity = isReady && hasSource ? 1 : 0;
@@ -669,7 +669,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
           className={`absolute inset-0 rounded-xl overflow-hidden bg-black`}
         >
           {/* 1. 待配置状态 (Pending) */}
-          <div 
+          <div
             className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10 transition-opacity duration-500"
             style={{ opacity: pendingOpacity, pointerEvents: pendingOpacity > 0.5 ? 'auto' : 'none' }}
           >
@@ -677,9 +677,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
           </div>
 
           {/* 2. 加载状态 (Loading) */}
-          <div 
+          <div
             className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 transition-opacity duration-700 ease-in-out"
-             style={{ opacity: loadingOpacity, pointerEvents: loadingOpacity > 0.5 ? 'auto' : 'none' }}
+            style={{ opacity: loadingOpacity, pointerEvents: loadingOpacity > 0.5 ? 'auto' : 'none' }}
           >
             <div className="loading-glow w-[85%] h-[85%] rounded-[24px]" data-variant="compact" />
           </div>
@@ -687,13 +687,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
           {/* 3. 已完成状态 (Content) - 视频/封面 */}
           <div
             className="w-full h-full absolute inset-0 z-10 transition-all duration-700 ease-out"
-            style={{ 
-              opacity: contentOpacity, 
+            style={{
+              opacity: contentOpacity,
               transform: isReady ? 'scale(1)' : 'scale(1.05)',
               pointerEvents: contentOpacity > 0.5 ? 'auto' : 'none'
             }}
           >
-             <div className="relative w-full h-full cursor-pointer" onClick={handleVideoClick}>
+            <div className="relative w-full h-full cursor-pointer" onClick={handleVideoClick}>
               {/* 缩略图 */}
               {!isPlaying && videoData.thumbnail && (
                 <img
@@ -703,23 +703,23 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 animate-in fade-in duration-500"
                 />
               )}
-              
+
               {/* Video 元素 */}
               {videoData.src && (
-              <video
-                ref={videoRef}
-                src={videoData.src}
-                preload="metadata"
-                className={`w-full h-full object-cover transition-opacity duration-300 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
-                loop
-                playsInline
-                onEnded={() => setIsPlaying(false)}
-                onError={(e) => {
-                  console.error('❌ 视频加载失败:', e);
-                  console.error('视频 URL:', videoData.src);
-                  setVideoError(true);
-                }}
-              />
+                <video
+                  ref={videoRef}
+                  src={videoData.src}
+                  preload="metadata"
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
+                  loop
+                  playsInline
+                  onEnded={() => setIsPlaying(false)}
+                  onError={(e) => {
+                    console.error('❌ 视频加载失败:', e);
+                    console.error('视频 URL:', videoData.src);
+                    setVideoError(true);
+                  }}
+                />
               )}
 
               {/* 播放按钮遮罩 */}
@@ -742,7 +742,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   </div>
                 </div>
               )}
-             </div>
+            </div>
           </div>
 
           {/* 下载进度提示 */}
@@ -773,15 +773,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
             </div>
           )}
 
-          {/* 输出连接点（右侧） */}
-          <Handle
-            type="source"
-            position={Position.Right}
-            className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
-            style={{ right: '-6px', top: '50%' }}
-            isConnectable={true}
-          />
         </div>
+
+        {/* 输出连接点（右侧） - 移到 overflow-hidden 容器外 */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+          style={{ right: '-6px', top: '50%', zIndex: 30 }}
+          isConnectable={true}
+        />
       </div>
 
       {/* 行级注释：视频生成输入面板 - 只在 pending 或 error 状态显示 */}
@@ -819,18 +820,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 disabled={!promptInput.trim() || isGenerating}
-                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded transition-all duration-200 transform active:scale-95 ${
-                  promptInput.trim() && !isGenerating
-                    ? isCopied
-                      ? 'text-gray-400 bg-gray-600 border-gray-600 cursor-pointer'
-                      : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm cursor-pointer'
-                    : 'text-gray-500 bg-gray-200 border-gray-300 cursor-not-allowed'
-                }`}
+                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded transition-all duration-200 transform active:scale-95 ${promptInput.trim() && !isGenerating
+                  ? isCopied
+                    ? 'text-gray-400 bg-gray-600 border-gray-600 cursor-pointer'
+                    : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm cursor-pointer'
+                  : 'text-gray-500 bg-gray-200 border-gray-300 cursor-not-allowed'
+                  }`}
                 title={isGenerating ? "生成中..." : !promptInput.trim() ? "输入提示词后可复制" : isCopied ? "已复制!" : "复制提示词"}
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
-              
+
               {/* 行级注释：白色背景容器 - 包含输入框和数量选择 */}
               <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow hover:shadow-md">
                 {/* 行级注释：输入框 */}
@@ -846,13 +846,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   }}
                   placeholder="输入视频描述，按 Enter 生成..."
                   disabled={isGenerating}
-                  className={`w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 transition-colors ${
-                    isGenerating ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 transition-colors ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 />
-                
+
                 {/* 行级注释：数量选择 - 放在输入框下方，只更新本地状态，不频繁触发全局更新 */}
                 <div className={`flex items-center gap-2 mt-2 pt-1 border-t border-gray-100 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
                   <span className="text-[9px] text-gray-400 font-medium select-none">生成数量</span>
@@ -936,18 +935,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 onClick={handleCopyPrompt}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
-                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all duration-200 transform active:scale-95 ${
-                  isCopied
-                    ? 'text-gray-400 bg-gray-600 border-gray-600'
-                    : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm'
-                }`}
+                className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all duration-200 transform active:scale-95 ${isCopied
+                  ? 'text-gray-400 bg-gray-600 border-gray-600'
+                  : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm'
+                  }`}
                 title={isCopied ? "已复制!" : "复制提示词"}
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
               <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                 <p
-                  className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
+                  className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
                   title={promptDisplayText}
                 >
                   {promptDisplayText}

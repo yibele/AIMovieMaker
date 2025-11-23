@@ -8,6 +8,7 @@ import { useCanvasStore } from '@/lib/store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
+import { VisionAnalysisModal } from '../VisionAnalysisModal';
 import { toast } from 'sonner';
 
 // 行级注释：图片节点组件
@@ -329,7 +330,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       alert('图片正在生成/处理中，无法删除');
       return;
     }
-    
+
     deleteElement(id);
   }, [deleteElement, id, isProcessing]);
 
@@ -390,26 +391,64 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 视觉识别
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isVisionModalOpen, setIsVisionModalOpen] = useState(false);
 
-  const handleVisionAnalysis = useCallback(async () => {
+  const openVisionModal = useCallback(() => {
     if (!imageData.src) {
       toast.error('图片内容为空，无法识别');
       return;
     }
-
-    const prompt = window.prompt('请输入对这张图片的分析指令：', '描述这张图片');
-    if (!prompt) return;
-
     const apiConfig = useCanvasStore.getState().apiConfig;
     if (!apiConfig.dashScopeApiKey) {
       toast.error('请先在设置中配置 DashScope API Key');
       return;
     }
+    setIsVisionModalOpen(true);
+  }, [imageData.src]);
+
+  const executeVisionAnalysis = useCallback(async (prompt: string) => {
+    const apiConfig = useCanvasStore.getState().apiConfig;
 
     setIsAnalyzing(true);
     const toastId = toast.loading('正在分析图片...');
 
     try {
+      let imageUrlForApi = '';
+
+      // 1. 优先使用 base64 字段 (避免重复下载)
+      if (imageData.base64) {
+        if (imageData.base64.startsWith('data:')) {
+          imageUrlForApi = imageData.base64;
+        } else {
+          // 默认假设为 jpeg，或者根据 src 后缀判断
+          imageUrlForApi = `data:image/jpeg;base64,${imageData.base64}`;
+        }
+      }
+      // 2. 如果 src 已经是 Data URL
+      else if (imageData.src && imageData.src.startsWith('data:')) {
+        imageUrlForApi = imageData.src;
+      }
+      // 3. 如果是 URL，尝试 fetch 并转换
+      else if (imageData.src) {
+        try {
+          const response = await fetch(imageData.src);
+          const blob = await response.blob();
+          imageUrlForApi = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.error('Fetch image failed:', error);
+          throw new Error('无法加载图片数据，请确保图片可访问');
+        }
+      }
+
+      if (!imageUrlForApi) {
+        throw new Error('无法获取有效的图片数据');
+      }
+
       const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -417,11 +456,11 @@ function ImageNode({ data, selected, id }: NodeProps) {
           'Authorization': `Bearer ${apiConfig.dashScopeApiKey}`
         },
         body: JSON.stringify({
-          model: 'qwen-vl-plus',
+          model: 'qwen3-vl-flash',
           messages: [{
             role: 'user',
             content: [
-              { type: 'image_url', image_url: { url: imageData.src } },
+              { type: 'image_url', image_url: { url: imageUrlForApi } },
               { type: 'text', text: prompt }
             ]
           }]
@@ -450,17 +489,23 @@ function ImageNode({ data, selected, id }: NodeProps) {
       addElement(newTextNode);
 
       // 连接 ImageNode -> TextNode
-      const edgeId = `edge-${id}-${textId}-vision`;
-      reactFlowInstance.addEdges({
-        id: edgeId,
-        source: id,
-        target: textId,
-        type: 'default',
-        style: { stroke: '#10b981', strokeWidth: 2, strokeDasharray: '5,5' },
-        animated: true
-      });
+      // 使用 setTimeout 确保节点添加后再连线
+      setTimeout(() => {
+        const edgeId = `edge-${id}-${textId}-vision`;
+        reactFlowInstance.addEdges({
+          id: edgeId,
+          source: id,
+          sourceHandle: 'right', // 明确指定 source handle
+          target: textId,
+          type: 'default',
+          style: { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' }, // 紫色线条
+          animated: true,
+          label: '视觉分析'
+        });
+      }, 200);
 
       toast.success('分析完成', { id: toastId });
+      setIsVisionModalOpen(false); // 成功后关闭 Modal
 
     } catch (error) {
       console.error('Vision analysis failed:', error);
@@ -468,7 +513,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [imageData.src, imageData.position, imageData.size, id, addElement, reactFlowInstance]);
+  }, [imageData.src, imageData.base64, imageData.position, imageData.size, id, addElement, reactFlowInstance]);
 
   // 行级注释：计算图片和Loading的透明度，用于 Cross-Fade
   // Loading 只有在处理中时完全不透明，处理完（有图）后透明度为 0
@@ -493,7 +538,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
       >
         <ToolbarButton icon={<RefreshCw className="w-3 h-3" />} label="再次生成" onClick={handleRegenerate} />
         <ToolbarButton icon={<Edit3 className="w-3 h-3" />} label="图片编辑" onClick={handleAnnotate} />
-        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} label="视觉识别" onClick={handleVisionAnalysis} disabled={isAnalyzing} />
+        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing} />
         <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />
@@ -519,9 +564,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
         )}
 
         <div className="absolute inset-0 rounded-xl overflow-hidden bg-gray-50">
-          
+
           {/* 1. Loading Layer - 绝对定位，通过 opacity 控制显示 */}
-          <div 
+          <div
             className="absolute inset-0 z-20 transition-opacity duration-700 ease-in-out"
             style={{ opacity: loadingOpacity, pointerEvents: loadingOpacity > 0.5 ? 'auto' : 'none' }}
           >
@@ -531,25 +576,25 @@ function ImageNode({ data, selected, id }: NodeProps) {
           </div>
 
           {/* 2. Image Layer - 绝对定位，通过 opacity 控制显示 */}
-          <div 
+          <div
             className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
-            style={{ 
-              opacity: imageOpacity, 
+            style={{
+              opacity: imageOpacity,
               transform: showBaseImage ? 'scale(1)' : 'scale(1.05)', // 图片出现时轻微缩小归位
-              pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none' 
+              pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none'
             }}
           >
             {imageData.src && (
-             <img
-              src={imageData.src} 
-              alt={imageData.alt || '生成的图片'}
-              loading="lazy"
-              className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
-              draggable={false}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
+              <img
+                src={imageData.src}
+                alt={imageData.alt || '生成的图片'}
+                loading="lazy"
+                className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
+                draggable={false}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             )}
           </div>
 
@@ -616,7 +661,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
                 </button>
                 <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                   <p
-                    className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words"
+                    className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
                     title={promptDisplayText}
                   >
                     {promptDisplayText}
@@ -627,6 +672,13 @@ function ImageNode({ data, selected, id }: NodeProps) {
           )}
         </div>
       )}
+
+      <VisionAnalysisModal
+        isOpen={isVisionModalOpen}
+        onClose={() => setIsVisionModalOpen(false)}
+        onAnalyze={executeVisionAnalysis}
+        isAnalyzing={isAnalyzing}
+      />
     </>
   );
 }

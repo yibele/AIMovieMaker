@@ -60,7 +60,7 @@ export interface VideoElement extends CanvasElement {
   promptText?: string; // 视频生成使用的提示词 // 行级注释说明字段用途
   readyForGeneration?: boolean; // 当前是否满足生成条件（提示词 + 首尾帧至少一个） // 行级注释说明字段用途
   generatedFrom?: {
-    type: 'text' | 'image' | 'image-to-image' | 'upsample'; // 行级注释：upsample 表示超清放大
+    type: 'text' | 'image' | 'image-to-image' | 'upsample' | 'reshoot'; // 行级注释：reshoot 表示镜头控制重拍
     sourceIds: string[]; // 源节点 ID（文本/图片/视频）
     prompt?: string;
   };
@@ -98,3 +98,22 @@ export interface ApiMockConfig {
   };
 }
 
+
+// 镜头控制类型
+export type ReshootMotionType =
+  // Camera Control
+  | 'RESHOOT_MOTION_TYPE_UP'
+  | 'RESHOOT_MOTION_TYPE_DOWN'
+  | 'RESHOOT_MOTION_TYPE_LEFT_TO_RIGHT'
+  | 'RESHOOT_MOTION_TYPE_RIGHT_TO_LEFT'
+  | 'RESHOOT_MOTION_TYPE_FORWARD'
+  | 'RESHOOT_MOTION_TYPE_BACKWARD'
+  | 'RESHOOT_MOTION_TYPE_DOLLY_IN_ZOOM_OUT'
+  | 'RESHOOT_MOTION_TYPE_DOLLY_OUT_ZOOM_IN_LARGE'
+  // Camera Position
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_UP'
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_DOWN'
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_LEFT_LARGE'
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_RIGHT_LARGE'
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_DOLLY_IN_ZOOM_OUT'
+  | 'RESHOOT_MOTION_TYPE_STATIONARY_DOLLY_OUT_ZOOM_IN_LARGE';

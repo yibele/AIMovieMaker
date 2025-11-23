@@ -125,6 +125,22 @@ export function useConnectionMenu() {
     []
   );
 
+  // 行级注释：显示镜头控制子菜单
+  const showCameraControlSubmenu = useCallback(() => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      activeSubmenu: 'cameraControl',
+    }));
+  }, []);
+
+  // 行级注释：显示镜头位置子菜单
+  const showCameraPositionSubmenu = useCallback(() => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      activeSubmenu: 'cameraPosition',
+    }));
+  }, []);
+
   return {
     connectionMenu,
     promptMenuInputRef,
@@ -137,6 +153,8 @@ export function useConnectionMenu() {
     backToMain,
     backToImageSubmenu,
     prepareConnectionMenu,
+    showCameraControlSubmenu,
+    showCameraPositionSubmenu,
   };
 }
 

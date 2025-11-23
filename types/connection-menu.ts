@@ -1,4 +1,4 @@
-import { CanvasElement } from '@/lib/types';
+import { CanvasElement, ReshootMotionType } from '@/lib/types';
 
 // 行级注释：图片连线阶段临时保存用户选择的比例和提示词
 export type ImagePromptConfig = {
@@ -12,7 +12,7 @@ export type ConnectionMenuState = {
   position: { x: number; y: number };
   sourceNodeId: string | null;
   sourceNodeType: CanvasElement['type'] | null;
-  activeSubmenu: 'image' | 'video' | 'imagePrompt' | null;
+  activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | null;
   pendingImageConfig: ImagePromptConfig | null;
 };
 
@@ -27,5 +27,9 @@ export type ConnectionMenuCallbacks = {
   onBackToMain: () => void;
   onBackToImageSubmenu: () => void;
   onClose: () => void;
+  // 新增：镜头控制回调
+  onShowCameraControlSubmenu: () => void;
+  onShowCameraPositionSubmenu: () => void;
+  onGenerateReshoot: (motionType: ReshootMotionType) => void;
 };
 

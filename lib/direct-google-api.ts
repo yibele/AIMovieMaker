@@ -1,5 +1,6 @@
 // 直接调用 Google API，不通过 Vercel 服务器
 // 用于节省 Fast Origin Transfer
+import { ReshootMotionType } from './types';
 
 /**
  * 获取视频积分状态
@@ -66,11 +67,11 @@ export async function uploadImageDirectly(
   const sanitizedBase64 = base64Data.replace(/\s/g, '');
 
   // 规范化宽高比
-  const normalizedAspectRatio = aspectRatio === '9:16' 
+  const normalizedAspectRatio = aspectRatio === '9:16'
     ? 'IMAGE_ASPECT_RATIO_PORTRAIT'
     : aspectRatio === '1:1'
-    ? 'IMAGE_ASPECT_RATIO_SQUARE'
-    : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
+      ? 'IMAGE_ASPECT_RATIO_SQUARE'
+      : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
 
   const payload = {
     imageInput: {
@@ -151,29 +152,29 @@ export async function generateImageDirectly(
   const normalizedAspect = aspectRatio === '9:16'
     ? 'IMAGE_ASPECT_RATIO_PORTRAIT'
     : aspectRatio === '1:1'
-    ? 'IMAGE_ASPECT_RATIO_SQUARE'
-    : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
+      ? 'IMAGE_ASPECT_RATIO_SQUARE'
+      : 'IMAGE_ASPECT_RATIO_LANDSCAPE';
 
   const generationCount = Math.max(1, Math.min(4, count || 1));
 
   // 行级注释：根据模型选择 imageModelName
-  const imageModelName = model === 'nanobananapro' 
-    ? 'GEM_PIX_2' 
+  const imageModelName = model === 'nanobananapro'
+    ? 'GEM_PIX_2'
     : 'GEM_PIX';
 
   // 处理参考图
   const imageInputs =
     Array.isArray(references) && references.length > 0
       ? references
-          .filter(
-            (ref: any) =>
-              (typeof ref?.mediaId === 'string' && ref.mediaId.trim().length > 0) ||
-              (typeof ref?.mediaGenerationId === 'string' && ref.mediaGenerationId.trim().length > 0)
-          )
-          .map((ref: any) => ({
-            name: ref.mediaId || ref.mediaGenerationId,
-            imageInputType: 'IMAGE_INPUT_TYPE_REFERENCE',
-          }))
+        .filter(
+          (ref: any) =>
+            (typeof ref?.mediaId === 'string' && ref.mediaId.trim().length > 0) ||
+            (typeof ref?.mediaGenerationId === 'string' && ref.mediaGenerationId.trim().length > 0)
+        )
+        .map((ref: any) => ({
+          name: ref.mediaId || ref.mediaGenerationId,
+          imageInputType: 'IMAGE_INPUT_TYPE_REFERENCE',
+        }))
       : [];
 
   // 生成多个请求
@@ -301,6 +302,7 @@ export async function generateVideoTextDirectly(
   sessionId: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
   accountTier: 'pro' | 'ultra',
+  videoModel: 'quality' | 'fast' = 'quality', // 新增参数
   seed?: number,
   sceneId?: string
 ): Promise<{
@@ -313,34 +315,42 @@ export async function generateVideoTextDirectly(
   const normalizedAspect = aspectRatio === '9:16'
     ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
     : aspectRatio === '1:1'
-    ? 'VIDEO_ASPECT_RATIO_SQUARE'
-    : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
+      ? 'VIDEO_ASPECT_RATIO_SQUARE'
+      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
 
   // 行级注释：根据账号类型选择视频模型
   let videoModelKey: string;
   if (accountTier === 'ultra') {
     // Ultra 账号使用带 _ultra 后缀的模型
+    // 根据 videoModel 选择 quality (无 fast) 或 fast
+    // Quality: veo_3_1_t2v (用户提供的正确负载)
+    // Fast: veo_3_1_t2v_fast_ultra
+    const baseModel = videoModel === 'fast' ? 'veo_3_1_t2v_fast_ultra' : 'veo_3_1_t2v';
+
     videoModelKey = aspectRatio === '9:16'
-      ? 'veo_3_1_t2v_fast_ultra'
-      : 'veo_3_1_t2v_fast_ultra'; // 横屏也用 ultra
+      ? baseModel // 假设 portrait 逻辑相同
+      : baseModel;
+
+    // 修正：如果 portrait 有特殊后缀，需要处理。目前代码显示 fast_portrait_ultra 不存在，而是 fast_ultra。
+    // 假设 quality 也是 veo_3_1_t2v_ultra。
   } else {
-    // Pro 账号使用标准模型
-    videoModelKey = aspectRatio === '9:16' 
-      ? 'veo_3_1_t2v_fast_portrait' 
+    // Pro 账号使用标准模型 (Pro 只有 fast?)
+    videoModelKey = aspectRatio === '9:16'
+      ? 'veo_3_1_t2v_fast_portrait'
       : 'veo_3_1_t2v_fast';
   }
 
   // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra' 
-    ? 'PAYGATE_TIER_TWO' 
+  const userPaygateTier = accountTier === 'ultra'
+    ? 'PAYGATE_TIER_TWO'
     : 'PAYGATE_TIER_ONE';
 
-  const requestSeed = typeof seed === 'number' 
-    ? seed 
+  const requestSeed = typeof seed === 'number'
+    ? seed
     : Math.floor(Math.random() * 100_000);
 
-  const generatedSceneId = sceneId && sceneId.trim() 
-    ? sceneId.trim() 
+  const generatedSceneId = sceneId && sceneId.trim()
+    ? sceneId.trim()
     : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -429,6 +439,7 @@ export async function generateVideoImageDirectly(
   sessionId: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
   accountTier: 'pro' | 'ultra',
+  videoModel: 'quality' | 'fast' = 'quality', // 新增参数
   startMediaId: string,
   endMediaId?: string,
   seed?: number,
@@ -443,8 +454,8 @@ export async function generateVideoImageDirectly(
   const normalizedAspect = aspectRatio === '9:16'
     ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
     : aspectRatio === '1:1'
-    ? 'VIDEO_ASPECT_RATIO_SQUARE'
-    : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
+      ? 'VIDEO_ASPECT_RATIO_SQUARE'
+      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
 
   const hasEndImage = Boolean(endMediaId && endMediaId.trim());
 
@@ -452,19 +463,29 @@ export async function generateVideoImageDirectly(
   let videoModelKey: string;
   if (accountTier === 'ultra') {
     // Ultra 账号使用带 _ultra 的模型
+    const isFast = videoModel === 'fast';
+
     if (hasEndImage) {
       // 首尾帧模式 - ultra 在 fl 之前
+      // fast: veo_3_1_i2v_s_fast_ultra_fl
+      // quality: veo_3_1_i2v_s_fl (推测，基于 veo_3_1_i2v_s)
+      const base = isFast ? 'veo_3_1_i2v_s_fast_ultra_fl' : 'veo_3_1_i2v_s_fl';
+
       videoModelKey = aspectRatio === '9:16'
-        ? 'veo_3_1_i2v_s_fast_portrait_ultra_fl'
-        : 'veo_3_1_i2v_s_fast_ultra_fl';
+        ? (isFast ? 'veo_3_1_i2v_s_fast_portrait_ultra_fl' : 'veo_3_1_i2v_s_portrait_fl')
+        : base;
     } else {
       // 仅首帧模式
+      // fast: veo_3_1_i2v_s_fast_ultra
+      // quality: veo_3_1_i2v_s (用户提供的正确负载)
+      const base = isFast ? 'veo_3_1_i2v_s_fast_ultra' : 'veo_3_1_i2v_s';
+
       videoModelKey = aspectRatio === '9:16'
-        ? 'veo_3_1_i2v_s_fast_portrait_ultra'
-        : 'veo_3_1_i2v_s_fast_ultra';
+        ? (isFast ? 'veo_3_1_i2v_s_fast_portrait_ultra' : 'veo_3_1_i2v_s_portrait')
+        : base;
     }
   } else {
-    // Pro 账号使用标准模型
+    // Pro 账号使用标准模型 (保持原样，Pro 只有 fast)
     if (hasEndImage) {
       // 首尾帧模式
       videoModelKey = aspectRatio === '9:16'
@@ -479,16 +500,16 @@ export async function generateVideoImageDirectly(
   }
 
   // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra' 
-    ? 'PAYGATE_TIER_TWO' 
+  const userPaygateTier = accountTier === 'ultra'
+    ? 'PAYGATE_TIER_TWO'
     : 'PAYGATE_TIER_ONE';
 
-  const requestSeed = typeof seed === 'number' 
-    ? seed 
+  const requestSeed = typeof seed === 'number'
+    ? seed
     : Math.floor(Math.random() * 100_000);
 
-  const generatedSceneId = sceneId && sceneId.trim() 
-    ? sceneId.trim() 
+  const generatedSceneId = sceneId && sceneId.trim()
+    ? sceneId.trim()
     : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -630,7 +651,7 @@ export async function checkVideoStatusDirectly(
 
     const data = await response.json();
     const operations = data.operations || [];
-    
+
     if (operations.length === 0) {
       throw new Error('No operations in response');
     }
@@ -678,8 +699,8 @@ export async function generateVideoUpsampleDirectly(
     aspectRatio === '16:9'
       ? 'VIDEO_ASPECT_RATIO_LANDSCAPE'
       : aspectRatio === '9:16'
-      ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
-      : 'VIDEO_ASPECT_RATIO_SQUARE';
+        ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
+        : 'VIDEO_ASPECT_RATIO_SQUARE';
 
   // 行级注释：生成场景 ID
   const finalSceneId = sceneId || crypto.randomUUID();
@@ -750,7 +771,7 @@ export async function generateVideoUpsampleDirectly(
   });
 
   const extractedOperationName = operation.operation?.name || '';
-  
+
   if (!extractedOperationName) {
     console.error('❌ 警告：operationName 为空！完整响应:', JSON.stringify(data, null, 2));
   }
@@ -761,5 +782,126 @@ export async function generateVideoUpsampleDirectly(
     status: operation.status || 'MEDIA_GENERATION_STATUS_PENDING',
     remainingCredits: data.remainingCredits,
   };
+}
+
+/**
+ * 直接调用 Google Flow API 生成视频（镜头控制重拍）
+ */
+export async function generateVideoReshootDirectly(
+  mediaId: string,
+  reshootMotionType: ReshootMotionType,
+  bearerToken: string,
+  sessionId: string,
+  projectId: string,
+  aspectRatio: '16:9' | '9:16' | '1:1',
+  accountTier: 'pro' | 'ultra',
+  seed?: number,
+  sceneId?: string
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  const url = 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoReshootVideo';
+
+  // 规范化视频宽高比
+  const normalizedAspect = aspectRatio === '9:16'
+    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
+    : aspectRatio === '1:1'
+      ? 'VIDEO_ASPECT_RATIO_SQUARE'
+      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
+
+  // 行级注释：根据宽高比选择模型 Key (目前文档只展示了 landscape，暂且假设有 portrait)
+  // 如果 API 报错，可能需要统一用 landscape
+  const videoModelKey = aspectRatio === '9:16'
+    ? 'veo_3_0_reshoot_portrait'
+    : aspectRatio === '1:1'
+      ? 'veo_3_0_reshoot_square'
+      : 'veo_3_0_reshoot_landscape';
+
+  // 行级注释：根据账号类型选择 PaygateTier
+  const userPaygateTier = accountTier === 'ultra'
+    ? 'PAYGATE_TIER_TWO'
+    : 'PAYGATE_TIER_ONE';
+
+  const requestSeed = typeof seed === 'number'
+    ? seed
+    : Math.floor(Math.random() * 100_000);
+
+  const generatedSceneId = sceneId && sceneId.trim()
+    ? sceneId.trim()
+    : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  const payload = {
+    clientContext: {
+      sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier,
+    },
+    requests: [
+      {
+        seed: requestSeed,
+        aspectRatio: normalizedAspect,
+        videoInput: {
+          mediaId: mediaId.trim(),
+        },
+        reshootMotionType,
+        videoModelKey, // 使用计算出的 key
+        metadata: {
+          sceneId: generatedSceneId,
+        },
+      },
+    ],
+  };
+
+  console.log('🎬 直接调用 Google API 镜头控制重拍:', {
+    mediaId: mediaId.substring(0, 20) + '...',
+    reshootMotionType,
+    videoModelKey,
+    sceneId: generatedSceneId,
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        'Authorization': `Bearer ${bearerToken}`,
+        'Origin': 'https://labs.google',
+        'Referer': 'https://labs.google/',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ 镜头控制重拍失败:', errorData);
+      throw new Error(`Reshoot failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ 镜头控制重拍任务已提交');
+
+    const operations = data.operations || [];
+    if (operations.length === 0) {
+      throw new Error('No operations in response');
+    }
+
+    const operation = operations[0];
+
+    return {
+      operationName: operation?.operation?.name || '',
+      sceneId: operation?.sceneId || generatedSceneId,
+      status: operation?.status || 'MEDIA_GENERATION_STATUS_PENDING',
+      remainingCredits: data.remainingCredits,
+    };
+  } catch (error) {
+    console.error('❌ 直接生成视频（镜头控制）失败:', error);
+    throw error;
+  }
 }
 

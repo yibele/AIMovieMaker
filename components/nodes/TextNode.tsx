@@ -10,13 +10,13 @@ import { useCanvasStore } from '@/lib/store';
 function TextNode({ data, id }: NodeProps) {
   // 将 data 转换为 TextElement 类型
   const textData = data as unknown as TextElement;
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(textData.text);
   const [fontWeight, setFontWeight] = useState(textData.fontWeight || 'normal');
   const [fontStyle, setFontStyle] = useState(textData.fontStyle || 'normal');
   const [textDecoration, setTextDecoration] = useState(textData.textDecoration || 'none');
-  
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -101,15 +101,15 @@ function TextNode({ data, id }: NodeProps) {
       }, 0);
       return;
     }
-    
+
     // 否则退出编辑模式
     setIsEditing(false);
-    
+
     // 根据当前文字内容自动调整节点尺寸
     const newSize = calculateSizeForText(text); // 行级注释：保存时重新计算尺寸确保文本被完整包裹
-    
+
     // 更新元素，包括新的尺寸
-    updateElement(id, { 
+    updateElement(id, {
       text,
       fontWeight,
       fontStyle,
@@ -157,109 +157,114 @@ function TextNode({ data, id }: NodeProps) {
 
       onDoubleClick={handleDoubleClick}
     >
-        {/* 编辑工具栏 - 样式与视频节点保持一致 */}
-        {isEditing && (
-          <div 
-            ref={toolbarRef}
-            className="absolute -top-14 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl border border-gray-200 shadow-2xl px-3 py-2 z-50"
+      {/* 编辑工具栏 - 样式与视频节点保持一致 */}
+      {isEditing && (
+        <div
+          ref={toolbarRef}
+          className="absolute -top-14 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl border border-gray-200 shadow-2xl px-3 py-2 z-50"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          {/* 粗体 */}
+          <button
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
+            onClick={toggleBold}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${fontWeight === 'bold' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            title="粗体"
+            tabIndex={-1}
           >
-            {/* 粗体 */}
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={toggleBold}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                fontWeight === 'bold' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              title="粗体"
-              tabIndex={-1}
-            >
-              <Bold className="w-4 h-4" />
-            </button>
-            
-            {/* 斜体 */}
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={toggleItalic}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                fontStyle === 'italic' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              title="斜体"
-              tabIndex={-1}
-            >
-              <Italic className="w-4 h-4" />
-            </button>
-            
-            {/* 下划线 */}
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={toggleUnderline}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                textDecoration === 'underline' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              title="下划线"
-              tabIndex={-1}
-            >
-              <Underline className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+            <Bold className="w-4 h-4" />
+          </button>
 
-        {isEditing ? (
-          <textarea
-            ref={inputRef}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              // 自动调整高度
-              if (inputRef.current) {
-                inputRef.current.style.height = 'auto';
-                inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
-              }
+          {/* 斜体 */}
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
             }}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-2 rounded-lg"
-            style={{
-              fontSize: `${BASE_FONT_SIZE}px`,
-              color: textData.color || '#000',
-              fontWeight,
-              fontStyle,
-              textDecoration,
-              height: 'auto',
-              lineHeight: '1.4',
-            }}
-            rows={1}
-          />
-        ) : (
-          <div
-            className="whitespace-pre-wrap cursor-text select-text text-center w-full break-words overflow-hidden p-2 rounded-lg"
-            style={{
-              fontSize: `${BASE_FONT_SIZE}px`,
-              color: textData.color || '#000',
-              fontWeight,
-              fontStyle,
-              textDecoration,
-              lineHeight: '1.4',
-              wordBreak: 'break-word',
-            }}
+            onClick={toggleItalic}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${fontStyle === 'italic' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            title="斜体"
+            tabIndex={-1}
           >
-            {textData.text || '双击编辑文字'}
-          </div>
-        )}
-        
+            <Italic className="w-4 h-4" />
+          </button>
+
+          {/* 下划线 */}
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={toggleUnderline}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${textDecoration === 'underline' ? 'bg-blue-600 text-white shadow-[0_0_0_1px_rgba(59,130,246,0.4)]' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            title="下划线"
+            tabIndex={-1}
+          >
+            <Underline className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {isEditing ? (
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            // 自动调整高度
+            if (inputRef.current) {
+              inputRef.current.style.height = 'auto';
+              inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
+            }
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className="resize-none outline-none border-none bg-transparent text-gray-900 text-center overflow-hidden w-full p-2 rounded-lg"
+          style={{
+            fontSize: `${BASE_FONT_SIZE}px`,
+            color: textData.color || '#000',
+            fontWeight,
+            fontStyle,
+            textDecoration,
+            height: 'auto',
+            lineHeight: '1.4',
+          }}
+          rows={1}
+        />
+      ) : (
+        <div
+          className="whitespace-pre-wrap cursor-text select-text text-center w-full break-words overflow-hidden p-2 rounded-lg"
+          style={{
+            fontSize: `${BASE_FONT_SIZE}px`,
+            color: textData.color || '#000',
+            fontWeight,
+            fontStyle,
+            textDecoration,
+            lineHeight: '1.4',
+            wordBreak: 'break-word',
+          }}
+        >
+          {textData.text || '双击编辑文字'}
+        </div>
+      )}
+
+      {/* 输入连接点（左侧） */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white"
+        style={{ left: '-6px' }}
+      />
+
       {/* 输出连接点（右侧） - 用于连接到视频节点 */}
       <Handle
         type="source"

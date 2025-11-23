@@ -33,7 +33,7 @@ import Toolbar from './Toolbar';
 import SelectionToolbar from './SelectionToolbar';
 import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
-import { CanvasElement, VideoElement, ImageElement, TextElement } from '@/lib/types';
+import { CanvasElement, VideoElement, ImageElement, TextElement, ReshootMotionType } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage, imageToImage, registerUploadedImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
@@ -71,7 +71,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const isLoadingAnnotatorImage = useCanvasStore((state) => state.isLoadingAnnotatorImage);
   const setAnnotatorTarget = useCanvasStore((state) => state.setAnnotatorTarget);
   const setIsLoadingAnnotatorImage = useCanvasStore((state) => state.setIsLoadingAnnotatorImage);
-  
+
   // 行级注释：多图编辑 - 主图和参考图
   const [mainImageForEdit, setMainImageForEdit] = useState<ImageElement | null>(null);
   const [referenceImages, setReferenceImages] = useState<ImageElement[]>([]);
@@ -105,6 +105,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     backToMain,
     backToImageSubmenu,
     prepareConnectionMenu,
+    showCameraControlSubmenu,
+    showCameraPositionSubmenu,
   } = useConnectionMenu();
 
   // 行级注释：使用图片生成 Hooks
@@ -124,10 +126,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   // 行级注释：同步 elements 到 React Flow 节点状态（性能优化：只在元素数量或 ID 变化时完全重建）
   const elementsIdsRef = useRef<string>('');
   const previousElementsRef = useRef<CanvasElement[]>(elements);
-  
+
   useEffect(() => {
     const newIdsString = elements.map(el => el.id).sort().join(',');
-    
+
     // 行级注释：只有元素数量/ID 变化时才完全重建节点列表（新增/删除节点）
     if (elementsIdsRef.current !== newIdsString) {
       elementsIdsRef.current = newIdsString;
@@ -150,12 +152,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           const element = elements.find((el) => el.id === node.id);
           const prevElement = previousElementsRef.current.find((el) => el.id === node.id);
           if (!element) return node;
-          
+
           // 行级注释：检查 position 是否真的变化了，避免不必要的位置更新（修复视频生成时的跳动问题）
-          const positionChanged = !prevElement || 
-            prevElement.position.x !== element.position.x || 
+          const positionChanged = !prevElement ||
+            prevElement.position.x !== element.position.x ||
             prevElement.position.y !== element.position.y;
-          
+
           return {
             ...node,
             data: element as any,
@@ -341,18 +343,18 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           const actualEndId = startImageId && endImageId ? endImageId : undefined;
 
           result = await generateVideoFromImages(actualStartId, actualEndId, promptText);
-          
+
           if (startImageId) combinedSourceIds.add(startImageId);
           if (endImageId) combinedSourceIds.add(endImageId);
           generationType = 'image-to-image';
         } else {
           // 行级注释：纯文本生成视频
-          const aspectRatio = videoElement.size?.width && videoElement.size?.height 
-            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16/9) < 0.1 ? '16:9'
-              : Math.abs(videoElement.size.width / videoElement.size.height - 9/16) < 0.1 ? '9:16'
-              : '1:1')
+          const aspectRatio = videoElement.size?.width && videoElement.size?.height
+            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16 / 9) < 0.1 ? '16:9'
+              : Math.abs(videoElement.size.width / videoElement.size.height - 9 / 16) < 0.1 ? '9:16'
+                : '1:1')
             : '9:16'; // 行级注释：默认竖屏（与 Google 官方默认一致）
-          
+
           console.log('🎬 调用文生视频:', { promptText, aspectRatio });
           result = await generateVideoFromText(promptText || '', aspectRatio as '16:9' | '9:16' | '1:1');
           generationType = 'text-to-video';
@@ -687,7 +689,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       const filteredChanges = changes.filter((change) => {
         if (change.type === 'remove') {
           const element = elements.find((el) => el.id === change.id);
-          
+
           if (element) {
             // 行级注释：检查视频节点是否正在生成
             if (element.type === 'video') {
@@ -697,7 +699,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
                 return false; // 阻止删除
               }
             }
-            
+
             // 行级注释：检查图片节点是否正在处理
             if (element.type === 'image') {
               const imageElement = element as ImageElement;
@@ -705,18 +707,18 @@ function CanvasContent({ projectId }: { projectId?: string }) {
               const hasMediaId = Boolean(imageElement.mediaGenerationId);
               const isError = imageElement.uploadState === 'error';
               const isProcessing = !isError && (isSyncing || !hasMediaId);
-              
+
               if (isProcessing) {
                 alert('图片正在生成/处理中，无法删除');
                 return false; // 阻止删除
               }
             }
           }
-          
+
           // 行级注释：允许删除，从 store 中删除元素
           useCanvasStore.getState().deleteElement(change.id);
         }
-        
+
         return true; // 保留这个变化
       });
 
@@ -728,7 +730,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
   // 行级注释：拖动过程中的节点位置缓存（避免频繁更新 store）
   const draggedNodesRef = useRef<Map<string, { x: number; y: number }>>(new Map());
-  
+
   // 行级注释：拖动过程中只更新本地状态，不触发 store 更新（性能优化）
   const handleNodeDrag = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -753,10 +755,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         }
         return el;
       });
-      
+
       // 行级注释：直接替换整个 elements 数组（一次性更新，而非多次调用 updateElement）
       useCanvasStore.setState({ elements: updatedElements });
-      
+
       // 清空拖动缓存
       draggedNodesRef.current.clear();
     },
@@ -835,20 +837,30 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         return;
       }
 
-      if (startInfo.sourceType === 'video' && startInfo.handleId === 'prompt-text') {
+      if (startInfo.sourceType === 'video') {
         const videoNode = elements.find((el) => el.id === startInfo.sourceId) as VideoElement | undefined;
         if (!videoNode) {
           resetConnectionMenu();
           return;
         }
 
-        const flowPosition = reactFlowInstance.screenToFlowPosition({
-          x: mouseEvent.clientX,
-          y: mouseEvent.clientY,
-        });
+        if (startInfo.handleId === 'prompt-text') {
+          const flowPosition = reactFlowInstance.screenToFlowPosition({
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY,
+          });
 
-        createTextNodeForVideo(videoNode, flowPosition);
-        resetConnectionMenu();
+          createTextNodeForVideo(videoNode, flowPosition);
+          resetConnectionMenu();
+          return;
+        }
+
+        // 行级注释：视频节点拉出连线（非 prompt-text handle），显示镜头控制菜单
+        showConnectionMenu(
+          { x: mouseEvent.clientX, y: mouseEvent.clientY },
+          videoNode.id,
+          'video'
+        );
         return;
       }
 
@@ -988,17 +1000,17 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
     try {
       const apiConfig = useCanvasStore.getState().apiConfig;
-      
+
       // 行级注释：将 API 配置暴露到 window，供 ImageAnnotatorModal 使用
       if (typeof window !== 'undefined') {
         (window as any).__API_KEY__ = apiConfig.apiKey || '';
         (window as any).__PROXY__ = apiConfig.proxy || '';
         (window as any).__BEARER_TOKEN__ = apiConfig.bearerToken || '';
       }
-      
+
       // 行级注释：加载主图的 base64 数据
       let mainImageBase64Src: string;
-      
+
       // 如果主图有 base64，直接使用
       if (mainImage.base64) {
         mainImageBase64Src = mainImage.base64.startsWith('data:')
@@ -1007,11 +1019,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       } else {
         // 如果没有 base64，通过 API 获取
         const effectiveMediaId = mainImage.mediaId || mainImage.mediaGenerationId;
-        
+
         if (!effectiveMediaId) {
           throw new Error('主图缺少 mediaId，无法编辑');
         }
-        
+
         if (!apiConfig.bearerToken) {
           throw new Error('请先在设置中配置 Bearer Token');
         }
@@ -1037,12 +1049,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         if (!encodedImage) {
           throw new Error('未获取到图片数据');
         }
-        
+
         mainImageBase64Src = encodedImage.startsWith('data:')
           ? encodedImage
           : `data:image/png;base64,${encodedImage}`;
       }
-      
+
       // 行级注释：确保参考图也包含 base64（如果有的话），用于切换主图
       const refImagesWithBase64 = refImages.map(img => {
         if (img.base64) {
@@ -1076,7 +1088,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   }, [elements, setAnnotatorTarget, setIsLoadingAnnotatorImage]);
 
   const handleAnnotatorConfirm = useCallback(async (
-    result: ImageAnnotatorResult, 
+    result: ImageAnnotatorResult,
     annotatedImageDataUrl: string,
     finalMainImage?: ImageElement,
     finalReferenceImages?: ImageElement[]
@@ -1084,7 +1096,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     // 行级注释：使用用户最终确认的主图和参考图（可能被切换过）
     const currentMainImage = finalMainImage || annotatorTarget;
     const currentReferenceImages = finalReferenceImages || referenceImages;
-    
+
     if (!currentMainImage || !result.promptText?.trim()) return;
 
     const newImageId = `image-${Date.now()}`;
@@ -1163,11 +1175,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           // 主图（标注后）
           {
             mediaId: uploadResult.mediaGenerationId,
-          caption: '标注后的主图',
-          mediaCategory: 'MEDIA_CATEGORY_BOARD',
-        },
-        // 参考图
-        ...currentReferenceImages.map((ref, index) => ({
+            caption: '标注后的主图',
+            mediaCategory: 'MEDIA_CATEGORY_BOARD',
+          },
+          // 参考图
+          ...currentReferenceImages.map((ref, index) => ({
             mediaId: ref.mediaId || ref.mediaGenerationId,
             caption: ref.caption || `参考图${index + 1}`,
             mediaCategory: 'MEDIA_CATEGORY_SUBJECT',
@@ -1227,7 +1239,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
     } catch (error) {
       console.error('❌ 图片编辑失败:', error);
-      
+
       // 如果失败，将所有连线标记为错误状态
       // @ts-ignore
       setEdges((eds: any[]) =>
@@ -1364,6 +1376,113 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       console.log('✅ 从图片节点创建视频节点:', sourceNode.id);
     },
     [createVideoNodeFromImage, resetConnectionMenu]
+  );
+
+  // 处理镜头控制重拍（生成视频）
+  const handleGenerateReshoot = useCallback(
+    async (motionType: ReshootMotionType) => {
+      const sourceNodeId = connectionMenu.sourceNodeId;
+      if (!sourceNodeId) return;
+
+      const sourceNode = elements.find((el) => el.id === sourceNodeId) as VideoElement | undefined;
+      if (!sourceNode) return;
+
+      resetConnectionMenu();
+
+      // 1. 创建新的视频节点
+      const newVideoId = `video-${Date.now()}`;
+      const flowPosition = reactFlowInstance.screenToFlowPosition({
+        x: connectionMenu.position.x,
+        y: connectionMenu.position.y,
+      });
+
+      const newVideo: VideoElement = {
+        id: newVideoId,
+        type: 'video',
+        src: '',
+        thumbnail: '',
+        duration: 0,
+        status: 'generating', // 直接开始生成
+        progress: 0,
+        position: { x: flowPosition.x, y: flowPosition.y },
+        size: sourceNode.size || VIDEO_NODE_DEFAULT_SIZE,
+        generatedFrom: {
+          type: 'reshoot',
+          sourceIds: [sourceNode.id],
+        },
+      };
+
+      addElement(newVideo);
+
+      // 2. 创建连线
+      const edgeId = `edge-${sourceNode.id}-${newVideoId}-reshoot`;
+      // @ts-ignore
+      setEdges((eds: any[]) => [
+        ...eds,
+        {
+          id: edgeId,
+          source: sourceNode.id,
+          target: newVideoId,
+          type: 'default',
+          animated: true,
+          style: { stroke: '#a855f7', strokeWidth: 1 },
+          label: '镜头控制',
+        },
+      ]);
+
+      // 3. 调用 API 生成
+      try {
+        const effectiveMediaId = sourceNode.mediaGenerationId;
+
+        if (!effectiveMediaId) {
+          throw new Error('源视频缺少 mediaGenerationId');
+        }
+
+        const aspectRatio = sourceNode.size?.width && sourceNode.size?.height
+          ? (Math.abs(sourceNode.size.width / sourceNode.size.height - 16 / 9) < 0.1 ? '16:9' : '9:16')
+          : '16:9';
+
+        const { generateVideoReshoot } = await import('@/lib/api-mock');
+        const result = await generateVideoReshoot(
+          effectiveMediaId,
+          motionType,
+          aspectRatio as any
+        );
+
+        updateElement(newVideoId, {
+          status: 'ready',
+          src: result.videoUrl,
+          thumbnail: result.thumbnail,
+          duration: result.duration,
+          mediaGenerationId: result.mediaGenerationId,
+          progress: 100,
+          readyForGeneration: true,
+        } as Partial<VideoElement>);
+
+        // @ts-ignore
+        setEdges((eds: any[]) =>
+          eds.map((edge: any) =>
+            edge.id === edgeId
+              ? { ...edge, animated: false }
+              : edge
+          )
+        );
+
+        console.log('✅ 镜头控制视频生成成功');
+      } catch (error) {
+        console.error('❌ 镜头控制视频生成失败:', error);
+        updateElement(newVideoId, { status: 'error' } as Partial<VideoElement>);
+        // @ts-ignore
+        setEdges((eds: any[]) =>
+          eds.map((edge: any) =>
+            edge.id === edgeId
+              ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
+              : edge
+          )
+        );
+      }
+    },
+    [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, updateElement, reactFlowInstance, resetConnectionMenu]
   );
 
   // 处理连线连接（生成视频）
@@ -1556,6 +1675,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onBackToMain: backToMain,
           onBackToImageSubmenu: backToImageSubmenu,
           onClose: resetConnectionMenu,
+          onShowCameraControlSubmenu: showCameraControlSubmenu,
+          onShowCameraPositionSubmenu: showCameraPositionSubmenu,
+          onGenerateReshoot: handleGenerateReshoot,
         }}
         promptInputRef={promptMenuInputRef}
       />

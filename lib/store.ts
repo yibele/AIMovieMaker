@@ -26,6 +26,7 @@ interface ApiConfig {
   generationCount: number; // 每次生成的图片数量 (1-4)
   accountTier: 'pro' | 'ultra'; // 账号类型：Pro 或 Ultra
   imageModel: 'nanobanana' | 'nanobananapro'; // 图片生成模型：Banana (Preview) 或 Banana Pro
+  videoModel?: 'quality' | 'fast'; // 视频生成模型：Quality 或 Fast
 }
 
 // 状态接口定义
@@ -46,6 +47,8 @@ interface CanvasStore {
   apiConfig: ApiConfig;
   // 设置面板打开状态
   isSettingsOpen: boolean;
+  // 助手面板打开状态
+  isAssistantOpen: boolean;
   // 项目前置提示词映射（按 projectId 存储）
   projectPrefixPrompts: Record<string, string>;
   // 当前项目的前置提示词
@@ -115,6 +118,7 @@ const loadApiConfig = (): ApiConfig => {
       generationCount: 1, // 默认生成 1 张图片
       accountTier: 'pro', // 行级注释：默认 Pro 账号
       imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
+      videoModel: 'quality',
     };
   }
 
@@ -135,6 +139,7 @@ const loadApiConfig = (): ApiConfig => {
         generationCount: parsed?.generationCount ?? 1, // 默认生成 1 张图片
         accountTier: parsed?.accountTier || 'pro', // 行级注释：兼容旧配置，默认 pro
         imageModel: parsed?.imageModel || 'nanobanana', // 行级注释：兼容旧配置，默认 Banana (Preview)
+        videoModel: parsed?.videoModel || 'quality', // 行级注释：兼容旧配置，默认 quality
       };
     }
   } catch (error) {
@@ -154,6 +159,7 @@ const loadApiConfig = (): ApiConfig => {
     generationCount: 1, // 默认生成 1 张图片
     accountTier: 'pro', // 行级注释：默认 Pro 账号
     imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
+    videoModel: 'quality', // 行级注释：视频生成模型 quality 或 fast
   };
 };
 
@@ -300,7 +306,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     setPrefixPromptEnabled: (enabled) => set({ prefixPromptEnabled: enabled }),
 
     setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
-    
+
     isAssistantOpen: false,
     setIsAssistantOpen: (isOpen: boolean) => set({ isAssistantOpen: isOpen }),
 

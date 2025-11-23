@@ -2,16 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '@/lib/store';
-import { 
-  Sparkles, 
-  Settings2, 
-  Square, 
-  RectangleHorizontal, 
+import {
+  Sparkles,
+  Settings2,
+  Square,
+  RectangleHorizontal,
   RectangleVertical,
   Layers,
   Zap,
   Type,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Video
 } from 'lucide-react';
 
 // 行级注释：AIInputPanel 现在只负责 UI 和用户输入，业务逻辑由外部处理
@@ -21,7 +22,7 @@ export default function AIInputPanel() {
   const [isExpanded, setIsExpanded] = useState(false); // 控制设置面板展开
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
@@ -29,9 +30,10 @@ export default function AIInputPanel() {
   const onGenerateFromInput = useCanvasStore((state) => state.onGenerateFromInput);
   const prefixPromptEnabled = useCanvasStore((state) => state.prefixPromptEnabled);
   const setPrefixPromptEnabled = useCanvasStore((state) => state.setPrefixPromptEnabled);
-  
+
   const generationCount = apiConfig.generationCount || 1;
   const imageModel = apiConfig.imageModel || 'nanobanana';
+  const videoModel = apiConfig.videoModel || 'quality';
 
   // 行级注释：获取选中的图片用于显示缩略图
   const selectedImages = elements
@@ -52,7 +54,7 @@ export default function AIInputPanel() {
   // 行级注释：处理生成，通过 store 的回调触发（逻辑在 Canvas 中）
   const handleGenerate = () => {
     if (!prompt.trim()) return;
-    
+
     if (onGenerateFromInput) {
       onGenerateFromInput(prompt, aspectRatio, generationCount, panelRef.current);
       setPrompt(''); // 清空输入框
@@ -88,15 +90,15 @@ export default function AIInputPanel() {
   }, []);
 
   const showSelectedThumbnails = selectedImages.length > 0;
-  
+
   // 行级注释：检查是否有正在处理的选中项
   const hasProcessingSelection = selectedImages.some(
     (img) => img.uploadState === 'syncing' || !img.mediaGenerationId
   );
 
   return (
-    <div 
-      ref={panelRef} 
+    <div
+      ref={panelRef}
       className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 transition-all duration-500 ease-in-out"
     >
       <div className={`
@@ -105,7 +107,7 @@ export default function AIInputPanel() {
         ${isExpanded || showSelectedThumbnails ? 'p-5' : 'p-3'}
         ring-1 ring-black/5
       `}>
-        
+
         {/* 选中图片的缩略图区域 */}
         <div className={`
           transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden
@@ -116,7 +118,7 @@ export default function AIInputPanel() {
               <ImageIcon size={16} className="mr-2" />
               选中 {selectedImages.length} 张参考图
             </div>
-            
+
             {selectedImages.slice(0, 5).map((img: any) => {
               const hasSrc = Boolean(img.src && img.src.trim());
               const isProcessing =
@@ -128,7 +130,7 @@ export default function AIInputPanel() {
                 >
                   {isProcessing ? (
                     <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
-                       <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                     </div>
                   ) : (
                     <img
@@ -156,8 +158,8 @@ export default function AIInputPanel() {
             onClick={() => setIsExpanded(!isExpanded)}
             className={`
               w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex-shrink-0
-              ${isExpanded 
-                ? 'bg-gray-100 text-gray-900 rotate-90 shadow-inner' 
+              ${isExpanded
+                ? 'bg-gray-100 text-gray-900 rotate-90 shadow-inner'
                 : 'bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-900 hover:shadow-sm hover:scale-105'}
             `}
             title="生成设置"
@@ -177,8 +179,8 @@ export default function AIInputPanel() {
               placeholder={getPlaceholder()}
               className="w-full pl-5 pr-14 py-3.5 bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-transparent focus:border-violet-200/50 rounded-2xl outline-none text-gray-800 placeholder-gray-400 transition-all duration-300 text-[15px] leading-relaxed shadow-inner focus:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.1)]"
             />
-            
-           
+
+
           </div>
 
           {/* 生成按钮 */}
@@ -203,13 +205,11 @@ export default function AIInputPanel() {
           ${isExpanded ? 'grid-rows-[1fr] mt-5 pt-5 border-t border-gray-100 opacity-100' : 'grid-rows-[0fr] mt-0 pt-0 border-t-0 border-transparent opacity-0'}
         `}>
           <div className="overflow-hidden min-h-0">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 pb-1">
-              
+            <div className={`grid grid-cols-1 gap-5 pb-1 ${apiConfig.accountTier === 'ultra' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+
               {/* 比例选择 */}
               <div className="space-y-2.5">
-                <label className="text-[11px] uppercase tracking-wider font-bold text-gray-400 ml-1 flex items-center gap-1.5">
-                  <Square size={12} className="text-gray-400" /> 画幅比例
-                </label>
+
                 <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
                   {[
                     { id: '16:9', label: '横屏', icon: RectangleHorizontal },
@@ -235,9 +235,7 @@ export default function AIInputPanel() {
 
               {/* 数量选择 */}
               <div className="space-y-2.5">
-                <label className="text-[11px] uppercase tracking-wider font-bold text-gray-400 ml-1 flex items-center gap-1.5">
-                  <Layers size={12} className="text-gray-400" /> 生成数量
-                </label>
+
                 <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                   {[1, 2, 3, 4].map((count) => (
                     <button
@@ -258,9 +256,7 @@ export default function AIInputPanel() {
 
               {/* 模型选择 */}
               <div className="space-y-2.5 md:col-span-1">
-                <label className="text-[11px] uppercase tracking-wider font-bold text-gray-400 ml-1 flex items-center gap-1.5">
-                  <Zap size={12} className="text-gray-400" /> 模型版本
-                </label>
+
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
@@ -294,11 +290,41 @@ export default function AIInputPanel() {
                 </div>
               </div>
 
+              {/* 视频模型选择 - 仅 Ultra 用户可见 */}
+              {apiConfig.accountTier === 'ultra' && (
+                <div className="space-y-2.5 md:col-span-1">
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={() => setApiConfig({ videoModel: 'quality' })}
+                      className={`
+                        flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border
+                        ${videoModel === 'quality'
+                          ? 'bg-violet-50 border-violet-200 text-violet-700'
+                          : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                      `}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                      Quality
+                    </button>
+                    <button
+                      onClick={() => setApiConfig({ videoModel: 'fast' })}
+                      className={`
+                        flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 border
+                        ${videoModel === 'fast'
+                          ? 'bg-blue-50 border-blue-200 text-blue-700'
+                          : 'bg-white border-transparent hover:bg-gray-50 text-gray-500'}
+                      `}
+                    >
+                      <div className={`w-2 h-2 rounded-full mr-2 ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                      Fast
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* 提示词增强 */}
               <div className="space-y-2.5">
-                <label className="text-[11px] uppercase tracking-wider font-bold text-gray-400 ml-1 flex items-center gap-1.5">
-                  <Type size={12} className="text-gray-400" /> 前置提示词
-                </label>
+
                 <button
                   onClick={() => setPrefixPromptEnabled(!prefixPromptEnabled)}
                   className={`
@@ -309,7 +335,7 @@ export default function AIInputPanel() {
                   `}
                 >
                   <Sparkles size={18} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 scale-100"}`} />
-                  {prefixPromptEnabled ? '已启用' : '点击启用'}
+                  {prefixPromptEnabled ? '风格' : '风格'}
                 </button>
               </div>
 
