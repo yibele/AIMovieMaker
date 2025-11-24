@@ -2,12 +2,21 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 // 创建 Supabase Admin Client (绕过 RLS)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// 防御性编程：在构建时如果没有 key，不立即报错，而是给一个 null
+// 这样可以防止 next build 阶段因为缺少服务端密钥而失败
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 export async function POST(request: Request) {
+  if (!supabaseAdmin) {
+    console.error('Supabase Admin Client 初始化失败：缺少环境变量');
+    return NextResponse.json({ error: '服务端配置错误' }, { status: 500 });
+  }
+
   try {
     // 1. 解析请求体
     const body = await request.json();
@@ -107,6 +116,11 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  if (!supabaseAdmin) {
+    console.error('Supabase Admin Client 初始化失败：缺少环境变量');
+    return NextResponse.json({ error: '服务端配置错误' }, { status: 500 });
+  }
+
   try {
     // 1. 验证用户登录状态
     const authHeader = request.headers.get('authorization');
