@@ -285,12 +285,16 @@ export default function AIInputPanel() {
                 {apiConfig.accountTier === 'ultra' && (
                   <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
                     <button
-                      onClick={() => setApiConfig({ videoModel: 'quality' })}
+                      onClick={() => !apiConfig.isManaged && setApiConfig({ videoModel: 'quality' })}
+                      disabled={apiConfig.isManaged}
+                      title={apiConfig.isManaged ? "托管模式下仅支持快速模型" : "高质量生成"}
                       className={`
                         flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                         ${videoModel === 'quality'
                           ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                          : apiConfig.isManaged 
+                            ? 'text-gray-300 cursor-not-allowed opacity-50 bg-transparent' 
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
                       `}
                     >
                       <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300'}`} />

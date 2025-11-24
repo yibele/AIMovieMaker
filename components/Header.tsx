@@ -104,26 +104,28 @@ export default function Header() {
 
       {/* 右侧：积分显示 + 分享按钮 + 设置按钮 */}
       <div className="flex items-center gap-3">
-        {/* 积分显示 */}
-        <button
-          onClick={() => fetchCredits()}
-          disabled={isLoadingCredits}
-          className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 font-medium ${
-            apiConfig.accountTier === 'ultra'
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          } ${isLoadingCredits ? 'opacity-70 cursor-wait' : ''}`}
-          title="点击刷新积分"
-        >
-          {isLoadingCredits ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4" />
-          )}
-          <span className="text-sm">
-            {credits !== null ? `${credits} Credits` : '-- Credits'}
-          </span>
-        </button>
+        {/* 积分显示 - 托管模式下隐藏 */}
+        {!apiConfig.isManaged && (
+          <button
+            onClick={() => fetchCredits()}
+            disabled={isLoadingCredits}
+            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 font-medium ${
+              apiConfig.accountTier === 'ultra'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            } ${isLoadingCredits ? 'opacity-70 cursor-wait' : ''}`}
+            title="点击刷新积分"
+          >
+            {isLoadingCredits ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            <span className="text-sm">
+              {credits !== null ? `${credits} Credits` : '-- Credits'}
+            </span>
+          </button>
+        )}
 
         <button
           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium"

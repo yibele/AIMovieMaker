@@ -13,6 +13,7 @@ export default function RightToolbar() {
   const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
   const isAssistantOpen = useCanvasStore((state) => state.isAssistantOpen);
   const setIsAssistantOpen = useCanvasStore((state) => state.setIsAssistantOpen);
+  const isManaged = useCanvasStore((state) => state.apiConfig.isManaged); // 读取是否为托管模式
 
   // 按钮配置
   const mainGroups = [
@@ -28,7 +29,8 @@ export default function RightToolbar() {
           },
           title: '素材库',
           isActive: isMaterialsPanelOpen,
-          dotColor: 'bg-blue-500'
+          dotColor: 'bg-blue-500',
+          hidden: isManaged, // 托管模式下隐藏
         },
         {
           icon: Sparkles,
@@ -106,9 +108,14 @@ export default function RightToolbar() {
         {/* 主工具栏 */}
         <div className="pointer-events-auto bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-white/60 p-2 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
           
-          {mainGroups.map((group, groupIndex) => (
+          {mainGroups.map((group, groupIndex) => {
+            // 过滤掉隐藏的项
+            const visibleItems = group.items.filter((item: any) => !item.hidden);
+            if (visibleItems.length === 0) return null;
+
+            return (
             <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100' : ''}`}>
-              {group.items.map((btn, btnIndex) => {
+              {visibleItems.map((btn, btnIndex) => {
                 const Icon = btn.icon;
                 return (
                   <div key={btnIndex} className="relative group/btn">
@@ -141,7 +148,8 @@ export default function RightToolbar() {
                 );
               })}
             </div>
-          ))}
+          );
+        })}
         </div>
 
       </div>

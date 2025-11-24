@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Github, Sparkles, X } from 'lucide-react';
+import { Loader2, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
@@ -14,11 +14,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
     if (!isOpen) return null;
 
-    const handleSocialLogin = async (provider: 'google' | 'github') => {
+    const handleGoogleLogin = async () => {
         setIsLoading(true);
         try {
             const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: provider,
+                provider: 'google',
                 options: {
                     redirectTo: `${window.location.origin}/`, // Redirect back to home
                 },
@@ -73,7 +73,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
                     <div className="space-y-3">
                         <button
-                            onClick={() => handleSocialLogin('google')}
+                            onClick={handleGoogleLogin}
                             disabled={isLoading}
                             className="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 group relative overflow-hidden"
                         >
@@ -84,16 +84,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                             </svg>
                             Continue with Google
-                            {isLoading && <Loader2 className="absolute right-4 w-4 h-4 animate-spin text-slate-400" />}
-                        </button>
-
-                        <button
-                            onClick={() => handleSocialLogin('github')}
-                            disabled={isLoading}
-                            className="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 group relative overflow-hidden"
-                        >
-                            <Github className="w-5 h-5 mr-3 text-slate-900 group-hover:scale-110 transition-transform" />
-                            Continue with GitHub
                             {isLoading && <Loader2 className="absolute right-4 w-4 h-4 animate-spin text-slate-400" />}
                         </button>
                     </div>

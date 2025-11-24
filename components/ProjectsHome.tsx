@@ -485,6 +485,61 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
     fetchProjects(); // 总是调用 fetchProjects，它会自动判断是否需要后台刷新
   }, [fetchProjects, isHydrated]);
 
+  // 自动同步云端凭证 (Auto-Sync Credentials)
+  useEffect(() => {
+    const syncCredentials = async () => {
+      // 如果本地已经有 cookie，暂时不覆盖（或者你可以选择强制覆盖，取决于策略）
+      // 这里策略是：如果本地没有 cookie，或者即使有也检查一下更新（保持最新）
+      // 为了性能，我们只在组件加载时检查一次
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      try {
+        const response = await fetch('/api/activation/activate', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.activated && data.credentials) {
+            console.log('🔄 自动同步云端凭证成功');
+            
+            // 获取当前配置进行对比，避免不必要的更新
+            const currentConfig = useCanvasStore.getState().apiConfig;
+            const newCreds = data.credentials;
+
+            // 简单对比关键字段
+            if (currentConfig.cookie !== newCreds.cookie || currentConfig.bearerToken !== newCreds.bearerToken) {
+               useCanvasStore.getState().setApiConfig({
+                apiKey: newCreds.apiKey || currentConfig.apiKey,
+                bearerToken: newCreds.bearerToken || '',
+                cookie: newCreds.cookie || '',
+                projectId: newCreds.projectId || currentConfig.projectId,
+                accountTier: 'ultra', // VIP 用户默认 Ultra
+                isManaged: true, // 标记为托管模式
+                videoModel: 'fast', // 托管模式下强制使用 Fast 模型
+              });
+              toast.success('已同步最新 VIP 凭证');
+              
+              // 凭证更新后，刷新项目列表
+              setTimeout(() => fetchProjects(true), 500);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('自动同步凭证失败:', error);
+      }
+    };
+
+    if (isHydrated) {
+      syncCredentials();
+    }
+  }, [isHydrated, fetchProjects]);
+
   const handleOpenProject = (projectId: string) => {
     router.push(`/canvas/project/${projectId}`);
   };

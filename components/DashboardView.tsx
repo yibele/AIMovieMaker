@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
-import { Settings, Plus, Search, Bell, LogOut, RefreshCw, LayoutGrid, User, Sparkles, Zap, Play } from 'lucide-react';
+import { Settings, Plus, Search, Bell, LogOut, RefreshCw, LayoutGrid, User, Sparkles, Zap, Play, Gift } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { supabase } from '@/lib/supabaseClient';
+import { InvitationModal } from '@/components/InvitationModal';
 
 interface DashboardViewProps {
     projects: Project[];
@@ -18,6 +19,7 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreateProject, onRefreshProjects, onProjectClick, isLoading, onLogout, authStatus }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
     const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
     const [avatarUrl, setAvatarUrl] = useState<string>('');
     const [scrolled, setScrolled] = useState(false);
@@ -104,6 +106,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 md:gap-3 pl-4 md:pl-6 border-l border-slate-200/50">
+                            <button
+                                onClick={() => setIsActivationModalOpen(true)}
+                                className="hidden md:flex relative p-2 md:p-3 text-slate-400 hover:text-violet-600 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group"
+                                title="Redeem Code"
+                            >
+                                <Gift className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform duration-300" />
+                            </button>
+
                             <button
                                 onClick={() => setIsSettingsOpen(true)}
                                 className="hidden md:flex relative p-2 md:p-3 text-slate-400 hover:text-slate-900 bg-white/0 hover:bg-white/60 rounded-2xl transition-all duration-300 group"
@@ -362,6 +372,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onSubmit={onCreateProject}
+            />
+
+            <InvitationModal
+                isOpen={isActivationModalOpen}
+                onClose={() => setIsActivationModalOpen(false)}
+                onSuccess={() => {
+                    onRefreshProjects();
+                }}
             />
         </div>
     );

@@ -58,28 +58,30 @@ export default function CanvasNavigation() {
         </button>
       </div>
 
-      {/* 右上角：积分显示 */}
-      <div className="absolute top-4 right-4 z-50">
-        <button
-          onClick={() => fetchCredits()}
-          disabled={isLoadingCredits}
-          className={`inline-flex items-center gap-2 rounded-xl backdrop-blur-sm px-4 py-2 text-sm font-medium shadow-lg transition-all ${
-            apiConfig.accountTier === 'ultra'
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          } ${isLoadingCredits ? 'opacity-70 cursor-wait' : ''}`}
-          title="点击刷新积分"
-        >
-          {isLoadingCredits ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4" />
-          )}
-          <span>
-            {credits !== null ? `${credits} Credits` : '-- Credits'}
-          </span>
-        </button>
-      </div>
+      {/* 右上角：积分显示 - 托管模式下隐藏 */}
+      {!apiConfig.isManaged && (
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={() => fetchCredits()}
+            disabled={isLoadingCredits}
+            className={`inline-flex items-center gap-2 rounded-xl backdrop-blur-sm px-4 py-2 text-sm font-medium shadow-lg transition-all ${
+              apiConfig.accountTier === 'ultra'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            } ${isLoadingCredits ? 'opacity-70 cursor-wait' : ''}`}
+            title="点击刷新积分"
+          >
+            {isLoadingCredits ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            <span>
+              {credits !== null ? `${credits} Credits` : '-- Credits'}
+            </span>
+          </button>
+        </div>
+      )}
     </>
   );
 }

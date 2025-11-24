@@ -27,6 +27,7 @@ interface ApiConfig {
   accountTier: 'pro' | 'ultra'; // 账号类型：Pro 或 Ultra
   imageModel: 'nanobanana' | 'nanobananapro'; // 图片生成模型：Banana (Preview) 或 Banana Pro
   videoModel?: 'quality' | 'fast'; // 视频生成模型：Quality 或 Fast
+  isManaged?: boolean; // 是否为托管模式
 }
 
 // 状态接口定义
@@ -140,6 +141,7 @@ const loadApiConfig = (): ApiConfig => {
         accountTier: parsed?.accountTier || 'pro', // 行级注释：兼容旧配置，默认 pro
         imageModel: parsed?.imageModel || 'nanobanana', // 行级注释：兼容旧配置，默认 Banana (Preview)
         videoModel: parsed?.videoModel || 'quality', // 行级注释：兼容旧配置，默认 quality
+        isManaged: parsed?.isManaged || false,
       };
     }
   } catch (error) {
@@ -160,6 +162,7 @@ const loadApiConfig = (): ApiConfig => {
     accountTier: 'pro', // 行级注释：默认 Pro 账号
     imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
     videoModel: 'quality', // 行级注释：视频生成模型 quality 或 fast
+    isManaged: false,
   };
 };
 

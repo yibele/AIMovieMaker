@@ -57,6 +57,7 @@ export default function SettingsPanel() {
       sessionId: sessionId.trim(),
       accountTier,
       // 行级注释：保留 generationCount 和 imageModel，不在设置面板中修改它们
+      isManaged: false, // 手动保存时重置为非托管模式
     });
     setIsOpen(false);
     toast.success('Configuration saved successfully');
