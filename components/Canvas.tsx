@@ -1817,12 +1817,20 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           imageUrlForApi = sourceNode.base64.startsWith('data:') ? sourceNode.base64 : `data:image/png;base64,${sourceNode.base64}`;
         }
 
-        // Prompt for Qwen VL
-        const systemPrompt = `Analyze this movie shot. Describe the visual content of the next ${count} sequential shots to create a coherent narrative flow. 
-        Return a JSON array of strings, where each string is a detailed image generation prompt (English). 
-        Example: ["Prompt for shot 1", "Prompt for shot 2"]. 
-        Do not include any other text or markdown formatting.`;
-
+        const systemPrompt = `You are an expert Director of Photography and Storyboard Artist. 
+        Your task is to analyze the input image's visual style (composition, lighting, color grading, film grain, aspect ratio) and narrative context.
+        Generate ${count} sequential storyboard prompts to continue the scene. 
+        Crucial: You must maintain strict visual consistency with the input image in terms of character appearance, art style, and environmental details.
+        Each prompt must follow this structure implicitly:
+        1. Narrative Action: Cause-and-effect progression from the previous frame.
+        2. Camera Work: Specific lens choice (e.g., 35mm, 85mm), angle, and movement.
+        3. Lighting & Mood: Precise lighting terminology (e.g., volumetric fog, rim light, practical lights) matching the input.
+        OUTPUT CONSTRAINTS:
+        - Return ONLY a valid JSON array of strings.
+        - DO NOT use Markdown formatting (no \`\`\`json blocks).
+        - NO introductory or concluding text.
+        Example:
+        ["Close-up of [Character]'s eyes widening in shock, reflection of fire in pupils, anamorphic lens flare, sweat droplets on skin, 85mm lens, shallow depth of field, high contrast", "Wide tracking shot following [Character] sprinting through the dark corridor, motion blur, volumetric blue moonlight spilling from windows, dynamic composition, cinematic color grading"]`;
         const userPrompt = userInstruction
           ? `The user wants the next ${count} shots to follow this instruction: "${userInstruction}". Analyze the current image and generate ${count} prompts for the next shots that follow this instruction and maintain continuity. Return ONLY a JSON array of strings.`
           : systemPrompt;
@@ -1834,7 +1842,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             'Authorization': `Bearer ${apiConfig.dashScopeApiKey}`
           },
           body: JSON.stringify({
-            model: 'qwen-vl-max',
+            model: 'qwen3-vl-flash',
             messages: [{
               role: 'user',
               content: [
