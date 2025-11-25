@@ -245,7 +245,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
   const canEdit = allImages && selectedImages.length >= 2 && selectedImages.length <= 6;
 
   return (
-    <Panel position="top-center" className="!m-0 !p-0 animate-in slide-in-from-top-4 fade-in duration-300">
+    <Panel position="top-center" className="!mt-20 !p-0 animate-in slide-in-from-top-4 fade-in duration-300">
       <div
         className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2 transition-all hover:shadow-lg"
         onMouseDown={handleMouseDown}
