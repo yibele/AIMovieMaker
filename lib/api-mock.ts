@@ -811,7 +811,8 @@ export async function imageToImage(
   aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
   caption: string = '',
   originalMediaId?: string, // 改名：现在接收 mediaId（优先）或 mediaGenerationId // 行级注释说明参数用途
-  count?: number // 生成数量 (1-4)
+  count?: number, // 生成数量 (1-4)
+  prompts?: string[] // 新增：支持传入多个不同的 prompt
 ): Promise<{
   imageUrl: string;
   promptId: string;
@@ -861,7 +862,8 @@ export async function imageToImage(
     [{ mediaId: originalMediaId }],
     undefined, // seed
     (count ?? apiConfig.generationCount) || 1,
-    imageModel
+    imageModel,
+    prompts // 传递 prompts 数组
   );
 
   // 行级注释：业务层 - 更新会话上下文

@@ -134,7 +134,8 @@ export async function generateImageDirectly(
   references?: Array<{ mediaId?: string; mediaGenerationId?: string }>,
   seed?: number,
   count?: number,
-  model?: 'nanobanana' | 'nanobananapro'
+  model?: 'nanobanana' | 'nanobananapro',
+  prompts?: string[] // 新增：支持传入多个不同的 prompt
 ): Promise<{
   images: Array<{
     encodedImage?: string; // base64
@@ -178,11 +179,16 @@ export async function generateImageDirectly(
       : [];
 
   // 生成多个请求
-  const requests = Array.from({ length: generationCount }, (_, index) => {
+  const requestCount = (prompts && prompts.length > 0) ? prompts.length : generationCount;
+
+  const requests = Array.from({ length: requestCount }, (_, index) => {
     const requestSeed =
       typeof seed === 'number'
         ? seed + index
         : Math.floor(Math.random() * 1_000_000);
+
+    // 如果有 prompts 数组，使用对应的 prompt，否则使用统一的 prompt
+    const requestPrompt = (prompts && prompts[index]) ? prompts[index] : prompt;
 
     return {
       clientContext: {
@@ -191,7 +197,7 @@ export async function generateImageDirectly(
       seed: requestSeed,
       imageModelName: imageModelName,
       imageAspectRatio: normalizedAspect,
-      prompt: prompt,
+      prompt: requestPrompt,
       imageInputs,
     };
   });

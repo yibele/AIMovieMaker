@@ -1874,66 +1874,70 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         // If VL returns fewer prompts than requested, we only generate that many.
         // If VL returns more, we truncate.
 
-        // Loop through placeholders and generate
-        for (let i = 0; i < newImageIds.length; i++) {
-          const imageId = newImageIds[i];
-          const prompt = nextShotPrompts[i] || nextShotPrompts[nextShotPrompts.length - 1] || 'Next Shot'; // Fallback
+        // B. Image Generation (Batch)
+        // We need mediaId for image-to-image. If not present, upload it.
+        let effectiveMediaId = sourceNode.mediaId || sourceNode.mediaGenerationId;
 
-          // Update placeholder message
-          updateElement(imageId, {
-            uploadMessage: '正在生成画面...',
-            generatedFrom: {
-              type: 'image-to-image',
-              sourceIds: [sourceNode.id],
-              prompt: prompt
-            }
-          } as Partial<ImageElement>);
-
-          // B. Image Generation (Image-to-Image)
-          // We need mediaId for image-to-image. If not present, upload it.
-          // (Optimization: Upload once for all shots)
-          let effectiveMediaId = sourceNode.mediaId || sourceNode.mediaGenerationId;
-
-          if (!effectiveMediaId) {
-            // Upload if needed
-            if (!sourceNode.base64 && !sourceNode.src.startsWith('data:')) {
-              throw new Error('Source image not ready for generation (missing mediaId)');
-            }
-
-            const base64 = sourceNode.base64 || sourceNode.src.split(',')[1];
-            const { registerUploadedImage } = await import('@/lib/api-mock');
-            const uploadResult = await registerUploadedImage(base64);
-            effectiveMediaId = uploadResult.mediaGenerationId || undefined;
-
-            if (effectiveMediaId) {
-              updateElement(sourceNode.id, { mediaGenerationId: effectiveMediaId } as Partial<ImageElement>);
-            }
+        if (!effectiveMediaId) {
+          // Upload if needed
+          if (!sourceNode.base64 && !sourceNode.src.startsWith('data:')) {
+            throw new Error('Source image not ready for generation (missing mediaId)');
           }
 
-          const { imageToImage } = await import('@/lib/api-mock');
-          const result = await imageToImage(
-            prompt,
-            sourceNode.src,
-            '16:9', // Default aspect ratio
-            sourceNode.caption || '',
-            effectiveMediaId,
-            1
-          );
+          // If we have base64, upload it
+          const base64 = sourceNode.base64 || sourceNode.src.split(',')[1];
+          const { registerUploadedImage } = await import('@/lib/api-mock');
+          const uploadResult = await registerUploadedImage(base64);
+          effectiveMediaId = uploadResult.mediaGenerationId || undefined;
 
-          // C. Update Placeholder with Final Result
-          updateElement(imageId, {
-            src: result.imageUrl,
-            base64: result.base64,
-            promptId: result.promptId,
-            mediaId: result.mediaId || result.mediaGenerationId,
-            mediaGenerationId: result.mediaGenerationId,
-            uploadState: 'synced',
-            uploadMessage: undefined,
-          } as Partial<ImageElement>);
+          // Update source node with new mediaId
+          if (effectiveMediaId) {
+            updateElement(sourceNode.id, { mediaGenerationId: effectiveMediaId } as Partial<ImageElement>);
+          }
+        }
 
-          // Update edge style
-          const edgeId = `edge-${sourceNode.id}-${imageId}`;
-          setEdges((eds) => eds.map(e => e.id === edgeId ? { ...e, animated: false, style: { stroke: '#64748b', strokeWidth: 1 } } : e));
+        // Ensure we have prompts for all placeholders
+        // If VL returned fewer prompts, repeat the last one or use default
+        const finalPrompts = newImageIds.map((_, i) => nextShotPrompts[i] || nextShotPrompts[nextShotPrompts.length - 1] || 'Next Shot');
+
+        const { imageToImage } = await import('@/lib/api-mock');
+        const result = await imageToImage(
+          finalPrompts[0], // Primary prompt (unused if prompts array is provided)
+          sourceNode.src,
+          '16:9', // Default aspect ratio
+          sourceNode.caption || '',
+          effectiveMediaId,
+          newImageIds.length, // Count
+          finalPrompts // Pass all prompts
+        );
+
+        // C. Update Placeholders with Final Results
+        if (result.images && result.images.length > 0) {
+          newImageIds.forEach((imageId, index) => {
+            const imgData = result.images![index];
+            if (imgData) {
+              updateElement(imageId, {
+                src: imgData.imageUrl || imgData.fifeUrl,
+                base64: imgData.base64,
+                promptId: result.promptId, // Share same promptId or generate new?
+                mediaId: imgData.mediaId || imgData.mediaGenerationId,
+                mediaGenerationId: imgData.mediaGenerationId,
+                uploadState: 'synced',
+                uploadMessage: undefined,
+                generatedFrom: {
+                  type: 'image-to-image',
+                  sourceIds: [sourceNode.id],
+                  prompt: imgData.prompt || finalPrompts[index]
+                }
+              } as Partial<ImageElement>);
+
+              // Update edge style
+              const edgeId = `edge-${sourceNode.id}-${imageId}`;
+              setEdges((eds) => eds.map(e => e.id === edgeId ? { ...e, animated: false, style: { stroke: '#64748b', strokeWidth: 1 } } : e));
+            }
+          });
+        } else {
+          throw new Error('No images generated');
         }
 
       } catch (error) {
