@@ -228,11 +228,10 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
         {canEdit && (
           <button
             onClick={handleImageEdit}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+            className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
             title="多图编辑 - 将选中的图片用于编辑和融合"
           >
             <Edit3 className="w-4 h-4" />
-            <span>图片编辑</span>
           </button>
         )}
 
@@ -242,11 +241,10 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
         {/* 批量入库按钮 */}
         <button
           onClick={handleBatchArchive}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
           title="将选中素材保存到精选库"
         >
           <FolderInput className="w-4 h-4" />
-          <span>入库</span>
         </button>
 
         {/* 分隔线 */}
@@ -255,22 +253,20 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
         {/* 下载按钮 */}
         <button
           onClick={handleDownload}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
           title="下载选中的图片"
           disabled={selectedImages.length === 0}
         >
           <Download className="w-4 h-4" />
-          <span>下载</span>
         </button>
 
         {/* 删除按钮 */}
         <button
           onClick={handleDelete}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
           title="删除选中的元素"
         >
           <Trash2 className="w-4 h-4" />
-          <span>删除</span>
         </button>
       </div>
     </Panel>
