@@ -170,6 +170,14 @@ export function useConnectionMenu() {
     }));
   }, []);
 
+  // Show auto next shot count selection
+  const showAutoNextShotCountSubmenu = useCallback(() => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      activeSubmenu: 'autoNextShotCount',
+    }));
+  }, []);
+
   return {
     connectionMenu,
     promptMenuInputRef,
@@ -187,6 +195,7 @@ export function useConnectionMenu() {
     showExtendVideoSubmenu,
     updateExtendPrompt,
     showCustomNextShotInput,
+    showAutoNextShotCountSubmenu,
   };
 }
 

@@ -109,6 +109,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     showCameraControlSubmenu,
     showCameraPositionSubmenu,
     showCustomNextShotInput,
+    showAutoNextShotCountSubmenu,
   } = useConnectionMenu();
 
   // 行级注释：使用图片生成 Hooks
@@ -1729,7 +1730,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   );
 
   // Next Shot Generation Logic
-  const handleNextShotGeneration = useCallback(async (sourceNodeId: string, userInstruction?: string) => {
+  const handleNextShotGeneration = useCallback(async (sourceNodeId: string, userInstruction?: string, count: number = 1) => {
     const { elements: storeElements, apiConfig, addElement, updateElement, deleteElement } = useCanvasStore.getState();
     const sourceNode = storeElements.find(el => el.id === sourceNodeId) as ImageElement | undefined;
 
@@ -1744,45 +1745,66 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       return;
     }
 
-    // 1. Create Placeholder Node
-    const newImageId = `image-${Date.now()}-next`;
+    // 1. Create Placeholder Nodes
+    const newImageIds: string[] = [];
     const offset = { x: 450, y: 0 }; // Place to the right
-    const position = {
-      x: sourceNode.position.x + offset.x,
-      y: sourceNode.position.y + offset.y,
-    };
-
     const size = sourceNode.size || { width: 400, height: 225 };
 
-    const placeholderImage: ImageElement = {
-      id: newImageId,
-      type: 'image',
-      position,
-      size,
-      src: '', // Empty initially
-      uploadState: 'syncing', // Loading state
-      uploadMessage: '正在构思下一分镜...',
-      generatedFrom: {
-        type: 'image-to-image',
-        sourceIds: [sourceNode.id],
-        prompt: userInstruction || 'Next Shot',
-      },
-    };
+    for (let i = 0; i < count; i++) {
+      const newImageId = `image-${Date.now()}-${i}-next`;
+      newImageIds.push(newImageId);
 
-    addElement(placeholderImage);
+      const position = {
+        x: sourceNode.position.x + offset.x + (i * (size.width + 50)),
+        y: sourceNode.position.y, // Horizontal layout
+      };
 
-    // Create Edge
-    const edgeId = `edge-${sourceNode.id}-${newImageId}`;
-    setEdges((eds) => [
-      ...eds,
-      {
-        id: edgeId,
-        source: sourceNode.id,
-        target: newImageId,
-        animated: true,
-        style: { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' },
-      },
-    ]);
+      const placeholderImage: ImageElement = {
+        id: newImageId,
+        type: 'image',
+        position,
+        size,
+        src: '', // Empty initially
+        uploadState: 'syncing', // Loading state
+        uploadMessage: count > 1 ? `正在构思分镜 ${i + 1}/${count}...` : '正在构思下一分镜...',
+        generatedFrom: {
+          type: 'image-to-image',
+          sourceIds: [sourceNode.id],
+          prompt: userInstruction || 'Next Shot',
+        },
+      };
+
+      addElement(placeholderImage);
+
+      // Create Edge (connect to previous node or source node)
+      // For sequential shots, maybe connect sequentially? Or all from source?
+      // "Next Shot" implies sequence. So Source -> Shot 1 -> Shot 2 -> Shot 3?
+      // Or Source -> Shot 1, Source -> Shot 2?
+      // User said "Split VL content... call Image-to-Image".
+      // Usually "Next Shot" means the *next* shot in time.
+      // If we generate 4 shots, are they 4 *options* for the next shot, or a sequence of 4 shots?
+      // "Generate corresponding number of shots... split... call Image-to-Image".
+      // Assuming they are sequential shots (Shot 1, then Shot 2, etc.) or just 4 distinct shots following the source.
+      // Let's connect all to Source for now, as they are all generated *from* the source image context.
+      // Or maybe connect sequentially if they are a sequence.
+      // Let's stick to connecting all to Source for simplicity in this "Auto Next Shot" context, 
+      // as they are all based on the *current* image. 
+      // Actually, if it's a "storyboard", they might be sequential.
+      // But VL analyzes *this* image to generate *next* shots.
+      // Let's connect all to Source.
+
+      const edgeId = `edge-${sourceNode.id}-${newImageId}`;
+      setEdges((eds) => [
+        ...eds,
+        {
+          id: edgeId,
+          source: sourceNode.id,
+          target: newImageId,
+          animated: true,
+          style: { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' },
+        },
+      ]);
+    }
 
     resetConnectionMenu();
 
@@ -1790,17 +1812,19 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     (async () => {
       try {
         // A. Qwen VL Analysis
-        // Ensure we have a valid image URL for API (if local blob, might need upload or base64)
-        // For simplicity, assume src is accessible or use base64 if available
         let imageUrlForApi = sourceNode.src;
         if (sourceNode.base64) {
           imageUrlForApi = sourceNode.base64.startsWith('data:') ? sourceNode.base64 : `data:image/png;base64,${sourceNode.base64}`;
         }
 
         // Prompt for Qwen VL
-        const systemPrompt = "Analyze this movie shot. Describe the visual content of the IMMEDIATE NEXT SHOT in the sequence to create a coherent narrative flow. The output must be a detailed image generation prompt (English). Do not include any conversational text, just the prompt.";
+        const systemPrompt = `Analyze this movie shot. Describe the visual content of the next ${count} sequential shots to create a coherent narrative flow. 
+        Return a JSON array of strings, where each string is a detailed image generation prompt (English). 
+        Example: ["Prompt for shot 1", "Prompt for shot 2"]. 
+        Do not include any other text or markdown formatting.`;
+
         const userPrompt = userInstruction
-          ? `The user wants the next shot to be: "${userInstruction}". Analyze the current image and generate a prompt for the next shot that follows this instruction and maintains continuity.`
+          ? `The user wants the next ${count} shots to follow this instruction: "${userInstruction}". Analyze the current image and generate ${count} prompts for the next shots that follow this instruction and maintain continuity. Return ONLY a JSON array of strings.`
           : systemPrompt;
 
         const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
@@ -1827,83 +1851,106 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         }
 
         const data = await response.json();
-        const nextShotPrompt = data.choices[0]?.message?.content || '';
+        let content = data.choices[0]?.message?.content || '';
 
-        if (!nextShotPrompt) {
-          throw new Error('Failed to generate prompt from Qwen VL');
+        // Clean up markdown code blocks if present
+        content = content.replace(/```json\n?|\n?```/g, '').trim();
+
+        let nextShotPrompts: string[] = [];
+        try {
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed)) {
+            nextShotPrompts = parsed.map(p => String(p));
+          } else if (typeof parsed === 'string') {
+            nextShotPrompts = [parsed];
+          }
+        } catch (e) {
+          // Fallback: split by newlines or just treat as one prompt if parsing fails
+          console.warn('Failed to parse VL response as JSON, using raw text', e);
+          nextShotPrompts = [content];
         }
 
-        // Update placeholder message
-        updateElement(newImageId, {
-          uploadMessage: '正在生成画面...',
-          generatedFrom: {
-            ...placeholderImage.generatedFrom!,
-            prompt: nextShotPrompt
+        // Ensure we have enough prompts (duplicate last if needed, or just use what we have)
+        // If VL returns fewer prompts than requested, we only generate that many.
+        // If VL returns more, we truncate.
+
+        // Loop through placeholders and generate
+        for (let i = 0; i < newImageIds.length; i++) {
+          const imageId = newImageIds[i];
+          const prompt = nextShotPrompts[i] || nextShotPrompts[nextShotPrompts.length - 1] || 'Next Shot'; // Fallback
+
+          // Update placeholder message
+          updateElement(imageId, {
+            uploadMessage: '正在生成画面...',
+            generatedFrom: {
+              type: 'image-to-image',
+              sourceIds: [sourceNode.id],
+              prompt: prompt
+            }
+          } as Partial<ImageElement>);
+
+          // B. Image Generation (Image-to-Image)
+          // We need mediaId for image-to-image. If not present, upload it.
+          // (Optimization: Upload once for all shots)
+          let effectiveMediaId = sourceNode.mediaId || sourceNode.mediaGenerationId;
+
+          if (!effectiveMediaId) {
+            // Upload if needed
+            if (!sourceNode.base64 && !sourceNode.src.startsWith('data:')) {
+              throw new Error('Source image not ready for generation (missing mediaId)');
+            }
+
+            const base64 = sourceNode.base64 || sourceNode.src.split(',')[1];
+            const { registerUploadedImage } = await import('@/lib/api-mock');
+            const uploadResult = await registerUploadedImage(base64);
+            effectiveMediaId = uploadResult.mediaGenerationId || undefined;
+
+            if (effectiveMediaId) {
+              updateElement(sourceNode.id, { mediaGenerationId: effectiveMediaId } as Partial<ImageElement>);
+            }
           }
-        } as Partial<ImageElement>);
 
-        // B. Image Generation (Image-to-Image)
-        // We need mediaId for image-to-image. If not present, upload it.
-        let effectiveMediaId = sourceNode.mediaId || sourceNode.mediaGenerationId;
+          const { imageToImage } = await import('@/lib/api-mock');
+          const result = await imageToImage(
+            prompt,
+            sourceNode.src,
+            '16:9', // Default aspect ratio
+            sourceNode.caption || '',
+            effectiveMediaId,
+            1
+          );
 
-        if (!effectiveMediaId) {
-          // Upload if needed
-          if (!sourceNode.base64 && !sourceNode.src.startsWith('data:')) {
-            // Fetch blob to get base64? Or just skip if we can't get base64 easily
-            // For now assume we can't easily upload without base64 if not already uploaded
-            throw new Error('Source image not ready for generation (missing mediaId)');
-          }
+          // C. Update Placeholder with Final Result
+          updateElement(imageId, {
+            src: result.imageUrl,
+            base64: result.base64,
+            promptId: result.promptId,
+            mediaId: result.mediaId || result.mediaGenerationId,
+            mediaGenerationId: result.mediaGenerationId,
+            uploadState: 'synced',
+            uploadMessage: undefined,
+          } as Partial<ImageElement>);
 
-          // If we have base64, upload it
-          const base64 = sourceNode.base64 || sourceNode.src.split(',')[1];
-          const { registerUploadedImage } = await import('@/lib/api-mock');
-          const uploadResult = await registerUploadedImage(base64);
-          effectiveMediaId = uploadResult.mediaGenerationId || undefined;
-
-          // Update source node with new mediaId
-          if (effectiveMediaId) {
-            updateElement(sourceNode.id, { mediaGenerationId: effectiveMediaId } as Partial<ImageElement>);
-          }
+          // Update edge style
+          const edgeId = `edge-${sourceNode.id}-${imageId}`;
+          setEdges((eds) => eds.map(e => e.id === edgeId ? { ...e, animated: false, style: { stroke: '#64748b', strokeWidth: 1 } } : e));
         }
-
-        const { imageToImage } = await import('@/lib/api-mock');
-        const result = await imageToImage(
-          nextShotPrompt,
-          sourceNode.src,
-          '16:9', // Default aspect ratio
-          sourceNode.caption || '',
-          effectiveMediaId,
-          1
-        );
-
-        // C. Update Placeholder with Final Result
-        updateElement(newImageId, {
-          src: result.imageUrl,
-          base64: result.base64,
-          promptId: result.promptId,
-          mediaId: result.mediaId || result.mediaGenerationId,
-          mediaGenerationId: result.mediaGenerationId,
-          uploadState: 'synced',
-          uploadMessage: undefined,
-        } as Partial<ImageElement>);
-
-        // Update edge style
-        setEdges((eds) => eds.map(e => e.id === edgeId ? { ...e, animated: false, style: { stroke: '#64748b', strokeWidth: 1 } } : e));
 
       } catch (error) {
         console.error('Next shot generation failed:', error);
         toast.error(`生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
-        // Delete placeholder and edge
-        deleteElement(newImageId);
-        setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+        // Delete all placeholders
+        newImageIds.forEach(id => deleteElement(id));
       }
     })();
 
   }, [resetConnectionMenu, setEdges]);
 
-  const handleAutoNextShot = useCallback(() => {
+
+
+  const handleAutoNextShot = useCallback((count: number = 1) => {
     if (connectionMenu.sourceNodeId) {
-      handleNextShotGeneration(connectionMenu.sourceNodeId);
+      handleNextShotGeneration(connectionMenu.sourceNodeId, undefined, count);
     }
   }, [connectionMenu.sourceNodeId, handleNextShotGeneration]);
 
@@ -2003,6 +2050,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onAutoNextShot: handleAutoNextShot,
           onCustomNextShot: handleCustomNextShot,
           onConfirmCustomNextShot: handleConfirmCustomNextShot,
+          onShowAutoNextShotCountSubmenu: showAutoNextShotCountSubmenu,
         }}
         promptInputRef={promptMenuInputRef}
       />

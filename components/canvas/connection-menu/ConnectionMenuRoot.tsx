@@ -4,7 +4,7 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, Layers, ArrowRight } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -66,7 +66,7 @@ export default function ConnectionMenuRoot({
 
                 {/* Next Shot Options */}
                 <button
-                  onClick={callbacks.onAutoNextShot}
+                  onClick={callbacks.onShowAutoNextShotCountSubmenu}
                   className="w-full px-5 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors text-left border-b border-gray-50 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-200 transition-colors">
@@ -174,6 +174,38 @@ export default function ConnectionMenuRoot({
             onConfirm={callbacks.onConfirmCustomNextShot}
             onBack={callbacks.onBackToMain}
           />
+        )}
+
+        {/* Auto Next Shot Count Selection */}
+        {state.activeSubmenu === 'autoNextShotCount' && (
+          <div className="w-[240px]">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <button
+                onClick={callbacks.onBackToMain}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <ArrowRight className="w-4 h-4 rotate-180" />
+              </button>
+              <span className="text-sm font-semibold text-gray-900">选择分镜数量</span>
+            </div>
+            <div className="p-2 flex flex-col gap-1">
+              {[1, 2, 3, 4].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => callbacks.onAutoNextShot(count)}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 rounded-lg transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors font-medium">
+                    {count}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">生成 {count} 个分镜</div>
+                    <div className="text-xs text-gray-500">Generate {count} Shot{count > 1 ? 's' : ''}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* 行级注释：镜头控制子菜单 */}

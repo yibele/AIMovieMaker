@@ -12,7 +12,7 @@ export type ConnectionMenuState = {
   position: { x: number; y: number };
   sourceNodeId: string | null;
   sourceNodeType: CanvasElement['type'] | null;
-  activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | 'extendVideo' | 'customNextShotInput' | null;
+  activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | 'extendVideo' | 'customNextShotInput' | 'autoNextShotCount' | null;
   pendingImageConfig: ImagePromptConfig | null;
   pendingExtendPrompt?: string; // 行级注释：延长视频的提示词
 };
@@ -37,8 +37,9 @@ export type ConnectionMenuCallbacks = {
   onExtendPromptChange: (value: string) => void;
   onConfirmExtend: () => void;
   // Next Shot callbacks
-  onAutoNextShot: () => void;
+  onAutoNextShot: (count?: number) => void;
   onCustomNextShot: () => void;
   onConfirmCustomNextShot: () => void;
+  onShowAutoNextShotCountSubmenu: () => void;
 };
 
