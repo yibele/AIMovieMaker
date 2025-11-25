@@ -35,9 +35,10 @@ export interface MaterialsState {
   isLoading: boolean;
   loadingMessage?: string;
   searchQuery: string;
-  activeTab: 'library_image' | 'library_video' | 'project_history' | 'trash'; // 当前激活的标签页
+  activeTab: 'library_image' | 'library_video' | 'project_history' | 'trash_image' | 'trash_video'; // 当前激活的标签页
   sortBy: 'createdAt' | 'name' | 'type'; // 排序方式
   sortOrder: 'asc' | 'desc'; // 排序顺序
+  currentUserId: string | null; // 当前缓存的用户 ID
 }
 
 // 素材库操作
@@ -54,7 +55,7 @@ export interface MaterialsActions {
   loadProjectHistory: (projectId: string) => Promise<void>;
 
   // 废片库操作
-  moveToTrash: (material: Omit<MaterialItem, 'id' | 'createdAt'>) => void; // 画布删除 -> 废片库
+  moveToTrash: (material: Omit<MaterialItem, 'createdAt'>) => void; // 画布删除 -> 废片库
   restoreFromTrash: (id: string) => void; // 废片 -> 素材库 (恢复/入库)
   deleteFromTrash: (id: string) => void; // 彻底删除
   clearTrash: () => void; // 清空废片库

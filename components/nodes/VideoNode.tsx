@@ -2,9 +2,11 @@
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
-import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send } from 'lucide-react';
+import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send, FolderInput } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
+import { useMaterialsStore } from '@/lib/materials-store';
+import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
 
 // 行级注释：视频节点组件
@@ -13,8 +15,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
+  // const [isDownloading, setIsDownloading] = useState(false); // Removed
+  // const [downloadProgress, setDownloadProgress] = useState(0); // Removed
   const [promptInput, setPromptInput] = useState(videoData.promptText || '');
   // 行级注释：使用本地 state 管理生成数量，避免频繁更新全局 store 导致卡顿
   const [generationCount, setGenerationCount] = useState(videoData.generationCount || 1);
@@ -177,213 +179,14 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }, 100);
   }, [id, videoData, addElement, getEdges, setEdges, triggerVideoGeneration]);
 
-  // 行级注释：处理下载视频 - 优先使用 base64（通过 media API），回退到 URL
-  const [blobSize, setBlobSize] = useState(0);
-
-  const handleDownload = useCallback(async () => {
+  // 行级注释：处理下载视频 - 直接打开 URL
+  const handleDownload = useCallback(() => {
     if (!videoData.src) {
       console.error('没有可下载的视频源');
       return;
     }
-
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    setBlobSize(0);
-
-    try {
-      console.log('🚀 开始下载视频:', id);
-
-      let blob: Blob;
-
-      // 行级注释：优先尝试通过 media API 获取 base64（更快，0 流量）
-      if (videoData.mediaGenerationId) {
-        let progressInterval: NodeJS.Timeout | null = null; // 行级注释：定义在外部以便清理
-        try {
-          console.log('📥 尝试通过 media API 获取视频 base64...');
-          setDownloadProgress(15);
-
-          // 行级注释：模拟进度增长，避免长时间停在一个数字
-          progressInterval = setInterval(() => {
-            setDownloadProgress(prev => {
-              if (prev < 40) return prev + 5; // 15% → 40%，持续增长
-              return prev;
-            });
-          }, 500); // 每 0.5 秒增加 5%
-
-          const { useCanvasStore } = await import('@/lib/store');
-          const apiConfig = useCanvasStore.getState().apiConfig;
-
-          if (!apiConfig.bearerToken) {
-            throw new Error('缺少 Bearer Token');
-          }
-
-          // 行级注释：调用 media API 获取完整数据（包含 base64）
-          const mediaResponse = await fetch(
-            `/api/flow/media/${videoData.mediaGenerationId}?key=${apiConfig.apiKey}&returnUriOnly=false&proxy=${apiConfig.proxy || ''}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${apiConfig.bearerToken}`
-              }
-            }
-          );
-
-          if (progressInterval) clearInterval(progressInterval); // 行级注释：停止模拟进度
-
-          if (!mediaResponse.ok) {
-            throw new Error('Media API 调用失败');
-          }
-
-          const mediaData = await mediaResponse.json();
-          setDownloadProgress(50); // 行级注释：API 返回，跳到 50%
-
-          // 行级注释：提取视频 base64 数据
-          const encodedVideo = mediaData?.video?.encodedVideo;
-          if (encodedVideo) {
-            console.log('✅ 获取到视频 base64，开始转换...');
-            setDownloadProgress(70); // 行级注释：开始转换，跳到 70%
-
-            // 行级注释：将 base64 转为 Blob
-            const byteCharacters = atob(encodedVideo);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            blob = new Blob([byteArray], { type: 'video/mp4' });
-
-            console.log('✅ base64 转换完成（0 网络流量），大小:', blob.size, 'bytes');
-            setBlobSize(blob.size);
-            setDownloadProgress(100);
-          } else {
-            throw new Error('未获取到视频 base64');
-          }
-
-        } catch (mediaError) {
-          // 行级注释：确保清理定时器
-          if (progressInterval) clearInterval(progressInterval);
-
-          // 行级注释：media API 失败，回退到 URL 下载
-          console.warn('⚠️ media API 获取失败，回退到 URL 下载:', mediaError);
-
-          // 行级注释：从 URL 下载（原逻辑）
-          setDownloadProgress(0);
-          const fallbackProgressInterval = setInterval(() => {
-            setDownloadProgress(prev => Math.min(prev + 10, 90));
-          }, 100);
-
-          const response = await fetch(videoData.src);
-          if (!response.ok) {
-            throw new Error(`下载失败: ${response.status} ${response.statusText}`);
-          }
-
-          const contentLength = response.headers.get('content-length');
-          const totalSize = contentLength ? parseInt(contentLength) : 0;
-
-          const reader = response.body?.getReader();
-          if (!reader) {
-            throw new Error('浏览器不支持流式下载');
-          }
-
-          const chunks: Uint8Array[] = [];
-          let receivedLength = 0;
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            if (value) {
-              chunks.push(value);
-              receivedLength += value.length;
-
-              if (totalSize > 0) {
-                const progress = Math.round((receivedLength / totalSize) * 100);
-                setDownloadProgress(progress);
-              }
-            }
-          }
-
-          blob = new Blob(chunks as any, { type: 'video/mp4' });
-          console.log('✅ URL 下载完成，大小:', blob.size, 'bytes');
-          setBlobSize(blob.size);
-
-          clearInterval(fallbackProgressInterval);
-          setDownloadProgress(100);
-        }
-      } else {
-        // 行级注释：无 mediaGenerationId，直接从 URL 下载
-        console.log('📥 无 mediaGenerationId，从 URL 下载...');
-
-        const progressInterval = setInterval(() => {
-          setDownloadProgress(prev => Math.min(prev + 10, 90));
-        }, 100);
-
-        const response = await fetch(videoData.src);
-        if (!response.ok) {
-          throw new Error(`下载失败: ${response.status} ${response.statusText}`);
-        }
-
-        const contentLength = response.headers.get('content-length');
-        const totalSize = contentLength ? parseInt(contentLength) : 0;
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('浏览器不支持流式下载');
-        }
-
-        const chunks: Uint8Array[] = [];
-        let receivedLength = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          if (value) {
-            chunks.push(value);
-            receivedLength += value.length;
-
-            if (totalSize > 0) {
-              const progress = Math.round((receivedLength / totalSize) * 100);
-              setDownloadProgress(progress);
-            }
-          }
-        }
-
-        blob = new Blob(chunks as any, { type: 'video/mp4' });
-        console.log('✅ URL 下载完成，大小:', blob.size, 'bytes');
-        setBlobSize(blob.size);
-
-        clearInterval(progressInterval);
-        setDownloadProgress(100);
-      }
-
-      // 行级注释：创建下载链接
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `morpheus-video-${id}.mp4`;
-
-      // 行级注释：触发下载
-      document.body.appendChild(link);
-      link.click();
-
-      // 行级注释：清理
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        setIsDownloading(false);
-        setDownloadProgress(0);
-        setBlobSize(0);
-        console.log('✅ 视频下载完成');
-      }, 500);
-
-    } catch (error) {
-      console.error('❌ 视频下载失败:', error);
-      setIsDownloading(false);
-      setDownloadProgress(0);
-      setBlobSize(0);
-      alert('视频下载失败：' + (error as Error)?.message || '未知错误');
-    }
-  }, [videoData.src, videoData.mediaGenerationId, id]);
+    window.open(videoData.src, '_blank');
+  }, [videoData.src]);
 
   // 行级注释：处理超清放大 - 创建新视频节点并生成超清版本
   const handleUpscale = useCallback(async () => {
@@ -541,6 +344,50 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.src, videoData.mediaGenerationId, videoData.size, videoData.position, videoData.promptText, id, updateElement]);
 
+  // 入库（归档到精选素材）
+  const handleArchive = useCallback(async () => {
+    if (!videoData.src) {
+      toast.error('视频未生成，无法入库');
+      return;
+    }
+
+    try {
+      const { addMaterial } = useMaterialsStore.getState();
+      const apiConfig = useCanvasStore.getState().apiConfig;
+
+      // Calculate aspect ratio
+      let aspectRatio: '16:9' | '9:16' | '1:1' | '4:3' = '16:9';
+      if (videoData.size) {
+        const { width = 640, height = 360 } = videoData.size;
+        const ratio = width / height;
+        if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
+        else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
+        else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
+        else if (Math.abs(ratio - 4 / 3) < 0.1) aspectRatio = '4:3';
+      }
+
+      await addMaterial({
+        type: 'video',
+        name: videoData.promptText || 'Untitled Video',
+        src: videoData.src,
+        thumbnail: videoData.thumbnail || videoData.src,
+        mediaGenerationId: videoData.mediaGenerationId || '',
+        metadata: {
+          prompt: videoData.promptText,
+          width: videoData.size?.width,
+          height: videoData.size?.height,
+          duration: videoData.duration,
+          aspectRatio: aspectRatio,
+        },
+        projectId: apiConfig.projectId,
+      });
+      toast.success('已添加到精选素材库');
+    } catch (error) {
+      console.error('入库失败:', error);
+      toast.error('入库失败，请重试');
+    }
+  }, [videoData]);
+
   // 处理删除 - 生成中不允许删除
   const handleDelete = useCallback(() => {
     // 行级注释：如果正在生成，禁止删除
@@ -592,6 +439,15 @@ function VideoNode({ data, selected, id }: NodeProps) {
             title={videoData.status === 'ready' ? '重新生成' : '生成/重新生成'}
             disabled={videoData.status === 'generating' || videoData.status === 'queued'}
             onClick={() => handleRegenerate()}
+          />
+
+          {/* 入库 - 保存到精选素材库 */}
+          <ToolbarButton
+            icon={<FolderInput className="w-3 h-3" />}
+            label="入库"
+            title="保存到精选素材库"
+            disabled={!videoData.src}
+            onClick={() => handleArchive()}
           />
 
           {/* 下载视频 - 只在有视频源时可用 */}
@@ -743,7 +599,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
               )}
 
               {/* 播放按钮遮罩 */}
-              {!videoError && !isDownloading && (
+              {!videoError && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div
                     className={`
@@ -765,26 +621,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
             </div>
           </div>
 
-          {/* 下载进度提示 */}
-          {isDownloading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-40 animate-in fade-in duration-200">
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4 text-blue-400 animate-bounce" />
-                  <span className="text-white text-sm font-medium">下载中...</span>
-                </div>
-                <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-400 transition-all duration-300"
-                    style={{ width: `${downloadProgress}%` }}
-                  />
-                </div>
-                <div className="text-xs text-gray-300">
-                  {downloadProgress}% - {blobSize > 0 ? `${Math.round(blobSize / 1024 / 1024)}MB` : '准备中...'}
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* 错误状态 */}
           {videoData.status === 'error' && (

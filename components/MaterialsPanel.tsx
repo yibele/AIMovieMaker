@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw, FolderOpen, Check, RotateCcw, Ban, LayoutList } from 'lucide-react';
+import { X, Search, Plus, Image, Video, Download, Trash2, Grid, List, RefreshCw, FolderOpen, Check, RotateCcw, Ban, LayoutList, CheckSquare, MousePointer2 } from 'lucide-react';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { useCanvasStore } from '@/lib/store';
 import { loadMaterialsFromProject } from '@/lib/project-materials'; // This now loads into projectHistory
 import { MaterialItem, MaterialType } from '@/lib/types-materials';
 import { MaterialsIcon } from './icons/MaterialsIcon';
 import { supabase } from '@/lib/supabaseClient'; // 用于获取 user_id
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface MaterialsPanelProps {
   isOpen: boolean;
@@ -40,6 +41,21 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // 确认弹窗状态
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant: 'danger' | 'default';
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => { },
+    variant: 'default',
+  });
+
   // 获取当前用户 ID
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
@@ -70,8 +86,10 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
   const getFilteredMaterials = useCallback(() => {
     let sourceMaterials: MaterialItem[] = [];
 
-    if (activeTab === 'trash') {
-      sourceMaterials = trash;
+    if (activeTab === 'trash_image') {
+      sourceMaterials = trash.filter(m => m.type === 'image');
+    } else if (activeTab === 'trash_video') {
+      sourceMaterials = trash.filter(m => m.type === 'video');
     } else if (activeTab === 'library_image') {
       sourceMaterials = materials.filter(m => m.type === 'image');
     } else if (activeTab === 'library_video') {
@@ -94,6 +112,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
   // 默认使用 grid 视图，满足用户“每行三个”的需求
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // 选择模式状态
+  const [isSelectMode, setIsSelectMode] = useState(false);
 
   const handleSyncMaterials = useCallback(async () => {
     if (!currentProjectId) {
@@ -115,42 +135,66 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     }
   }, [currentProjectId, userId, loadCloudMaterials]);
 
-  // 处理素材点击（添加到画布）
+  // 处理素材点击
   const handleMaterialClick = useCallback(
     async (material: MaterialItem) => {
-      await addToCanvas(material.id);
-      selectMaterial(material.id);
-    },
-    [addToCanvas, selectMaterial]
-  );
-
-  // 处理素材双击（选中）
-  const handleMaterialDoubleClick = useCallback(
-    (material: MaterialItem) => {
-      if (selectedMaterials.includes(material.id)) {
-        selectMaterials(selectedMaterials.filter(id => id !== material.id));
+      if (isSelectMode) {
+        // 选择模式：切换选中状态
+        if (selectedMaterials.includes(material.id)) {
+          selectMaterials(selectedMaterials.filter(id => id !== material.id));
+        } else {
+          selectMaterials([...selectedMaterials, material.id]);
+        }
       } else {
-        selectMaterials([...selectedMaterials, material.id]);
+        // 默认模式：添加到画布
+        // 如果是废片库，不允许直接点击添加到画布，只能通过图标恢复
+        if (activeTab.startsWith('trash')) {
+          return;
+        }
+        await addToCanvas(material.id);
+        // 不再自动选中，避免混淆
       }
     },
-    [selectedMaterials, selectMaterials, selectMaterials]
+    [addToCanvas, isSelectMode, selectedMaterials, selectMaterials]
   );
+
+  // 切换选择模式
+  const toggleSelectMode = useCallback(() => {
+    if (isSelectMode) {
+      clearSelection(); // 退出选择模式时清除选择
+      setIsSelectMode(false);
+    } else {
+      setIsSelectMode(true);
+    }
+  }, [isSelectMode, clearSelection]);
 
   // 批量删除
   const handleBatchDelete = useCallback(() => {
     if (selectedMaterials.length === 0) return;
 
-    if (activeTab === 'trash') {
-      if (window.confirm(`⚠️ 彻底删除 ${selectedMaterials.length} 个项目？此操作无法撤销！`)) {
-        selectedMaterials.forEach(id => deleteFromTrash(id));
-        clearSelection();
-      }
+    if (activeTab.startsWith('trash')) {
+      setConfirmDialog({
+        isOpen: true,
+        title: '彻底删除',
+        description: `确定要彻底删除选中的 ${selectedMaterials.length} 个项目吗？此操作无法撤销！`,
+        variant: 'danger',
+        onConfirm: () => {
+          selectedMaterials.forEach(id => deleteFromTrash(id));
+          clearSelection();
+        }
+      });
     } else if (activeTab.startsWith('library')) {
       // 对于精选库的删除
-      if (window.confirm(`确认删除 ${selectedMaterials.length} 个精选素材吗？这将从云端删除！`)) {
-        selectedMaterials.forEach(id => removeMaterial(id));
-        clearSelection();
-      }
+      setConfirmDialog({
+        isOpen: true,
+        title: '删除精选素材',
+        description: `确定要删除选中的 ${selectedMaterials.length} 个精选素材吗？这将从云端同步删除。`,
+        variant: 'danger',
+        onConfirm: () => {
+          selectedMaterials.forEach(id => removeMaterial(id));
+          clearSelection();
+        }
+      });
     } else if (activeTab === 'project_history') {
       // 对于项目历史的删除，目前不允许批量删除
       alert('暂不支持批量删除项目历史素材。');
@@ -176,16 +220,16 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         <div className="flex-shrink-0 px-6 py-5 border-b border-gray-100 flex flex-col gap-4 bg-white/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md transition-colors ${activeTab === 'trash' ? 'bg-red-500 shadow-red-500/20' : 'bg-gradient-to-tr from-blue-500 to-sky-500 shadow-blue-500/20'
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md transition-colors ${activeTab.startsWith('trash') ? 'bg-red-500 shadow-red-500/20' : 'bg-gradient-to-tr from-blue-500 to-sky-500 shadow-blue-500/20'
                 }`}>
-                {activeTab === 'trash' ? <Trash2 size={18} strokeWidth={2.5} /> : <FolderOpen size={18} strokeWidth={2.5} />}
+                {activeTab.startsWith('trash') ? <Trash2 size={18} strokeWidth={2.5} /> : <FolderOpen size={18} strokeWidth={2.5} />}
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                  {activeTab === 'trash' ? '回收站' : '素材库'}
+                  {activeTab.startsWith('trash') ? '回收站' : '素材库'}
                 </h2>
                 <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
-                  {activeTab === 'trash' ? 'Trash Bin' : 'Project Assets'}
+                  {activeTab.startsWith('trash') ? 'Trash Bin' : 'Project Assets'}
                 </p>
               </div>
             </div>
@@ -220,28 +264,45 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
               视频
             </button>
 
-            {/* 回收站 Tab */}
+            {/* 回收站 Tabs */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
             <button
               className={`
-                flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300
-                ${activeTab === 'trash' ? 'bg-red-50 text-red-600 shadow-sm' : 'text-gray-400 hover:text-red-500 hover:bg-red-50/50'}
+                flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-bold rounded-lg transition-all duration-300
+                ${activeTab === 'trash_image' ? 'bg-red-50 text-red-600 shadow-sm' : 'text-gray-400 hover:text-red-500 hover:bg-red-50/50'}
               `}
-              onClick={() => setActiveTab('trash')}
-              title="查看废片库"
+              onClick={() => setActiveTab('trash_image')}
+              title="回收站 (图片)"
             >
-              <Trash2 size={14} />
-              <span className="text-xs">{trash.length > 0 ? trash.length : ''}</span>
+              <Image size={14} />
+              <span className="text-xs">{trash.filter(t => t.type === 'image').length > 0 ? trash.filter(t => t.type === 'image').length : ''}</span>
+            </button>
+            <button
+              className={`
+                flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-bold rounded-lg transition-all duration-300
+                ${activeTab === 'trash_video' ? 'bg-red-50 text-red-600 shadow-sm' : 'text-gray-400 hover:text-red-500 hover:bg-red-50/50'}
+              `}
+              onClick={() => setActiveTab('trash_video')}
+              title="回收站 (视频)"
+            >
+              <Video size={14} />
+              <span className="text-xs">{trash.filter(t => t.type === 'video').length > 0 ? trash.filter(t => t.type === 'video').length : ''}</span>
             </button>
           </div>
 
           {/* 操作栏 */}
           <div className="flex items-center justify-between gap-3 pt-1">
-            {activeTab === 'trash' ? (
+            {activeTab.startsWith('trash') ? (
               <button
                 onClick={() => {
-                  if (window.confirm('确定要清空废片库吗？此操作无法撤销！')) {
-                    clearTrash();
-                  }
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: '清空回收站',
+                    description: '确定要清空回收站吗？所有项目将被永久删除且无法恢复。',
+                    variant: 'danger',
+                    onConfirm: () => clearTrash()
+                  });
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-medium border flex-1 justify-center bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
               >
@@ -266,7 +327,22 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             )}
 
             {/* 视图切换按钮 - 恢复显示 */}
-            <div className="flex items-center bg-gray-100/80 rounded-lg p-0.5">
+            <div className="flex items-center bg-gray-100/80 rounded-lg p-0.5 gap-0.5">
+              {/* 选择模式切换按钮 */}
+              <button
+                className={`
+                  p-1.5 rounded-md transition-all flex items-center gap-1.5 px-2
+                  ${isSelectMode ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}
+                `}
+                onClick={toggleSelectMode}
+                title={isSelectMode ? "退出选择模式" : "进入选择模式"}
+              >
+                <CheckSquare className="w-4 h-4" />
+                <span className="text-xs font-bold">{isSelectMode ? '完成' : '选择'}</span>
+              </button>
+
+              <div className="w-px h-4 bg-gray-300 mx-1" />
+
               <button
                 className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
                 onClick={() => setViewMode('grid')}
@@ -326,14 +402,14 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
             </div>
           ) : filteredMaterials.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
-              <div className={`w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 ${activeTab === 'trash' ? 'text-red-200' : 'text-gray-200'}`}>
-                {activeTab === 'trash' ? <Trash2 className="w-8 h-8" /> : <FolderOpen className="w-8 h-8" />}
+              <div className={`w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 ${activeTab.startsWith('trash') ? 'text-red-200' : 'text-gray-200'}`}>
+                {activeTab.startsWith('trash') ? <Trash2 className="w-8 h-8" /> : <FolderOpen className="w-8 h-8" />}
               </div>
               <p className="text-sm font-medium text-gray-500">
-                {activeTab === 'trash' ? '回收站为空' : `暂无${activeTab === 'library_image' ? '图片' : '视频'}素材`}
+                {activeTab.startsWith('trash') ? '回收站为空' : `暂无${activeTab === 'library_image' ? '图片' : '视频'}素材`}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                {activeTab === 'trash' ? '删除的素材会暂时存放在这里' : '上传或生成内容后将在此显示'}
+                {activeTab.startsWith('trash') ? '删除的素材会暂时存放在这里' : '上传或生成内容后将在此显示'}
               </p>
             </div>
           ) : (
@@ -349,7 +425,6 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                     <div
                       key={material.id}
                       onClick={() => handleMaterialClick(material)}
-                      onDoubleClick={() => handleMaterialDoubleClick(material)}
                       className={`
                         group relative aspect-square bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden
                         ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-100 hover:border-blue-200'}
@@ -383,7 +458,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                           <span className="text-[10px] text-white/90 font-medium truncate max-w-[70%]">{material.name}</span>
 
                           <div className="flex gap-1">
-                            {activeTab === 'trash' ? (
+                            {activeTab.startsWith('trash') ? (
                               <>
                                 <button
                                   onClick={(e) => {
@@ -398,7 +473,13 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (window.confirm('彻底删除？无法恢复')) deleteFromTrash(material.id);
+                                    setConfirmDialog({
+                                      isOpen: true,
+                                      title: '彻底删除',
+                                      description: '确定要彻底删除该项目吗？此操作无法撤销。',
+                                      variant: 'danger',
+                                      onConfirm: () => deleteFromTrash(material.id)
+                                    });
                                   }}
                                   className="p-1 bg-white/20 hover:bg-red-500 rounded text-white backdrop-blur-sm transition-colors"
                                   title="彻底删除"
@@ -410,7 +491,13 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
+                                  setConfirmDialog({
+                                    isOpen: true,
+                                    title: '删除素材',
+                                    description: '确定要删除该素材吗？它将从您的精选库中移除。',
+                                    variant: 'danger',
+                                    onConfirm: () => removeMaterial(material.id)
+                                  });
                                 }}
                                 className="p-1 bg-white/20 hover:bg-red-500/80 rounded text-white backdrop-blur-sm transition-colors"
                               >
@@ -436,7 +523,6 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                   <div
                     key={material.id}
                     onClick={() => handleMaterialClick(material)}
-                    onDoubleClick={() => handleMaterialDoubleClick(material)}
                     className={`
                       group relative bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden flex
                       ${isSelected ? 'border-blue-500 ring-1 ring-blue-500/20' : 'border-gray-100 hover:border-blue-200'}
@@ -484,7 +570,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
                         {/* 悬浮操作 (只在Hover时显示) */}
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                          {activeTab === 'trash' ? (
+                          {activeTab.startsWith('trash') ? (
                             <>
                               <button
                                 onClick={(e) => {
@@ -499,7 +585,13 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (window.confirm('彻底删除？')) deleteFromTrash(material.id);
+                                  setConfirmDialog({
+                                    isOpen: true,
+                                    title: '彻底删除',
+                                    description: '确定要彻底删除该项目吗？此操作无法撤销。',
+                                    variant: 'danger',
+                                    onConfirm: () => deleteFromTrash(material.id)
+                                  });
                                 }}
                                 className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
                                 title="彻底删除"
@@ -511,7 +603,13 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm('确认删除该素材？')) removeMaterial(material.id);
+                                setConfirmDialog({
+                                  isOpen: true,
+                                  title: '删除素材',
+                                  description: '确定要删除该素材吗？它将从您的精选库中移除。',
+                                  variant: 'danger',
+                                  onConfirm: () => removeMaterial(material.id)
+                                });
                               }}
                               className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
                               title="删除"
@@ -529,7 +627,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
 
                       <div className="mt-auto pt-2 flex justify-end items-center">
                         <span className="text-[10px] text-blue-500 font-medium opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-                          {activeTab === 'trash' ? '点击恢复' : '添加到画布'} <Plus size={10} />
+                          {isSelectMode ? (isSelected ? '取消选择' : '点击选择') : (activeTab.startsWith('trash') ? '点击恢复' : '添加到画布')} <Plus size={10} className={isSelectMode ? 'hidden' : ''} />
                         </span>
                       </div>
                     </div>
@@ -540,6 +638,15 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+      />
     </>
   );
 }

@@ -22,7 +22,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
   const selectedImages = elements
     .filter((el) => selection.includes(el.id) && el.type === 'image')
     .map((el) => el as ImageElement);
-  
+
   // 获取选中的视频元素 (用于入库)
   const selectedVideos = elements
     .filter((el) => selection.includes(el.id) && el.type === 'video')
@@ -47,7 +47,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
           src: img.src,
           thumbnail: img.src,
           mediaId: img.mediaId,
-          mediaGenerationId: img.mediaGenerationId,
+          mediaGenerationId: img.mediaGenerationId || '',
           metadata: {
             prompt: img.generatedFrom?.prompt,
             width: img.size?.width,
@@ -67,7 +67,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
           name: vid.promptText || 'Untitled Video',
           src: vid.src,
           thumbnail: vid.thumbnail || vid.src,
-          mediaGenerationId: vid.mediaGenerationId,
+          mediaGenerationId: vid.mediaGenerationId || '',
           metadata: {
             prompt: vid.promptText,
             duration: vid.duration,

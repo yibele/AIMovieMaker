@@ -773,7 +773,30 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       });
 
       // 行级注释：传递过滤后的变化给 React Flow
-      onNodesChange(filteredChanges);
+      // 注意：这里不需要手动调用 onNodesChange，因为 React Flow 会自动处理 remove
+      // 但是我们需要确保 store 同步。
+      // 如果我们在这里调用了 deleteElement，store 会更新，elements 会变，useEffect 会更新 nodes。
+      // 所以其实我们不需要把 remove 变化传递给 onNodesChange，否则可能会导致冲突？
+      // 不，React Flow 的 onNodesChange 是为了让非受控模式工作，或者通知父组件。
+      // 在受控模式下（我们使用了 nodes 属性），我们需要更新 nodes。
+      // 但是我们的 nodes 是从 elements 派生的。
+      // 所以，当 deleteElement 被调用，elements 更新，nodes 也会更新。
+      // 如果我们把 remove change 传给 onNodesChange，它可能会试图更新本地 nodes state。
+      // 但我们的 setNodes 是在 useEffect 中被 elements 覆盖的。
+      // 关键问题是：deleteElement 会调用 moveToTrash。
+      // 如果 onNodesChange 被触发（例如按 Backspace），我们调用 deleteElement。
+      // 如果我们同时让 React Flow 处理这个 change，它可能会在 UI 上移除节点。
+      // 但最终 source of truth 是 elements。
+
+      // 这里的逻辑看起来是正确的：拦截 remove，调用 store delete，然后让 React Flow 做它的事（或者忽略，因为 store 会更新）。
+      // 为了安全起见，我们可以只调用 deleteElement，不传递 remove change 给 onNodesChange，
+      // 因为 store 更新会触发 useEffect 更新 nodes。
+      // 但是，drag 等其他 changes 需要传递。
+
+      const nonRemoveChanges = changes.filter(c => c.type !== 'remove');
+      if (nonRemoveChanges.length > 0) {
+        onNodesChange(nonRemoveChanges);
+      }
     },
     [onNodesChange, elements]
   );

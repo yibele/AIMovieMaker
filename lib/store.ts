@@ -254,7 +254,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
         if (mediaEl.src && !mediaEl.src.startsWith('blob:')) {
           // 延迟加载 materialsStore 避免循环依赖
           const { moveToTrash } = require('./materials-store').useMaterialsStore.getState();
-          
+
           moveToTrash({
             id: mediaEl.id, // 复用节点 ID 或生成新 ID 均可
             type: element.type as 'image' | 'video',
@@ -269,6 +269,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
               height: mediaEl.size?.height,
               // aspectRatio: ... (如果需要)
             },
+            projectId: get().apiConfig.projectId, // 关键：关联当前项目 ID，确保在废片库中可见
             createdAt: new Date().toISOString(),
             tags: ['trash'],
           });
@@ -303,6 +304,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
                 width: mediaEl.size?.width,
                 height: mediaEl.size?.height,
               },
+              projectId: get().apiConfig.projectId, // 关键：关联当前项目 ID
               createdAt: new Date().toISOString(),
               tags: ['trash'],
             });

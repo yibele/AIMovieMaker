@@ -275,54 +275,11 @@ function ImageNode({ data, selected, id }: NodeProps) {
   }, [imageData, mediaBase64Cache]);
 
   // 下载图片
-  const handleDownload = useCallback(async () => {
+  // 下载图片 - 直接打开 URL
+  const handleDownload = useCallback(() => {
     if (!imageData.src) return;
-
-    try {
-      let blob: Blob;
-
-      if (imageData.base64) {
-        const dataUrl = imageData.base64.startsWith('data:')
-          ? imageData.base64
-          : `data:image/png;base64,${imageData.base64}`;
-        const base64Data = dataUrl.split(',')[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        blob = new Blob([byteArray], { type: 'image/png' });
-      } else if (imageData.src.startsWith('data:')) {
-        const base64Data = imageData.src.split(',')[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        blob = new Blob([byteArray], { type: 'image/png' });
-      } else {
-        const response = await fetch(imageData.src);
-        if (!response.ok) throw new Error(`下载失败: ${response.status}`);
-        blob = await response.blob();
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `image-${id}.png`;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-    } catch (error) {
-      console.error('下载失败:', error);
-      toast.error('下载失败');
-    }
-  }, [imageData.src, imageData.base64, id]);
+    window.open(imageData.src, '_blank');
+  }, [imageData.src]);
 
   // 删除 - 生成/处理中不允许删除
   const handleDelete = useCallback(() => {
@@ -396,22 +353,22 @@ function ImageNode({ data, selected, id }: NodeProps) {
       toast.error('图片未生成，无法入库');
       return;
     }
-    
+
     // 获取 userId (实际应从 auth store 获取，这里假设 context 或 store 中有)
     // 这里做一个简单的 mock 或从 store 获取
     // const userId = useUserStore.getState().user?.id; 
-    
+
     try {
       const { addMaterial } = useMaterialsStore.getState();
       const apiConfig = useCanvasStore.getState().apiConfig;
-      
+
       await addMaterial({
         type: 'image',
         name: imageData.generatedFrom?.prompt || 'Untitled Image',
         src: imageData.src,
         thumbnail: imageData.src,
         mediaId: imageData.mediaId,
-        mediaGenerationId: imageData.mediaGenerationId,
+        mediaGenerationId: imageData.mediaGenerationId || '',
         metadata: {
           prompt: imageData.generatedFrom?.prompt,
           width: imageData.size?.width,
