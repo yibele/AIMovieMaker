@@ -1752,10 +1752,13 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       y: sourceNode.position.y + offset.y,
     };
 
+    const size = sourceNode.size || { width: 400, height: 225 };
+
     const placeholderImage: ImageElement = {
       id: newImageId,
       type: 'image',
       position,
+      size,
       src: '', // Empty initially
       uploadState: 'syncing', // Loading state
       uploadMessage: '正在构思下一分镜...',
