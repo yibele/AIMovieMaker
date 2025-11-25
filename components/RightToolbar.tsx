@@ -30,7 +30,7 @@ export default function RightToolbar() {
           title: '素材库',
           isActive: isMaterialsPanelOpen,
           dotColor: 'bg-blue-500',
-          hidden: isManaged, // 托管模式下隐藏
+          // hidden: isManaged, // 托管模式下隐藏 - 现在对所有用户开放
         },
         {
           icon: Sparkles,
@@ -48,8 +48,8 @@ export default function RightToolbar() {
             setIsAssistantOpen(!isAssistantOpen);
             // 互斥：打开助手时关闭其他面板
             if (!isAssistantOpen) {
-                setIsMaterialsPanelOpen(false);
-                setIsPromptLibraryOpen(false);
+              setIsMaterialsPanelOpen(false);
+              setIsPromptLibraryOpen(false);
             }
           },
           title: 'Grok 助手',
@@ -104,52 +104,52 @@ export default function RightToolbar() {
     <>
       {/* 右侧工具栏 - 悬浮胶囊设计 - 垂直居中 */}
       <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4 pointer-events-none">
-        
+
         {/* 主工具栏 */}
         <div className="pointer-events-auto bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-white/60 p-2 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
-          
+
           {mainGroups.map((group, groupIndex) => {
             // 过滤掉隐藏的项
             const visibleItems = group.items.filter((item: any) => !item.hidden);
             if (visibleItems.length === 0) return null;
 
             return (
-            <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100' : ''}`}>
-              {visibleItems.map((btn, btnIndex) => {
-                const Icon = btn.icon;
-                return (
-                  <div key={btnIndex} className="relative group/btn">
-                    <button
-                      onClick={btn.onClick}
-                      className={`
+              <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100' : ''}`}>
+                {visibleItems.map((btn, btnIndex) => {
+                  const Icon = btn.icon;
+                  return (
+                    <div key={btnIndex} className="relative group/btn">
+                      <button
+                        onClick={btn.onClick}
+                        className={`
                         relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300
-                        ${btn.isActive 
-                          ? 'bg-gray-100 text-gray-900 shadow-inner' 
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:scale-105 active:scale-95'}
+                        ${btn.isActive
+                            ? 'bg-gray-100 text-gray-900 shadow-inner'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:scale-105 active:scale-95'}
                       `}
-                    >
-                      <Icon 
-                        className={`w-5 h-5 transition-all duration-300 ${btn.isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} 
-                      />
-                      
-                      {/* 激活状态指示点 */}
-                      {btn.isActive && btn.dotColor && (
-                        <span className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${btn.dotColor} shadow-sm animate-pulse`} />
-                      )}
-                    </button>
+                      >
+                        <Icon
+                          className={`w-5 h-5 transition-all duration-300 ${btn.isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`}
+                        />
 
-                    {/* Tooltip - 左侧弹出 */}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-sm text-white text-xs font-medium rounded-lg opacity-0 invisible -translate-x-2 group-hover/btn:opacity-100 group-hover/btn:visible group-hover/btn:translate-x-0 transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
-                      {btn.title}
-                      {/* 小箭头 */}
-                      <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-2 h-2 bg-gray-900/90 rotate-45" />
+                        {/* 激活状态指示点 */}
+                        {btn.isActive && btn.dotColor && (
+                          <span className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${btn.dotColor} shadow-sm animate-pulse`} />
+                        )}
+                      </button>
+
+                      {/* Tooltip - 左侧弹出 */}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-sm text-white text-xs font-medium rounded-lg opacity-0 invisible -translate-x-2 group-hover/btn:opacity-100 group-hover/btn:visible group-hover/btn:translate-x-0 transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
+                        {btn.title}
+                        {/* 小箭头 */}
+                        <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-2 h-2 bg-gray-900/90 rotate-45" />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
 
       </div>

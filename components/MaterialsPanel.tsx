@@ -60,7 +60,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
   // 加载精选素材和项目历史
   useEffect(() => {
     if (isOpen && userId) {
-      loadCloudMaterials(userId, currentProjectId); // 加载我的精选
+      // loadCloudMaterials(userId, currentProjectId); // 加载我的精选
       // loadMaterialsFromProject(currentProjectId); // 调用 project-materials 中的 loadMaterialsFromProject
     }
   }, [isOpen, userId, currentProjectId, loadCloudMaterials]);
@@ -103,6 +103,9 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     setSyncError(null);
     setIsSyncing(true);
     try {
+      if (userId) {
+        await loadCloudMaterials(userId, currentProjectId);
+      }
       // await loadMaterialsFromProject(currentProjectId); // 现在同步的是项目历史
     } catch (error) {
       console.error('同步素材失败:', error);
@@ -110,7 +113,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     } finally {
       setIsSyncing(false);
     }
-  }, [currentProjectId]);
+  }, [currentProjectId, userId, loadCloudMaterials]);
 
   // 处理素材点击（添加到画布）
   const handleMaterialClick = useCallback(
