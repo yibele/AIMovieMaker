@@ -532,15 +532,15 @@ function ImageNode({ data, selected, id }: NodeProps) {
           e.stopPropagation();
         }}
       >
-        <ToolbarButton icon={<RefreshCw className="w-3 h-3" />} label="再次生成" onClick={handleRegenerate} disabled={isAnalyzing} />
-        <ToolbarButton icon={<Clapperboard className="w-3 h-3" />} label="下一分镜" onClick={() => { }} disabled={true} className="hidden" /> {/* Hidden/Removed */}
-        <ToolbarButton icon={<Edit3 className="w-3 h-3" />} label="图片编辑" onClick={handleAnnotate} disabled={isAnalyzing} />
-        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing} />
-        <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
-        <ToolbarButton icon={<FolderInput className="w-3 h-3" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
+        <ToolbarButton icon={<RefreshCw className="w-5 h-5" />} label="再次生成" onClick={handleRegenerate} disabled={isAnalyzing} />
+        <ToolbarButton icon={<Clapperboard className="w-5 h-5" />} label="下一分镜" onClick={() => { }} disabled={true} className="hidden" /> {/* Hidden/Removed */}
+        <ToolbarButton icon={<Edit3 className="w-5 h-5" />} label="图片编辑" onClick={handleAnnotate} disabled={isAnalyzing} />
+        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing} />
+        <ToolbarButton icon={<Square className="w-5 h-5" />} label="复制" onClick={handleDuplicate} />
+        <ToolbarButton icon={<FolderInput className="w-5 h-5" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
         <ToolbarDivider />
-        <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />
-        <ToolbarButton icon={<Trash2 className="w-3 h-3" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />
+        <ToolbarButton icon={<Download className="w-5 h-5" />} label="下载" onClick={handleDownload} />
+        <ToolbarButton icon={<Trash2 className="w-5 h-5" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />
       </NodeToolbar>
 
       <div

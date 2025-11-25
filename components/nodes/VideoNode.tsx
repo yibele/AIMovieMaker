@@ -434,7 +434,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         >
           {/* 重新生成 - 只在 ready 或 error 状态时可用 */}
           <ToolbarButton
-            icon={<RotateCcw className="w-3 h-3" />}
+            icon={<RotateCcw className="w-5 h-5" />}
             label="重新生成"
             title={videoData.status === 'ready' ? '重新生成' : '生成/重新生成'}
             disabled={videoData.status === 'generating' || videoData.status === 'queued'}
@@ -443,7 +443,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
           {/* 入库 - 保存到精选素材库 */}
           <ToolbarButton
-            icon={<FolderInput className="w-3 h-3" />}
+            icon={<FolderInput className="w-5 h-5" />}
             label="入库"
             title="保存到精选素材库"
             disabled={!videoData.src}
@@ -452,7 +452,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
           {/* 下载视频 - 只在有视频源时可用 */}
           <ToolbarButton
-            icon={<Download className="w-3 h-3" />}
+            icon={<Download className="w-5 h-5" />}
             label="下载"
             title="下载视频"
             disabled={!videoData.src}
@@ -461,7 +461,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
           {/* 超清放大 - 只有 16:9 横屏视频支持 */}
           <ToolbarButton
-            icon={<Sparkles className="w-3 h-3" />}
+            icon={<Sparkles className="w-5 h-5" />}
             label="超清放大"
             title={canUpscale ? "超清放大 (1080p)" : "超清放大仅支持 16:9 横屏视频"}
             disabled={!canUpscale}
@@ -470,7 +470,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
           {/* 删除 - 生成中禁用 */}
           <ToolbarButton
-            icon={<Trash2 className="w-3 h-3" />}
+            icon={<Trash2 className="w-5 h-5" />}
             label="删除"
             title={isGenerating ? "生成中无法删除" : "删除"}
             variant="danger"
