@@ -28,6 +28,7 @@ interface ApiConfig {
   imageModel: 'nanobanana' | 'nanobananapro'; // 图片生成模型：Banana (Preview) 或 Banana Pro
   videoModel?: 'quality' | 'fast'; // 视频生成模型：Quality 或 Fast
   isManaged?: boolean; // 是否为托管模式
+  userId?: string; // 用户ID
 }
 
 // 状态接口定义
@@ -243,19 +244,79 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
         ),
       })),
 
-    deleteElement: (id) =>
+    deleteElement: (id) => {
+      const { elements } = get();
+      const element = elements.find((el) => el.id === id);
+
+      // 如果是图片或视频节点，且有内容，则移入废片库
+      if (element && (element.type === 'image' || element.type === 'video')) {
+        const mediaEl = element as any; // ImageElement | VideoElement
+        if (mediaEl.src && !mediaEl.src.startsWith('blob:')) {
+          // 延迟加载 materialsStore 避免循环依赖
+          const { moveToTrash } = require('./materials-store').useMaterialsStore.getState();
+          
+          moveToTrash({
+            id: mediaEl.id, // 复用节点 ID 或生成新 ID 均可
+            type: element.type as 'image' | 'video',
+            name: mediaEl.promptText || mediaEl.generatedFrom?.prompt || 'Untitled',
+            src: mediaEl.src,
+            thumbnail: mediaEl.thumbnail || mediaEl.src,
+            mediaId: mediaEl.mediaId,
+            mediaGenerationId: mediaEl.mediaGenerationId,
+            metadata: {
+              prompt: mediaEl.promptText || mediaEl.generatedFrom?.prompt,
+              width: mediaEl.size?.width,
+              height: mediaEl.size?.height,
+              // aspectRatio: ... (如果需要)
+            },
+            createdAt: new Date().toISOString(),
+            tags: ['trash'],
+          });
+        }
+      }
+
       set((state) => ({
         elements: state.elements.filter((el) => el.id !== id),
         selection: state.selection.filter((selId) => selId !== id),
-      })),
+      }));
+    },
 
-    deleteSelectedElements: () =>
+    deleteSelectedElements: () => {
+      const { elements, selection } = get();
+      const { moveToTrash } = require('./materials-store').useMaterialsStore.getState();
+
+      // 遍历选中的元素，将图片/视频移入废片库
+      elements.forEach(el => {
+        if (selection.includes(el.id) && (el.type === 'image' || el.type === 'video')) {
+          const mediaEl = el as any;
+          if (mediaEl.src && !mediaEl.src.startsWith('blob:')) {
+            moveToTrash({
+              id: mediaEl.id,
+              type: el.type as 'image' | 'video',
+              name: mediaEl.promptText || mediaEl.generatedFrom?.prompt || 'Untitled',
+              src: mediaEl.src,
+              thumbnail: mediaEl.thumbnail || mediaEl.src,
+              mediaId: mediaEl.mediaId,
+              mediaGenerationId: mediaEl.mediaGenerationId,
+              metadata: {
+                prompt: mediaEl.promptText || mediaEl.generatedFrom?.prompt,
+                width: mediaEl.size?.width,
+                height: mediaEl.size?.height,
+              },
+              createdAt: new Date().toISOString(),
+              tags: ['trash'],
+            });
+          }
+        }
+      });
+
       set((state) => ({
         elements: state.elements.filter(
           (el) => !state.selection.includes(el.id)
         ),
         selection: [],
-      })),
+      }));
+    },
 
     setSelection: (ids) => set({ selection: ids }),
 

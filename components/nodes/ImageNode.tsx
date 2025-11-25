@@ -2,9 +2,10 @@
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
-import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2 } from 'lucide-react';
+import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput } from 'lucide-react';
 import type { ImageElement, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
+import { useMaterialsStore } from '@/lib/materials-store'; // 引入素材库
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
@@ -389,6 +390,42 @@ function ImageNode({ data, selected, id }: NodeProps) {
     );
   }, [imageData, promptsHistory, addElement, updateElement, deleteElement, addPromptHistory]);
 
+  // 入库（归档到精选素材）
+  const handleArchive = useCallback(async () => {
+    if (!imageData.src) {
+      toast.error('图片未生成，无法入库');
+      return;
+    }
+    
+    // 获取 userId (实际应从 auth store 获取，这里假设 context 或 store 中有)
+    // 这里做一个简单的 mock 或从 store 获取
+    // const userId = useUserStore.getState().user?.id; 
+    
+    try {
+      const { addMaterial } = useMaterialsStore.getState();
+      const apiConfig = useCanvasStore.getState().apiConfig;
+      
+      await addMaterial({
+        type: 'image',
+        name: imageData.generatedFrom?.prompt || 'Untitled Image',
+        src: imageData.src,
+        thumbnail: imageData.src,
+        mediaId: imageData.mediaId,
+        mediaGenerationId: imageData.mediaGenerationId,
+        metadata: {
+          prompt: imageData.generatedFrom?.prompt,
+          width: imageData.size?.width,
+          height: imageData.size?.height,
+        },
+        projectId: apiConfig.projectId, // 关联当前项目
+      });
+      toast.success('已添加到精选素材库');
+    } catch (error) {
+      console.error('入库失败:', error);
+      toast.error('入库失败，请重试');
+    }
+  }, [imageData]);
+
   // 视觉识别
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isVisionModalOpen, setIsVisionModalOpen] = useState(false);
@@ -540,6 +577,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         <ToolbarButton icon={<Edit3 className="w-3 h-3" />} label="图片编辑" onClick={handleAnnotate} />
         <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing} />
         <ToolbarButton icon={<Square className="w-3 h-3" />} label="复制" onClick={handleDuplicate} />
+        <ToolbarButton icon={<FolderInput className="w-3 h-3" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-3 h-3" />} label="下载" onClick={handleDownload} />
         <ToolbarButton icon={<Trash2 className="w-3 h-3" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />

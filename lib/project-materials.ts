@@ -76,45 +76,46 @@ function mapFlowAspectRatio(
 
 type ProgressUpdater = (message: string) => void;
 
-// 从项目加载素材到素材库
+// 从项目加载素材到素材库 (现在是填充 projectHistory)
 export async function loadMaterialsFromProject(
   projectId: string,
   onProgress?: ProgressUpdater
 ): Promise<void> {
   const apiConfig = useCanvasStore.getState().apiConfig;
-  const materialsStore = useMaterialsStore.getState();
+  const { setLoading, setLoadingMessage, setProjectHistory } = useMaterialsStore.getState();
 
   if (!apiConfig.cookie?.trim()) {
     throw new Error('未配置 Flow API Cookie');
   }
 
   try {
-    materialsStore.setLoading(true);
-    materialsStore.setLoadingMessage('正在同步项目素材...');
-    onProgress?.('正在同步项目素材...');
+    setLoading(true);
+    setLoadingMessage('正在同步项目历史素材...');
+    onProgress?.('正在同步项目历史素材...');
 
     const [images, videos] = await Promise.all([
       loadImagesFromProject(projectId, apiConfig, (message) => {
-        materialsStore.setLoadingMessage(message);
+        setLoadingMessage(message);
         onProgress?.(message);
       }),
       loadVideosFromProject(projectId, apiConfig, (message) => {
-        materialsStore.setLoadingMessage(message);
+        setLoadingMessage(message);
         onProgress?.(message);
       }),
     ]);
 
     const mergedMaterials = [...images, ...videos];
-    materialsStore.setMaterialsForProject(projectId, mergedMaterials);
+    // 直接设置到 projectHistory
+    setProjectHistory(mergedMaterials);
 
-    materialsStore.setLoadingMessage('素材同步完成');
-    onProgress?.('素材同步完成');
+    setLoadingMessage('项目历史素材同步完成');
+    onProgress?.('项目历史素材同步完成');
   } catch (error) {
-    console.error('加载项目素材失败:', error);
-    materialsStore.setLoadingMessage('素材同步失败');
+    console.error('加载项目历史素材失败:', error);
+    setLoadingMessage('项目历史素材同步失败');
     throw error;
   } finally {
-    materialsStore.setLoading(false);
+    setLoading(false);
     setTimeout(() => {
       useMaterialsStore.getState().setLoadingMessage(undefined);
     }, 1500);

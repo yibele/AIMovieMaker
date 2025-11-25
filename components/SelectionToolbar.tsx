@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Edit3, Download, Trash2 } from 'lucide-react';
+import { Edit3, Download, Trash2, FolderInput } from 'lucide-react';
 import { Panel } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
-import { ImageElement } from '@/lib/types';
+import { useMaterialsStore } from '@/lib/materials-store';
+import { ImageElement, VideoElement } from '@/lib/types';
 import { toast } from 'sonner';
 
 interface SelectionToolbarProps {
@@ -15,16 +16,75 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
   const deleteSelectedElements = useCanvasStore((state) => state.deleteSelectedElements);
+  const apiConfig = useCanvasStore((state) => state.apiConfig);
 
   // 获取选中的图片元素
   const selectedImages = elements
     .filter((el) => selection.includes(el.id) && el.type === 'image')
     .map((el) => el as ImageElement);
+  
+  // 获取选中的视频元素 (用于入库)
+  const selectedVideos = elements
+    .filter((el) => selection.includes(el.id) && el.type === 'video')
+    .map((el) => el as VideoElement);
 
   // 如果没有选中或只选中1个，不显示工具栏
   if (selection.length < 2) {
     return null;
   }
+
+  // 批量入库
+  const handleBatchArchive = async () => {
+    const { addMaterial } = useMaterialsStore.getState();
+    let count = 0;
+
+    // 入库图片
+    for (const img of selectedImages) {
+      if (img.src) {
+        await addMaterial({
+          type: 'image',
+          name: img.generatedFrom?.prompt || 'Untitled Image',
+          src: img.src,
+          thumbnail: img.src,
+          mediaId: img.mediaId,
+          mediaGenerationId: img.mediaGenerationId,
+          metadata: {
+            prompt: img.generatedFrom?.prompt,
+            width: img.size?.width,
+            height: img.size?.height,
+          },
+          projectId: apiConfig.projectId,
+        });
+        count++;
+      }
+    }
+
+    // 入库视频
+    for (const vid of selectedVideos) {
+      if (vid.src) {
+        await addMaterial({
+          type: 'video',
+          name: vid.promptText || 'Untitled Video',
+          src: vid.src,
+          thumbnail: vid.thumbnail || vid.src,
+          mediaGenerationId: vid.mediaGenerationId,
+          metadata: {
+            prompt: vid.promptText,
+            duration: vid.duration,
+          },
+          projectId: apiConfig.projectId,
+        });
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      toast.success(`已将 ${count} 个素材添加到精选库`);
+    } else {
+      toast.info('没有可入库的有效素材');
+    }
+  };
+
 
   // 行级注释：下载选中的图片（支持批量）
   const handleDownload = async () => {
@@ -175,6 +235,19 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
             <span>图片编辑</span>
           </button>
         )}
+
+        {/* 分隔线 */}
+        <div className="border-l border-gray-200 h-6 mx-1" />
+
+        {/* 批量入库按钮 */}
+        <button
+          onClick={handleBatchArchive}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+          title="将选中素材保存到精选库"
+        >
+          <FolderInput className="w-4 h-4" />
+          <span>入库</span>
+        </button>
 
         {/* 分隔线 */}
         <div className="border-l border-gray-200 h-6 mx-1" />

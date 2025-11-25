@@ -4,6 +4,8 @@ import { MaterialItem, MaterialType, MaterialsState, MaterialsActions } from './
 import { CanvasElement, ImageElement, VideoElement } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { loadImageSize, calculateDisplaySize } from './image-utils';
+import { addMaterialToCloud, getCloudMaterials, deleteCloudMaterial } from './materials-service';
+import { useCanvasStore } from './store'; // 引入 CanvasStore 获取 userId
 
 // 素材库 store
 interface MaterialsStore extends MaterialsState, MaterialsActions {}
@@ -12,55 +14,149 @@ export const useMaterialsStore = create<MaterialsStore>()(
   persist(
     (set, get) => ({
       // 初始状态
-      materials: [],
+      materials: [], // 我的精选 (Supabase)
+      projectHistory: [], // 项目历史 (Google API)
+      trash: [], // 废片库 (本地)
       selectedMaterials: [],
       isLoading: false,
       loadingMessage: undefined,
       searchQuery: '',
-      activeTab: 'image',
+      activeTab: 'library_image', // 默认显示我的精选图片
       sortBy: 'createdAt',
       sortOrder: 'desc',
 
-      // 添加素材
-      addMaterial: (materialData) => {
-        const material: MaterialItem = {
-          ...materialData,
-          id: uuidv4(),
-          createdAt: new Date().toISOString(),
-        };
-        set((state) => ({
-          materials: [...state.materials, material],
-        }));
+      // 设置精选素材 (从云端加载后调用)
+      setMaterials: (newMaterials) => {
+        set({ materials: newMaterials });
       },
 
-      // 按项目替换素材
-      setMaterialsForProject: (projectId, newMaterials) => {
-        set((state) => {
-          const preserved = state.materials.filter(
-            (material) => !material.projectId || material.projectId !== projectId
-          );
-
-          const dedupMap = new Map<string, MaterialItem>();
-          newMaterials.forEach((material) => {
-            const key = material.mediaGenerationId || material.id;
-            dedupMap.set(key, material);
-          });
-
-          return {
-            materials: [...preserved, ...Array.from(dedupMap.values())],
-          };
-        });
+      // 设置项目历史 (从 Google API 加载后调用)
+      setProjectHistory: (newHistory) => {
+        set({ projectHistory: newHistory });
       },
 
-      // 删除素材
-      removeMaterial: (id) => {
+      // 从云端加载精选素材
+      loadCloudMaterials: async (userId, projectId) => {
+        if (!userId) {
+          console.warn('userId is missing, cannot load cloud materials.');
+          return;
+        }
+        set({ isLoading: true, loadingMessage: '正在加载我的精选...' });
+        try {
+          const cloudMaterials = await getCloudMaterials(userId, projectId);
+          set({ materials: cloudMaterials });
+          set({ loadingMessage: '我的精选加载完成。' });
+        } catch (error) {
+          console.error('Failed to load cloud materials:', error);
+          set({ loadingMessage: '加载我的精选失败。' });
+        } finally {
+          set({ isLoading: false });
+          setTimeout(() => set({ loadingMessage: undefined }), 1500);
+        }
+      },
+
+      // 从 Google API 加载项目历史 (实际在 lib/project-materials.ts 中实现)
+      loadProjectHistory: async (projectId) => {
+        // This action is mainly a placeholder. The actual loading logic resides in lib/project-materials.ts
+        // which calls setProjectHistory.
+        console.log('Initiating project history load for projectId:', projectId);
+        // Will be updated by loadMaterialsFromProject
+      },
+
+
+      // 添加素材到云端 (入库)
+      addMaterial: async (materialData) => {
+        // 1. 获取 userId
+        const userId = useCanvasStore.getState().apiConfig.userId; // 假设 userId 存在于 apiConfig
+        if (!userId) {
+          console.error('User not authenticated. Cannot add material to cloud.');
+          return null;
+        }
+
+        // 2. 调用 Supabase API
+        try {
+          const savedMaterial = await addMaterialToCloud(materialData, userId);
+          if (savedMaterial) {
+            // 3. 更新本地精选素材列表 (乐观更新，或重新加载)
+            set((state) => ({
+              materials: [savedMaterial, ...state.materials],
+            }));
+            return savedMaterial;
+          }
+          return null;
+        } catch (error) {
+          console.error('Failed to add material to cloud:', error);
+          throw error;
+        }
+      },
+
+      // 从精选库删除素材 (云端)
+      removeMaterial: async (id) => {
         set((state) => ({
           materials: state.materials.filter((m) => m.id !== id),
           selectedMaterials: state.selectedMaterials.filter((sid) => sid !== id),
         }));
+        try {
+          await deleteCloudMaterial(id);
+        } catch (error) {
+          console.error('Failed to delete cloud material:', error);
+          // 可以在这里进行错误回滚
+        }
       },
 
-      // 更新素材
+      // ===== 废片库操作 =====
+
+      // 移入废片库 (从画布删除时调用)
+      moveToTrash: (materialData) => {
+        const material: MaterialItem = {
+          ...materialData,
+          id: materialData.id || uuidv4(), // 保持原 ID 或生成新 ID
+          createdAt: new Date().toISOString(),
+          tags: ['trash'],
+        };
+        set((state) => ({
+          trash: [material, ...state.trash],
+        }));
+      },
+
+      // 恢复废片 (废片 -> 正式素材)
+      restoreFromTrash: async (id) => {
+        const { trash, addMaterial } = get();
+        const item = trash.find((t) => t.id === id);
+        if (!item) return;
+
+        // 1. 从废片库移除
+        set((state) => ({
+          trash: state.trash.filter((t) => t.id !== id),
+        }));
+
+        // 2. 调用 addMaterial 入库 (会自动存到 Supabase 并更新 materials 列表)
+        await addMaterial({
+          type: item.type,
+          name: item.name,
+          src: item.src,
+          thumbnail: item.thumbnail,
+          mediaId: item.mediaId,
+          mediaGenerationId: item.mediaGenerationId,
+          metadata: item.metadata,
+          projectId: item.projectId,
+        });
+      },
+
+      // 彻底删除
+      deleteFromTrash: (id) => {
+        set((state) => ({
+          trash: state.trash.filter((t) => t.id !== id),
+          selectedMaterials: state.selectedMaterials.filter((sid) => sid !== id),
+        }));
+      },
+
+      // 清空废片库
+      clearTrash: () => {
+        set({ trash: [] });
+      },
+
+      // 更新素材 (针对精选库)
       updateMaterial: (id, updates) => {
         set((state) => ({
           materials: state.materials.map((m) =>
@@ -106,21 +202,10 @@ export const useMaterialsStore = create<MaterialsStore>()(
         set({ sortOrder: order });
       },
 
-      // 从项目导入素材
+      // 从项目导入素材 (此处不再直接导入，而是通过 loadProjectHistory 填充 projectHistory)
       importFromProject: async (projectId: string) => {
-        set({ isLoading: true });
-        try {
-          // TODO: 实现从项目 API 导入素材
-          // const response = await fetch(`/api/flow/workflows/search?projectId=${projectId}`);
-          // const data = await response.json();
-          // data.workflows.forEach((workflow) => {
-          //   // 转换为素材格式并添加
-          // });
-        } catch (error) {
-          console.error('导入素材失败:', error);
-        } finally {
-          set({ isLoading: false });
-        }
+        console.warn('importFromProject is deprecated. Use loadProjectHistory instead.');
+        // This function will be removed or refactored.
       },
 
       setLoading: (loading) => {
@@ -134,12 +219,22 @@ export const useMaterialsStore = create<MaterialsStore>()(
         set({ loadingMessage: message });
       },
 
-      // 添加素材到画布
+      // 添加素材到画布 (支持从 Materials, Project History, 或 Trash 添加)
       addToCanvas: async (materialId, position = { x: 100, y: 100 }) => {
-        const material = get().materials.find((m) => m.id === materialId);
+        const state = get();
+        // 优先从精选库查找，然后是项目历史，最后是废片库
+        const material = state.materials.find((m) => m.id === materialId) || 
+                         state.projectHistory.find((m) => m.id === materialId) ||
+                         state.trash.find((m) => m.id === materialId);
+        
         if (!material) return;
 
-        const canvasStore = require('./store').useCanvasStore.getState();
+        // 如果是从废片库添加，自动恢复它并入库
+        if (state.trash.find((m) => m.id === materialId)) {
+           await get().restoreFromTrash(materialId); // 自动入库到精选库
+        }
+
+        const canvasStore = useCanvasStore.getState();
 
         if (material.type === 'image') {
           let size = { width: 320, height: 320 }; // 默认 1:1 比例
@@ -232,8 +327,9 @@ export const useMaterialsStore = create<MaterialsStore>()(
     {
       name: 'materials-storage',
       storage: createJSONStorage(() => localStorage),
-      // 行级注释：不持久化 materials，改为手动加载
+      // 行级注释：持久化 trash 和 UI 状态，不持久化 materials (云端同步)
       partialize: (state) => ({
+        trash: state.trash, // 废片库本地持久化
         activeTab: state.activeTab,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
@@ -242,4 +338,3 @@ export const useMaterialsStore = create<MaterialsStore>()(
     }
   )
 );
-
