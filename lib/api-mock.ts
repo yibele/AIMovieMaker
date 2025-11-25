@@ -204,8 +204,10 @@ async function generateImageWithFlow(params: {
   sessionId?: string;
   translatedPrompt?: string;
   seed?: number;
+  base64?: string; // Add base64 to root return type
   images?: Array<{
     imageUrl: string;
+    base64?: string;
     mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
@@ -817,9 +819,10 @@ export async function imageToImage(
   mediaGenerationId?: string;
   workflowId?: string;
   translatedPrompt?: string;
+  base64?: string; // Add base64 to root return type
   images?: Array<{
     imageUrl: string;
-    base64?: string; // 新增：返回 base64
+    base64?: string;
     mediaId?: string;
     mediaGenerationId?: string;
     workflowId?: string;
@@ -883,6 +886,7 @@ export async function imageToImage(
     mediaGenerationId: images[0]?.mediaGenerationId,
     workflowId: images[0]?.workflowId,
     translatedPrompt: images[0]?.prompt,
+    base64: images[0]?.base64, // Return base64 in root object
     images, // 返回所有生成的图片（包含 fifeUrl 和 base64）
   };
 }
