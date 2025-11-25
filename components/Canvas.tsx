@@ -22,6 +22,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
+import { toast } from 'sonner';
 import { useCanvasStore } from '@/lib/store';
 import ImageNode from './nodes/ImageNode';
 import TextNode from './nodes/TextNode';
@@ -107,6 +108,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     prepareConnectionMenu,
     showCameraControlSubmenu,
     showCameraPositionSubmenu,
+    showCustomNextShotInput,
   } = useConnectionMenu();
 
   // 行级注释：使用图片生成 Hooks
@@ -1726,6 +1728,192 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [elements, setEdges, updateElement]
   );
 
+  // Next Shot Generation Logic
+  const handleNextShotGeneration = useCallback(async (sourceNodeId: string, userInstruction?: string) => {
+    const { elements: storeElements, apiConfig, addElement, updateElement, deleteElement } = useCanvasStore.getState();
+    const sourceNode = storeElements.find(el => el.id === sourceNodeId) as ImageElement | undefined;
+
+    if (!sourceNode || !sourceNode.src) {
+      toast.error('找不到源图片');
+      return;
+    }
+
+    if (!apiConfig.dashScopeApiKey) {
+      toast.error('请先在设置中配置 DashScope API Key (用于 Qwen VL)');
+      // Open settings modal?
+      return;
+    }
+
+    // 1. Create Placeholder Node
+    const newImageId = `image-${Date.now()}-next`;
+    const offset = { x: 450, y: 0 }; // Place to the right
+    const position = {
+      x: sourceNode.position.x + offset.x,
+      y: sourceNode.position.y + offset.y,
+    };
+
+    const placeholderImage: ImageElement = {
+      id: newImageId,
+      type: 'image',
+      position,
+      src: '', // Empty initially
+      uploadState: 'syncing', // Loading state
+      uploadMessage: '正在构思下一分镜...',
+      generatedFrom: {
+        type: 'image-to-image',
+        sourceIds: [sourceNode.id],
+        prompt: userInstruction || 'Next Shot',
+      },
+    };
+
+    addElement(placeholderImage);
+
+    // Create Edge
+    const edgeId = `edge-${sourceNode.id}-${newImageId}`;
+    setEdges((eds) => [
+      ...eds,
+      {
+        id: edgeId,
+        source: sourceNode.id,
+        target: newImageId,
+        animated: true,
+        style: { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' },
+      },
+    ]);
+
+    resetConnectionMenu();
+
+    // 2. Background Process
+    (async () => {
+      try {
+        // A. Qwen VL Analysis
+        // Ensure we have a valid image URL for API (if local blob, might need upload or base64)
+        // For simplicity, assume src is accessible or use base64 if available
+        let imageUrlForApi = sourceNode.src;
+        if (sourceNode.base64) {
+          imageUrlForApi = sourceNode.base64.startsWith('data:') ? sourceNode.base64 : `data:image/png;base64,${sourceNode.base64}`;
+        }
+
+        // Prompt for Qwen VL
+        const systemPrompt = "Analyze this movie shot. Describe the visual content of the IMMEDIATE NEXT SHOT in the sequence to create a coherent narrative flow. The output must be a detailed image generation prompt (English). Do not include any conversational text, just the prompt.";
+        const userPrompt = userInstruction
+          ? `The user wants the next shot to be: "${userInstruction}". Analyze the current image and generate a prompt for the next shot that follows this instruction and maintains continuity.`
+          : systemPrompt;
+
+        const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiConfig.dashScopeApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'qwen-vl-max',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: imageUrlForApi } },
+                { type: 'text', text: userPrompt }
+              ]
+            }]
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || 'Qwen VL API request failed');
+        }
+
+        const data = await response.json();
+        const nextShotPrompt = data.choices[0]?.message?.content || '';
+
+        if (!nextShotPrompt) {
+          throw new Error('Failed to generate prompt from Qwen VL');
+        }
+
+        // Update placeholder message
+        updateElement(newImageId, {
+          uploadMessage: '正在生成画面...',
+          generatedFrom: {
+            ...placeholderImage.generatedFrom!,
+            prompt: nextShotPrompt
+          }
+        } as Partial<ImageElement>);
+
+        // B. Image Generation (Image-to-Image)
+        // We need mediaId for image-to-image. If not present, upload it.
+        let effectiveMediaId = sourceNode.mediaId || sourceNode.mediaGenerationId;
+
+        if (!effectiveMediaId) {
+          // Upload if needed
+          if (!sourceNode.base64 && !sourceNode.src.startsWith('data:')) {
+            // Fetch blob to get base64? Or just skip if we can't get base64 easily
+            // For now assume we can't easily upload without base64 if not already uploaded
+            throw new Error('Source image not ready for generation (missing mediaId)');
+          }
+
+          // If we have base64, upload it
+          const base64 = sourceNode.base64 || sourceNode.src.split(',')[1];
+          const { registerUploadedImage } = await import('@/lib/api-mock');
+          const uploadResult = await registerUploadedImage(base64);
+          effectiveMediaId = uploadResult.mediaGenerationId || undefined;
+
+          // Update source node with new mediaId
+          if (effectiveMediaId) {
+            updateElement(sourceNode.id, { mediaGenerationId: effectiveMediaId } as Partial<ImageElement>);
+          }
+        }
+
+        const { imageToImage } = await import('@/lib/api-mock');
+        const result = await imageToImage(
+          nextShotPrompt,
+          sourceNode.src,
+          '16:9', // Default aspect ratio
+          sourceNode.caption || '',
+          effectiveMediaId,
+          1
+        );
+
+        // C. Update Placeholder with Final Result
+        updateElement(newImageId, {
+          src: result.imageUrl,
+          base64: result.base64,
+          promptId: result.promptId,
+          mediaId: result.mediaId || result.mediaGenerationId,
+          mediaGenerationId: result.mediaGenerationId,
+          uploadState: 'synced',
+          uploadMessage: undefined,
+        } as Partial<ImageElement>);
+
+        // Update edge style
+        setEdges((eds) => eds.map(e => e.id === edgeId ? { ...e, animated: false, style: { stroke: '#64748b', strokeWidth: 1 } } : e));
+
+      } catch (error) {
+        console.error('Next shot generation failed:', error);
+        toast.error(`生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        // Delete placeholder and edge
+        deleteElement(newImageId);
+        setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+      }
+    })();
+
+  }, [resetConnectionMenu, setEdges]);
+
+  const handleAutoNextShot = useCallback(() => {
+    if (connectionMenu.sourceNodeId) {
+      handleNextShotGeneration(connectionMenu.sourceNodeId);
+    }
+  }, [connectionMenu.sourceNodeId, handleNextShotGeneration]);
+
+  const handleCustomNextShot = useCallback(() => {
+    showCustomNextShotInput();
+  }, [showCustomNextShotInput]);
+
+  const handleConfirmCustomNextShot = useCallback(() => {
+    if (connectionMenu.sourceNodeId && connectionMenu.pendingImageConfig?.prompt) {
+      handleNextShotGeneration(connectionMenu.sourceNodeId, connectionMenu.pendingImageConfig.prompt);
+    }
+  }, [connectionMenu.sourceNodeId, connectionMenu.pendingImageConfig, handleNextShotGeneration]);
+
   return (
     <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50 relative">
       {/* 顶部导航 */}
@@ -1809,6 +1997,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onShowExtendVideoSubmenu: handleShowExtendVideo,
           onExtendPromptChange: () => { }, // 行级注释：不再需要，保留接口兼容性
           onConfirmExtend: () => { }, // 行级注释：不再需要，保留接口兼容性
+          onAutoNextShot: handleAutoNextShot,
+          onCustomNextShot: handleCustomNextShot,
+          onConfirmCustomNextShot: handleConfirmCustomNextShot,
         }}
         promptInputRef={promptMenuInputRef}
       />

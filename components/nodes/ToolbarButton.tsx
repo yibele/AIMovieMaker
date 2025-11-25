@@ -23,17 +23,26 @@ export function ToolbarButton({
     variant === 'danger' ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
 
   return (
-    <button
-      {...rest}
-      title={label} // Use label as tooltip
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick?.(e);
-      }}
-      className={`${baseClass} ${variantClass} ${className}`}
-    >
-      {icon}
-    </button>
+
+    <div className="relative group">
+      <button
+        {...rest}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.(e);
+        }}
+        className={`${baseClass} ${variantClass} ${className}`}
+      >
+        {icon}
+      </button>
+
+      {/* Tooltip - 上方弹出 */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-[10px] font-medium rounded-md opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
+        {label}
+        {/* 小箭头 */}
+        <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-gray-900/90 rotate-45" />
+      </div>
+    </div>
   );
 }
 

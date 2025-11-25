@@ -4,7 +4,7 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -49,10 +49,11 @@ export default function ConnectionMenuRoot({
                     <div className="font-medium text-gray-900 text-sm">生成图片</div>
                     <div className="text-xs text-gray-500">Generate Image</div>
                   </div>
+
                 </button>
                 <button
                   onClick={callbacks.onShowVideoSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left group"
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
                     <VideoIcon size={18} />
@@ -60,6 +61,32 @@ export default function ConnectionMenuRoot({
                   <div>
                     <div className="font-medium text-gray-900 text-sm">生成视频</div>
                     <div className="text-xs text-gray-500">Generate Video</div>
+                  </div>
+                </button>
+
+                {/* Next Shot Options */}
+                <button
+                  onClick={callbacks.onAutoNextShot}
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors text-left border-b border-gray-50 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-200 transition-colors">
+                    <Clapperboard size={18} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">自动分镜</div>
+                    <div className="text-xs text-gray-500">Auto Next Shot</div>
+                  </div>
+                </button>
+                <button
+                  onClick={callbacks.onCustomNextShot}
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors">
+                    <MessageSquarePlus size={18} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">自定义分镜</div>
+                    <div className="text-xs text-gray-500">Custom Next Shot</div>
                   </div>
                 </button>
               </>
@@ -135,6 +162,20 @@ export default function ConnectionMenuRoot({
           />
         )}
 
+        {/* 行级注释：自定义分镜输入界面 */}
+        {state.activeSubmenu === 'customNextShotInput' && (
+          <ImagePromptInput
+            title="输入分镜内容"
+            placeholder="描述你想要的下一个分镜..."
+            aspectRatio={state.pendingImageConfig?.aspectRatio ?? '16:9'} // Default to 16:9 for next shot
+            prompt={state.pendingImageConfig?.prompt ?? ''}
+            inputRef={promptInputRef}
+            onPromptChange={callbacks.onImagePromptInputChange}
+            onConfirm={callbacks.onConfirmCustomNextShot}
+            onBack={callbacks.onBackToMain}
+          />
+        )}
+
         {/* 行级注释：镜头控制子菜单 */}
         {state.activeSubmenu === 'cameraControl' && (
           <CameraControlSubmenu
@@ -152,10 +193,10 @@ export default function ConnectionMenuRoot({
             onSelect={callbacks.onGenerateReshoot}
           />
         )}
-      </div>
+      </div >
 
       {/* 行级注释：点击外部关闭菜单的遮罩层 */}
-      <div className="fixed inset-0 z-40" onClick={callbacks.onClose} />
+      < div className="fixed inset-0 z-40" onClick={callbacks.onClose} />
     </>
   );
 }

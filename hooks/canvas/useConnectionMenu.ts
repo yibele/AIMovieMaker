@@ -158,6 +158,18 @@ export function useConnectionMenu() {
     }));
   }, []);
 
+  // Show custom next shot input
+  const showCustomNextShotInput = useCallback(() => {
+    setConnectionMenu((prev) => ({
+      ...prev,
+      activeSubmenu: 'customNextShotInput',
+      pendingImageConfig: {
+        aspectRatio: '16:9', // Default for next shot
+        prompt: '',
+      },
+    }));
+  }, []);
+
   return {
     connectionMenu,
     promptMenuInputRef,
@@ -174,6 +186,7 @@ export function useConnectionMenu() {
     showCameraPositionSubmenu,
     showExtendVideoSubmenu,
     updateExtendPrompt,
+    showCustomNextShotInput,
   };
 }
 

@@ -12,6 +12,40 @@ interface SelectionToolbarProps {
   onMultiImageEdit?: () => void;
 }
 
+// Helper component for buttons with tooltips
+function SelectionButton({
+  onClick,
+  icon: Icon,
+  title,
+  className = '',
+  disabled = false
+}: {
+  onClick: () => void;
+  icon: any;
+  title: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`flex items-center justify-center p-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      >
+        <Icon className="w-4 h-4" />
+      </button>
+
+      {/* Tooltip - 上方弹出 */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-[10px] font-medium rounded-md opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
+        {title}
+        {/* 小箭头 */}
+        <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-gray-900/90 rotate-45" />
+      </div>
+    </div>
+  );
+}
+
 export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarProps) {
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
@@ -226,48 +260,44 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
 
         {/* 图片编辑按钮（仅当选中 2-6 张图片时显示） */}
         {canEdit && (
-          <button
+          <SelectionButton
             onClick={handleImageEdit}
-            className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+            icon={Edit3}
             title="多图编辑 - 将选中的图片用于编辑和融合"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
+            className="text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+          />
         )}
 
         {/* 分隔线 */}
         <div className="border-l border-gray-200 h-6 mx-1" />
 
         {/* 批量入库按钮 */}
-        <button
+        <SelectionButton
           onClick={handleBatchArchive}
-          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+          icon={FolderInput}
           title="将选中素材保存到精选库"
-        >
-          <FolderInput className="w-4 h-4" />
-        </button>
+          className="text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+        />
 
         {/* 分隔线 */}
         <div className="border-l border-gray-200 h-6 mx-1" />
 
         {/* 下载按钮 */}
-        <button
+        <SelectionButton
           onClick={handleDownload}
-          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          icon={Download}
           title="下载选中的图片"
           disabled={selectedImages.length === 0}
-        >
-          <Download className="w-4 h-4" />
-        </button>
+          className="text-gray-700 hover:bg-gray-100"
+        />
 
         {/* 删除按钮 */}
-        <button
+        <SelectionButton
           onClick={handleDelete}
-          className="flex items-center justify-center p-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          icon={Trash2}
           title="删除选中的元素"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+          className="text-red-600 hover:bg-red-50"
+        />
       </div>
     </Panel>
   );
