@@ -330,14 +330,28 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           } as Partial<VideoElement>);
 
           console.log('🔍 使用 VL 分析图片生成视频提示词...');
-          const startImageUrl = actualStartImage.base64?.startsWith('data:') 
-            ? actualStartImage.base64 
-            : actualStartImage.src;
-          const endImageUrl = (startImage && endImage && endImage.id !== startImage.id)
-            ? (endImage.base64?.startsWith('data:') ? endImage.base64 : endImage.src)
-            : null;
+          
+          // 行级注释：获取首帧图片数据（与自动分镜逻辑一致）
+          let startImageData = actualStartImage.src;
+          if (actualStartImage.base64) {
+            startImageData = actualStartImage.base64.startsWith('data:') 
+              ? actualStartImage.base64 
+              : `data:image/png;base64,${actualStartImage.base64}`;
+          }
+          
+          // 行级注释：获取尾帧图片数据
+          let endImageData: string | null = null;
+          if (startImage && endImage && endImage.id !== startImage.id) {
+            if (endImage.base64) {
+              endImageData = endImage.base64.startsWith('data:') 
+                ? endImage.base64 
+                : `data:image/png;base64,${endImage.base64}`;
+            } else if (endImage.src) {
+              endImageData = endImage.src;
+            }
+          }
 
-          promptText = await analyzeImageForVideoPrompt(startImageUrl, endImageUrl, dashScopeApiKey);
+          promptText = await analyzeImageForVideoPrompt(startImageData, endImageData, dashScopeApiKey);
           console.log('✅ VL 分析完成，生成提示词:', promptText);
           
           // 行级注释：更新视频节点的提示词
