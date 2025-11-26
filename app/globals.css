@@ -103,6 +103,20 @@ html {
   box-shadow: 0px 0px 0px 1px #3b82f6; /* 细蓝线 */
 }
 
+/* 记事本节点：移除默认选中边框，使用节点自己的边框样式 */
+.react-flow.custom-theme .react-flow__node-note {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.react-flow.custom-theme .react-flow__node-note.selectable.selected,
+.react-flow.custom-theme .react-flow__node-note.selectable:focus,
+.react-flow.custom-theme .react-flow__node-note.selectable:hover {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .react-flow.custom-theme .react-flow__node-group {
   background-color: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;

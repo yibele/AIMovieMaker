@@ -66,15 +66,21 @@ function NoteNode({ data, id, selected }: NodeProps) {
     e.stopPropagation();
   }, [noteData.content, noteData.title, handleSave]);
 
-  // 行级注释：展开/折叠 - 只改变宽度，高度固定，通过 updateElement 更新让选中边框跟随
+  // 行级注释：展开/折叠 - 横向纵向都放大，通过 updateElement 更新让选中边框跟随
   const toggleExpand = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const newWidth = isExpanded ? 400 : 700; // 收起 400，展开 700
-    updateElement(id, { size: { width: newWidth, height: 300 } } as Partial<NoteElement>);
+    if (isExpanded) {
+      // 收起
+      updateElement(id, { size: { width: 400, height: 300 } } as Partial<NoteElement>);
+    } else {
+      // 展开
+      updateElement(id, { size: { width: 700, height: 500 } } as Partial<NoteElement>);
+    }
     setIsExpanded(!isExpanded);
   }, [isExpanded, id, updateElement]);
 
   return (
+    // 行级注释：添加 nowheel 类名禁用 ReactFlow 的默认选中边框样式
     <div
       className={`relative flex flex-col bg-amber-50 dark:bg-amber-900/20 rounded-xl border-2 transition-all duration-300 ${
         selected
