@@ -48,6 +48,13 @@ import { ConnectionMenuCallbacks } from '@/types/connection-menu';
 import { useTextToImage } from '@/hooks/canvas/useTextToImage';
 import { useImageToImage } from '@/hooks/canvas/useImageToImage';
 import { ImageAspectRatio } from '@/types/image-generation';
+import {
+  VIDEO_NODE_DEFAULT_SIZE,
+  IMAGE_NODE_DEFAULT_SIZE,
+  TEXT_NODE_DEFAULT_SIZE,
+  getVideoNodeSize,
+  getImageNodeSize,
+} from '@/lib/constants/node-sizes';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -56,7 +63,6 @@ const nodeTypes: NodeTypes = {
   video: VideoNode,
 };
 
-const VIDEO_NODE_DEFAULT_SIZE = { width: 400, height: 300 };
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
 
 function CanvasContent({ projectId }: { projectId?: string }) {
@@ -239,7 +245,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       // 行级注释：如果 generationCount > 1，创建额外的视频节点
       if (generationCount > 1) {
         const basePosition = videoElement.position;
-        const size = videoElement.size || { width: 640, height: 360 };
+        const size = videoElement.size || VIDEO_NODE_DEFAULT_SIZE;
         const spacing = 50; // 行级注释：节点之间的间距
 
         for (let i = 1; i < generationCount; i++) {
@@ -1189,9 +1195,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         return '1:1';
       })() as '16:9' | '9:16' | '1:1';
 
-      const size = aspectRatio === '9:16' ? { width: 360, height: 640 }
-        : aspectRatio === '1:1' ? { width: 512, height: 512 }
-          : { width: 640, height: 360 };
+      const size = getImageNodeSize(aspectRatio);
 
       const newImage: ImageElement = {
         id: newImageId,
@@ -1333,15 +1337,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9') => {
       resetConnectionMenu();
 
-      let width: number;
-      let height: number;
-      if (aspectRatio === '9:16') {
-        width = 270;
-        height = 480;
-      } else {
-        width = 480;
-        height = 270;
-      }
+      const videoSize = getVideoNodeSize(aspectRatio);
 
       const newVideoId = `video-${Date.now()}`;
       const newVideo: VideoElement = {
@@ -1353,10 +1349,10 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         status: 'generating',
         progress: 0,
         position: {
-          x: sourceNode.position.x + (sourceNode.size?.width || 200) + 100,
+          x: sourceNode.position.x + (sourceNode.size?.width || TEXT_NODE_DEFAULT_SIZE.width) + 100,
           y: sourceNode.position.y,
         },
-        size: { width, height },
+        size: videoSize,
         promptText: sourceNode.text,
         generatedFrom: {
           type: 'text',
@@ -1431,18 +1427,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     async (sourceNode: ImageElement, aspectRatio: '9:16' | '16:9') => {
       resetConnectionMenu();
 
-      let width: number;
-      let height: number;
-      if (aspectRatio === '9:16') {
-        width = 270;
-        height = 480;
-      } else {
-        width = 480;
-        height = 270;
-      }
-
       const flowPosition = {
-        x: sourceNode.position.x + (sourceNode.size?.width || 320) + 100,
+        x: sourceNode.position.x + (sourceNode.size?.width || IMAGE_NODE_DEFAULT_SIZE.width) + 100,
         y: sourceNode.position.y,
       };
 
@@ -1775,7 +1761,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     // 1. Create Placeholder Nodes
     const newImageIds: string[] = [];
     const offset = { x: 450, y: 0 }; // Place to the right
-    const size = sourceNode.size || { width: 400, height: 225 };
+    const size = sourceNode.size || IMAGE_NODE_DEFAULT_SIZE;
 
     for (let i = 0; i < count; i++) {
       const newImageId = `image-${Date.now()}-${i}-next`;

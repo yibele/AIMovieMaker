@@ -7,6 +7,7 @@ import { useCanvasStore } from '@/lib/store';
 import { TextElement, ImageElement, VideoElement } from '@/lib/types';
 import { registerUploadedImage } from '@/lib/api-mock';
 import type { FlowAspectRatioEnum } from '@/lib/api-mock';
+import { TEXT_NODE_DEFAULT_SIZE, VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 import ImageCropperModal, {
   AspectRatioOption,
   CroppedImageResult,
@@ -102,19 +103,15 @@ export default function Toolbar() {
     };
     const flowPosition = screenToFlowPosition(screenCenter);
     
-    // 文字节点的尺寸
-    const textWidth = 200;
-    const textHeight = 80;
-    
     const newText: TextElement = {
       id: `text-${Date.now()}`,
       type: 'text',
       text: '双击编辑文字',
       position: {
-        x: flowPosition.x - textWidth / 2, // 居中对齐
-        y: flowPosition.y - textHeight / 2,
+        x: flowPosition.x - TEXT_NODE_DEFAULT_SIZE.width / 2, // 居中对齐
+        y: flowPosition.y - TEXT_NODE_DEFAULT_SIZE.height / 2,
       },
-      size: { width: textWidth, height: textHeight }, // 初始尺寸，字体大小会根据此计算
+      size: TEXT_NODE_DEFAULT_SIZE,
       fontSize: 16,
       color: '#000000',
       fontWeight: 'normal',
@@ -133,18 +130,14 @@ export default function Toolbar() {
     };
     const flowPosition = screenToFlowPosition(screenCenter);
     
-    // 视频节点的尺寸（16:9 横屏，默认）
-    const videoWidth = 480;
-    const videoHeight = 270;
-    
     const newVideo: VideoElement = {
       id: `video-${Date.now()}`,
       type: 'video',
       position: {
-        x: flowPosition.x - videoWidth / 2, // 居中对齐
-        y: flowPosition.y - videoHeight / 2,
+        x: flowPosition.x - VIDEO_NODE_DEFAULT_SIZE.width / 2, // 居中对齐
+        y: flowPosition.y - VIDEO_NODE_DEFAULT_SIZE.height / 2,
       },
-      size: { width: videoWidth, height: videoHeight },
+      size: VIDEO_NODE_DEFAULT_SIZE,
       src: '', // 空源，等待生成
       thumbnail: '',
       duration: 0,

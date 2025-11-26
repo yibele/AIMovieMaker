@@ -11,6 +11,7 @@ import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-gene
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
 import { VisionAnalysisModal } from '../VisionAnalysisModal';
 import { toast } from 'sonner';
+import { IMAGE_NODE_DEFAULT_SIZE, TEXT_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 
 // 行级注释：图片节点组件
 function ImageNode({ data, selected, id }: NodeProps) {
@@ -474,10 +475,10 @@ function ImageNode({ data, selected, id }: NodeProps) {
         type: 'text',
         text: content,
         position: {
-          x: imageData.position.x + (imageData.size?.width || 400) + 50,
+          x: imageData.position.x + (imageData.size?.width || IMAGE_NODE_DEFAULT_SIZE.width) + 50,
           y: imageData.position.y
         },
-        size: { width: 300, height: 200 }
+        size: TEXT_NODE_DEFAULT_SIZE
       };
 
       addElement(newTextNode);

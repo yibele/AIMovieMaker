@@ -8,6 +8,7 @@ import { useCanvasStore } from '@/lib/store';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
+import { VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 
 // 行级注释：视频节点组件
 function VideoNode({ data, selected, id }: NodeProps) {
@@ -129,7 +130,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
   // 处理重新生成 - 创建新节点并复制配置和连线
   const handleRegenerate = useCallback(() => {
     const newVideoId = `video-${Date.now()}`;
-    const size = videoData.size || { width: 480, height: 270 };
+    const size = videoData.size || VIDEO_NODE_DEFAULT_SIZE;
 
     // 行级注释：新节点位置在原节点右侧
     const newPosition = {
@@ -227,7 +228,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       };
 
       // 行级注释：创建新视频节点尺寸（与原视频相同）
-      const size = videoData.size || { width: 640, height: 360 };
+      const size = videoData.size || VIDEO_NODE_DEFAULT_SIZE;
 
       // 行级注释：创建新的超清视频节点（placeholder）
       const newVideoId = `video-${Date.now()}`;
