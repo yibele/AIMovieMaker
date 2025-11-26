@@ -2,7 +2,7 @@
 
 import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { FileText, Maximize2, Minimize2 } from 'lucide-react';
+import { FileText, Maximize2, Minimize2, Pencil, Check } from 'lucide-react';
 import type { NoteElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 
@@ -11,11 +11,13 @@ function NoteNode({ data, id, selected }: NodeProps) {
   const noteData = data as unknown as NoteElement;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false); // 行级注释：单独控制标题编辑
   const [content, setContent] = useState(noteData.content || '');
   const [title, setTitle] = useState(noteData.title || '分镜');
   const [isExpanded, setIsExpanded] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
 
   // 行级注释：同步外部数据变化
@@ -28,10 +30,17 @@ function NoteNode({ data, id, selected }: NodeProps) {
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      // 将光标移到末尾
       textareaRef.current.selectionStart = textareaRef.current.value.length;
     }
   }, [isEditing]);
+
+  // 行级注释：进入标题编辑模式时自动聚焦
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
 
   // 行级注释：双击进入编辑模式
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -47,6 +56,12 @@ function NoteNode({ data, id, selected }: NodeProps) {
       title,
     } as Partial<NoteElement>);
   }, [id, content, title, updateElement]);
+
+  // 行级注释：保存标题
+  const handleSaveTitle = useCallback(() => {
+    setIsEditingTitle(false);
+    updateElement(id, { title } as Partial<NoteElement>);
+  }, [id, title, updateElement]);
 
   // 行级注释：按键处理
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -96,20 +111,46 @@ function NoteNode({ data, id, selected }: NodeProps) {
         <div className="flex items-center justify-between px-3 py-2 bg-amber-100 dark:bg-amber-800/30 rounded-t-xl border-b border-amber-200 dark:border-amber-700">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            {isEditing ? (
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="bg-transparent border-none outline-none text-sm font-semibold text-amber-900 dark:text-amber-100 w-40"
-                placeholder="标题..."
-                onClick={(e) => e.stopPropagation()}
-              />
+            {isEditingTitle ? (
+              <>
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') handleSaveTitle();
+                    if (e.key === 'Escape') {
+                      setTitle(noteData.title || '分镜');
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  onBlur={handleSaveTitle}
+                  className="bg-white dark:bg-amber-900/50 border border-amber-300 dark:border-amber-600 rounded px-2 py-0.5 outline-none text-sm font-semibold text-amber-900 dark:text-amber-100 w-32"
+                  placeholder="标题..."
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleSaveTitle(); }}
+                  className="p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-700"
+                >
+                  <Check className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                </button>
+              </>
             ) : (
-              <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 truncate max-w-[200px]">
-                {title}
-              </span>
+              <>
+                <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 truncate max-w-[200px]">
+                  {title}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsEditingTitle(true); }}
+                  className="p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-700 opacity-50 hover:opacity-100 transition-opacity"
+                  title="编辑标题"
+                >
+                  <Pencil className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                </button>
+              </>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -136,20 +177,20 @@ function NoteNode({ data, id, selected }: NodeProps) {
               onChange={(e) => setContent(e.target.value)}
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
-              className="w-full h-full p-3 bg-transparent border-none outline-none resize-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed"
+              className="w-full h-full p-3 bg-transparent border-none outline-none resize-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed text-left"
               placeholder="在这里输入内容...
 
 按 Cmd/Ctrl + Enter 保存"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <div className="w-full h-full p-3 overflow-y-auto custom-scrollbar">
+            <div className="w-full h-full p-3 overflow-y-auto custom-scrollbar text-left">
               {content ? (
-                <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed text-left">
                   {content}
                 </div>
               ) : (
-                <div className="text-amber-400 dark:text-amber-600 text-sm">
+                <div className="text-amber-400 dark:text-amber-600 text-sm text-left">
                   双击编辑内容...
                 </div>
               )}
