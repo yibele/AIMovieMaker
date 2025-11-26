@@ -26,6 +26,7 @@ import { useCanvasStore } from '@/lib/store';
 import ImageNode from './nodes/ImageNode';
 import TextNode from './nodes/TextNode';
 import VideoNode from './nodes/VideoNode';
+import NoteNode from './nodes/NoteNode';
 import CanvasNavigation from './CanvasNavigation';
 import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
@@ -35,7 +36,7 @@ import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 import ThemeToggle from './ThemeToggle';
 import { useThemeStore } from '@/lib/theme-store';
-import { CanvasElement, VideoElement, ImageElement, TextElement, ReshootMotionType } from '@/lib/types';
+import { CanvasElement, VideoElement, ImageElement, TextElement, NoteElement, ReshootMotionType } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage, imageToImage, registerUploadedImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
@@ -62,6 +63,7 @@ const nodeTypes: NodeTypes = {
   image: ImageNode,
   text: TextNode,
   video: VideoNode,
+  note: NoteNode, // 行级注释：记事本节点（剧本、分镜等长文本）
 };
 
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };

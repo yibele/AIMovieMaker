@@ -1,5 +1,5 @@
 // 画布元素类型定义
-export type ElementType = 'image' | 'text' | 'video';
+export type ElementType = 'image' | 'text' | 'video' | 'note';
 
 // 生成模式
 export type GenerationMode = 'generate' | 'regenerate' | 'similar' | 'batch' | 'edit' | 'next-shot';
@@ -42,6 +42,13 @@ export interface TextElement extends CanvasElement {
   fontWeight?: 'normal' | 'bold';
   fontStyle?: 'normal' | 'italic';
   textDecoration?: 'none' | 'underline';
+}
+
+// 记事本元素（长文本，Markdown 格式）
+export interface NoteElement extends CanvasElement {
+  type: 'note';
+  content: string; // Markdown 内容
+  title?: string; // 标题
 }
 
 // 视频元素

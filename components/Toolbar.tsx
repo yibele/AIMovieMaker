@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { MousePointer2, Type, Upload, Video } from 'lucide-react';
+import { MousePointer2, Type, Upload, Video, FileText } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
-import { TextElement, ImageElement, VideoElement } from '@/lib/types';
+import { TextElement, ImageElement, VideoElement, NoteElement } from '@/lib/types';
 import { registerUploadedImage } from '@/lib/api-mock';
 import type { FlowAspectRatioEnum } from '@/lib/api-mock';
-import { TEXT_NODE_DEFAULT_SIZE, VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
+import { TEXT_NODE_DEFAULT_SIZE, VIDEO_NODE_DEFAULT_SIZE, NOTE_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 import ImageCropperModal, {
   AspectRatioOption,
   CroppedImageResult,
@@ -90,6 +90,14 @@ export default function Toolbar() {
           isActive: false,
           dotColor: 'bg-orange-500'
     },
+    {
+      id: 'note' as const,
+      icon: FileText,
+      label: '记事本',
+      action: () => handleAddNote(),
+          isActive: false,
+          dotColor: 'bg-amber-500'
+    },
       ]
     }
     ];
@@ -146,6 +154,28 @@ export default function Toolbar() {
       generationCount: 1, // 默认生成 1 个视频
     };
     addElement(newVideo);
+  };
+
+  // 添加记事本节点 - 用于长文本（剧本、分镜等）
+  const handleAddNote = () => {
+    const screenCenter = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    };
+    const flowPosition = screenToFlowPosition(screenCenter);
+    
+    const newNote: NoteElement = {
+      id: `note-${Date.now()}`,
+      type: 'note',
+      position: {
+        x: flowPosition.x - NOTE_NODE_DEFAULT_SIZE.width / 2,
+        y: flowPosition.y - NOTE_NODE_DEFAULT_SIZE.height / 2,
+      },
+      size: NOTE_NODE_DEFAULT_SIZE,
+      content: '', // 空内容
+      title: '记事本',
+    };
+    addElement(newNote);
   };
 
   // 上传图片
