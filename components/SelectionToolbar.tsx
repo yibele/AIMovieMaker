@@ -273,12 +273,11 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
     const aspectRatio: '9:16' | '16:9' = Math.abs(ratio - 9 / 16) < 0.1 ? '9:16' : '16:9';
     const videoSize = getVideoNodeSize(aspectRatio);
 
-    // 行级注释：视频节点位置（两个图片中间偏下）
-    const centerX = (startImage.position.x + endImage.position.x) / 2;
-    const maxY = Math.max(startImage.position.y, endImage.position.y);
+    // 行级注释：视频节点位置（放在右侧图片的右侧）
+    const endImageRight = endImage.position.x + (endImage.size?.width || 640);
     const videoPosition = {
-      x: centerX - videoSize.width / 2,
-      y: maxY + Math.max(startImage.size?.height || 360, endImage.size?.height || 360) + 80,
+      x: endImageRight + 80, // 右侧图片右边 + 间距
+      y: endImage.position.y, // 与右侧图片对齐
     };
 
     // 行级注释：创建视频节点
