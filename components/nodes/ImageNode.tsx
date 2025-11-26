@@ -544,8 +544,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
         <ToolbarButton icon={<Trash2 className="w-5 h-5" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />
       </NodeToolbar>
 
+      {/* 行级注释：外层容器需要背景色，避免圆角处露出白边 */}
       <div
-        className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full ${selected
+        className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full bg-slate-200 dark:bg-slate-700 ${selected
           ? 'ring-2 ring-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.25)] scale-[1.01]'
           : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-lg'
           }`}

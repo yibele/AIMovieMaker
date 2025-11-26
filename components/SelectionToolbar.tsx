@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Edit3, Download, Trash2, FolderInput, Film } from 'lucide-react';
+import { Edit3, Download, Trash2, FolderInput, Film, Link2 } from 'lucide-react';
 import { Panel, useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { useMaterialsStore } from '@/lib/materials-store';
@@ -11,6 +11,7 @@ import { getVideoNodeSize } from '@/lib/constants/node-sizes';
 
 interface SelectionToolbarProps {
   onMultiImageEdit?: () => void;
+  onTransitionShots?: (startImage: ImageElement, endImage: ImageElement) => void; // 行级注释：衔接镜头回调
 }
 
 // Helper component for buttons with tooltips
@@ -47,7 +48,7 @@ function SelectionButton({
   );
 }
 
-export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarProps) {
+export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }: SelectionToolbarProps) {
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
   const deleteSelectedElements = useCanvasStore((state) => state.deleteSelectedElements);
@@ -237,6 +238,34 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
     }
   };
 
+  // 行级注释：衔接镜头 - 用 VL 分析两张图片，生成中间过渡的分镜
+  const handleTransitionShots = () => {
+    if (selectedImages.length !== 2) {
+      toast.error('请选择恰好 2 张图片');
+      return;
+    }
+
+    // 检查是否有图片正在处理中
+    const hasProcessing = selectedImages.some(
+      (img) => img.uploadState === 'syncing' || !img.mediaGenerationId
+    );
+
+    if (hasProcessing) {
+      toast.error('存在未同步完成的图片，请稍后重试');
+      return;
+    }
+
+    // 行级注释：根据 x 坐标判断起点和终点（左边是起点，右边是终点）
+    const sortedImages = [...selectedImages].sort((a, b) => a.position.x - b.position.x);
+    const startImage = sortedImages[0];
+    const endImage = sortedImages[1];
+
+    // 调用回调
+    if (onTransitionShots) {
+      onTransitionShots(startImage, endImage);
+    }
+  };
+
   // 行级注释：首尾帧生成视频
   const handleStartEndVideo = () => {
     if (selectedImages.length !== 2) {
@@ -362,6 +391,12 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
               icon={Film}
               title="首尾帧生成视频 (左=首帧, 右=尾帧)"
               className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+            />
+            <SelectionButton
+              onClick={handleTransitionShots}
+              icon={Link2}
+              title="衔接镜头 - AI 分析并生成中间过渡分镜"
+              className="text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/30"
             />
           </>
         )}
