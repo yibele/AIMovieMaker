@@ -66,15 +66,19 @@ function NoteNode({ data, id, selected }: NodeProps) {
     e.stopPropagation();
   }, [noteData.content, noteData.title, handleSave]);
 
-  // 行级注释：展开/折叠
+  // 行级注释：展开/折叠 - 通过更新节点 size 实现
   const toggleExpand = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    const currentSize = noteData.size || { width: 400, height: 300 };
+    if (isExpanded) {
+      // 收起到默认大小
+      updateElement(id, { size: { width: 400, height: 300 } } as Partial<NoteElement>);
+    } else {
+      // 展开到更大尺寸
+      updateElement(id, { size: { width: 600, height: 500 } } as Partial<NoteElement>);
+    }
     setIsExpanded(!isExpanded);
-  }, [isExpanded]);
-
-  const nodeSize = isExpanded 
-    ? { width: 600, height: 500 } 
-    : { width: noteData.size?.width || 400, height: noteData.size?.height || 300 };
+  }, [isExpanded, noteData.size, id, updateElement]);
 
   return (
     <>
@@ -87,6 +91,7 @@ function NoteNode({ data, id, selected }: NodeProps) {
         handleClassName="!w-2 !h-2 !bg-amber-500 !border-amber-600"
       />
 
+      {/* 行级注释：使用 100% 宽高，让节点大小由 ReactFlow 的 node.width/height 控制 */}
       <div
         className={`relative flex flex-col bg-amber-50 dark:bg-amber-900/20 rounded-xl border-2 transition-all duration-300 ${
           selected
@@ -94,8 +99,8 @@ function NoteNode({ data, id, selected }: NodeProps) {
             : 'border-amber-200 dark:border-amber-700 shadow-lg hover:shadow-xl'
         }`}
         style={{ 
-          width: nodeSize.width, 
-          height: nodeSize.height,
+          width: '100%', 
+          height: '100%',
         }}
         onDoubleClick={handleDoubleClick}
       >
