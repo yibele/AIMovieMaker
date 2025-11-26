@@ -66,6 +66,64 @@ const nodeTypes: NodeTypes = {
 
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
 
+// 行级注释：使用 VL 模型分析图片生成视频提示词
+async function analyzeImageForVideoPrompt(
+  imageUrl: string,
+  endImageUrl: string | null,
+  dashScopeApiKey: string
+): Promise<string> {
+  const isStartEndMode = Boolean(endImageUrl);
+  
+  const systemPrompt = isStartEndMode
+    ? `Analyze these two images (start frame and end frame) and generate a video transition prompt.
+Describe the motion, camera movement, and transformation that would naturally connect these two frames.
+Focus on: character movement, camera pan/zoom, environmental changes, mood transition.
+Output ONLY the prompt text, no explanation. Keep it under 50 words. Write in English.`
+    : `Analyze this image and generate a video motion prompt.
+Imagine this as the first frame of a video. Describe natural movement that could happen:
+- Character actions (walking, turning, gesturing, breathing)
+- Camera movement (slow zoom, gentle pan, slight drift)
+- Environmental motion (wind, light shifts, subtle movements)
+Output ONLY the prompt text, no explanation. Keep it under 40 words. Write in English.`;
+
+  const messages: any[] = [{
+    role: 'user',
+    content: isStartEndMode
+      ? [
+          { type: 'image_url', image_url: { url: imageUrl } },
+          { type: 'image_url', image_url: { url: endImageUrl! } },
+          { type: 'text', text: systemPrompt }
+        ]
+      : [
+          { type: 'image_url', image_url: { url: imageUrl } },
+          { type: 'text', text: systemPrompt }
+        ]
+  }];
+
+  const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${dashScopeApiKey}`
+    },
+    body: JSON.stringify({
+      model: 'qwen-vl-max',
+      messages
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || 'VL API request failed');
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content || '';
+  
+  // 清理返回内容
+  return content.trim().replace(/^["']|["']$/g, '');
+}
+
 function CanvasContent({ projectId }: { projectId?: string }) {
   const elements = useCanvasStore((state) => state.elements);
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -227,12 +285,76 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         return;
       }
 
-      const promptText = videoElement.promptText?.trim();
+      let promptText = videoElement.promptText?.trim();
       const startImageId = videoElement.startImageId;
       const endImageId = videoElement.endImageId;
       const generationCount = videoElement.generationCount || 1; // 行级注释：获取生成数量
 
       const hasAtLeastOneImage = Boolean(startImageId || endImageId);
+      
+      // 行级注释：智能视频生成 - 如果有图片但没有提示词，使用 VL 分析生成提示词
+      if (hasAtLeastOneImage && !promptText) {
+        const { apiConfig } = useCanvasStore.getState();
+        const dashScopeApiKey = apiConfig.dashScopeApiKey;
+        if (!dashScopeApiKey) {
+          console.warn('⚠️ 没有配置 DashScope API Key，无法使用智能分析');
+          updateElement(videoId, {
+            status: 'pending',
+            readyForGeneration: false,
+          } as Partial<VideoElement>);
+          return;
+        }
+
+        // 行级注释：获取首帧图片信息
+        const startImage = startImageId 
+          ? storeElements.find(el => el.id === startImageId) as ImageElement | undefined
+          : null;
+        const endImage = endImageId 
+          ? storeElements.find(el => el.id === endImageId) as ImageElement | undefined
+          : null;
+        
+        const actualStartImage = startImage || endImage;
+        if (!actualStartImage?.src) {
+          console.warn('⚠️ 找不到有效的图片源');
+          updateElement(videoId, {
+            status: 'pending',
+            readyForGeneration: false,
+          } as Partial<VideoElement>);
+          return;
+        }
+
+        try {
+          updateElement(videoId, {
+            status: 'generating',
+            progress: 5,
+          } as Partial<VideoElement>);
+
+          console.log('🔍 使用 VL 分析图片生成视频提示词...');
+          const startImageUrl = actualStartImage.base64?.startsWith('data:') 
+            ? actualStartImage.base64 
+            : actualStartImage.src;
+          const endImageUrl = (startImage && endImage && endImage.id !== startImage.id)
+            ? (endImage.base64?.startsWith('data:') ? endImage.base64 : endImage.src)
+            : null;
+
+          promptText = await analyzeImageForVideoPrompt(startImageUrl, endImageUrl, dashScopeApiKey);
+          console.log('✅ VL 分析完成，生成提示词:', promptText);
+          
+          // 行级注释：更新视频节点的提示词
+          updateElement(videoId, {
+            promptText: promptText,
+            progress: 15,
+          } as Partial<VideoElement>);
+        } catch (error) {
+          console.error('❌ VL 分析失败:', error);
+          updateElement(videoId, {
+            status: 'error',
+            readyForGeneration: false,
+          } as Partial<VideoElement>);
+          return;
+        }
+      }
+      
       // 行级注释：支持纯文本生成视频 - 只要有提示词就可以生成
       const ready = Boolean(promptText);
 

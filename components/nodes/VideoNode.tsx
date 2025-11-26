@@ -35,10 +35,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
       return '可选：连接首/尾帧图片';
     }
     if (!hasPrompt && hasFrame) {
-      return '输入提示词后生成';
+      return '可直接发送，AI 自动分析动作';
     }
-    return '在下方输入框输入提示词';
+    return '输入提示词 或 连接图片';
   }, [videoData.promptText, videoData.startImageId, videoData.endImageId, promptInput]);
+  
+  // 行级注释：判断是否可以发送（有提示词 或 有图片连接）
+  const canSend = useMemo(() => {
+    const hasPrompt = Boolean(promptInput.trim());
+    const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
+    return hasPrompt || hasFrame;
+  }, [promptInput, videoData.startImageId, videoData.endImageId]);
 
   // 行级注释：提示词显示逻辑（类似 ImageNode）
   const promptDisplayText = videoData.promptText?.trim() || '';
@@ -102,21 +109,27 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   };
 
-  // 行级注释：从输入框生成视频
+  // 行级注释：从输入框生成视频（支持无提示词智能生成）
   const handleGenerateFromInput = useCallback(() => {
-    if (!promptInput.trim()) {
+    const hasPrompt = Boolean(promptInput.trim());
+    const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
+    
+    // 行级注释：必须有提示词或图片连接才能生成
+    if (!hasPrompt && !hasFrame) {
       return;
     }
 
     console.log('🎬 VideoNode: 开始生成视频', {
-      promptInput: promptInput.trim(),
+      promptInput: promptInput.trim() || '(AI 自动分析)',
+      hasFrame,
       generationCount,
       videoData
     });
 
     // 行级注释：生成时同步 promptText 和 generationCount 到 store，并设置状态为 queued
+    // 如果没有提示词但有图片，promptText 留空，让 Canvas 的 maybeStartVideo 使用 VL 分析
     updateElement(id, {
-      promptText: promptInput.trim(),
+      promptText: promptInput.trim() || '', // 可以为空，VL 会自动分析
       generationCount: generationCount,
       status: 'queued' // 行级注释：设置为 queued 状态，触发生成流程
     } as any);
@@ -750,14 +763,14 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
-                  disabled={!promptInput.trim() || isGenerating}
+                  disabled={!canSend || isGenerating}
                   className={`
                     w-6 h-6 flex items-center justify-center rounded-full transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 hover:scale-110
-                    ${promptInput.trim() && !isGenerating
+                    ${canSend && !isGenerating
                       ? 'bg-blue-600 text-white hover:bg-blue-500'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                      : 'bg-gray-200 dark:bg-slate-600 text-gray-400 dark:text-slate-500 cursor-not-allowed'}
                   `}
-                  title={isGenerating ? "生成中..." : "生成视频"}
+                  title={isGenerating ? "生成中..." : canSend ? (promptInput.trim() ? "生成视频" : "AI 智能分析生成") : "输入提示词或连接图片"}
                 >
                   <Send className="w-3 h-3" />
                 </button>
