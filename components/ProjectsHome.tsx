@@ -486,11 +486,17 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
   }, [fetchProjects, isHydrated]);
 
   // 自动同步云端凭证 (Auto-Sync Credentials)
+  // 行级注释：只在 cloud 模式下自动同步，local 模式下跳过（避免覆盖用户手动设置的配置）
   useEffect(() => {
     const syncCredentials = async () => {
-      // 如果本地已经有 cookie，暂时不覆盖（或者你可以选择强制覆盖，取决于策略）
-      // 这里策略是：如果本地没有 cookie，或者即使有也检查一下更新（保持最新）
-      // 为了性能，我们只在组件加载时检查一次
+      // 检查当前凭证模式
+      const currentConfig = useCanvasStore.getState().apiConfig;
+      
+      // 如果是 local（开发者）模式，跳过自动同步
+      if (currentConfig.credentialMode === 'local') {
+        console.log('🔒 开发者模式：跳过云端凭证自动同步');
+        return;
+      }
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -508,11 +514,9 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
           if (data.activated && data.credentials) {
             console.log('🔄 自动同步云端凭证成功');
             
-            // 获取当前配置进行对比，避免不必要的更新
-            const currentConfig = useCanvasStore.getState().apiConfig;
             const newCreds = data.credentials;
 
-            // 简单对比关键字段
+            // 简单对比关键字段，避免不必要的更新
             if (currentConfig.cookie !== newCreds.cookie || currentConfig.bearerToken !== newCreds.bearerToken) {
                useCanvasStore.getState().setApiConfig({
                 apiKey: newCreds.apiKey || currentConfig.apiKey,
@@ -522,8 +526,9 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
                 accountTier: 'ultra', // VIP 用户默认 Ultra
                 isManaged: true, // 标记为托管模式
                 videoModel: 'fast', // 托管模式下强制使用 Fast 模型
+                credentialMode: 'cloud', // 保持云端模式
               });
-              toast.success('已同步最新 VIP 凭证');
+              toast.success('已同步最新 API 授权');
               
               // 凭证更新后，刷新项目列表
               setTimeout(() => fetchProjects(true), 500);

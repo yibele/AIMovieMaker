@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save } from 'lucide-react';
+import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Code, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function SettingsPanel() {
   const isOpen = useCanvasStore((state) => state.isSettingsOpen);
@@ -23,19 +24,70 @@ export default function SettingsPanel() {
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
   const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
+  const [credentialMode, setCredentialMode] = useState<'cloud' | 'local'>(apiConfig.credentialMode || 'cloud');
+  const [isSyncingCredentials, setIsSyncingCredentials] = useState(false);
 
-  // 同步本地状态
+  // 同步本地状态 - 当面板打开或 apiConfig 变化时同步
   useEffect(() => {
-    setApiKey(apiConfig.apiKey || '');
-    setBearerToken(apiConfig.bearerToken || '');
-    setCookie(apiConfig.cookie || '');
-    setDashScopeApiKey(apiConfig.dashScopeApiKey || '');
-    setProxy(apiConfig.proxy || '');
-    setProjectId(apiConfig.projectId || '');
-    setWorkflowId(apiConfig.workflowId || '');
-    setSessionId(apiConfig.sessionId || '');
-    setAccountTier(apiConfig.accountTier || 'pro');
-  }, [apiConfig]);
+    if (isOpen) {
+      setApiKey(apiConfig.apiKey || '');
+      setBearerToken(apiConfig.bearerToken || '');
+      setCookie(apiConfig.cookie || '');
+      setDashScopeApiKey(apiConfig.dashScopeApiKey || '');
+      setProxy(apiConfig.proxy || '');
+      setProjectId(apiConfig.projectId || '');
+      setWorkflowId(apiConfig.workflowId || '');
+      setSessionId(apiConfig.sessionId || '');
+      setAccountTier(apiConfig.accountTier || 'pro');
+      setCredentialMode(apiConfig.credentialMode || 'cloud');
+    }
+  }, [apiConfig, isOpen]);
+
+  // 手动同步云端 API 授权
+  const handleSyncCloudCredentials = async () => {
+    setIsSyncingCredentials(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('请先登录');
+        return;
+      }
+
+      const response = await fetch('/api/activation/activate', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.activated && data.credentials) {
+          const creds = data.credentials;
+          setApiConfig({
+            apiKey: creds.apiKey || '',
+            bearerToken: creds.bearerToken || '',
+            cookie: creds.cookie || '',
+            projectId: creds.projectId || '',
+            accountTier: 'ultra',
+            isManaged: true,
+            videoModel: 'fast',
+            credentialMode: 'cloud',
+          });
+          toast.success('API 授权同步成功');
+        } else {
+          toast.error('未找到有效的 API 授权，请确认邀请码已激活');
+        }
+      } else {
+        toast.error('同步失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('同步云端凭证失败:', error);
+      toast.error('同步失败，请检查网络连接');
+    } finally {
+      setIsSyncingCredentials(false);
+    }
+  };
 
   const handleGenerateContext = () => {
     const context = regenerateFlowContext();
@@ -56,8 +108,9 @@ export default function SettingsPanel() {
       workflowId: workflowId.trim(),
       sessionId: sessionId.trim(),
       accountTier,
+      credentialMode, // 行级注释：保存凭证模式选择
       // 行级注释：保留 generationCount 和 imageModel，不在设置面板中修改它们
-      isManaged: false, // 手动保存时重置为非托管模式
+      isManaged: credentialMode === 'cloud', // 云端模式为托管模式
     });
     setIsOpen(false);
     toast.success('Configuration saved successfully');
@@ -97,6 +150,70 @@ export default function SettingsPanel() {
 
             {/* 表单内容 */}
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+
+              {/* API 授权模式 */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <Cloud className="w-4 h-4 text-sky-500" />
+                  API Mode
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setCredentialMode('cloud')}
+                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
+                      credentialMode === 'cloud'
+                        ? 'bg-gradient-to-br from-sky-500 to-blue-600 border-transparent text-white shadow-lg shadow-sky-500/30'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Cloud className="w-4 h-4" />
+                      <span className="font-bold">Cloud Mode</span>
+                    </div>
+                    <div className={`text-xs ${credentialMode === 'cloud' ? 'text-sky-100' : 'text-slate-400'}`}>
+                      Auto-sync API from invitation code
+                    </div>
+                    {credentialMode === 'cloud' && <div className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full animate-pulse" />}
+                  </button>
+                  <button
+                    onClick={() => setCredentialMode('local')}
+                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
+                      credentialMode === 'local'
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Code className="w-4 h-4" />
+                      <span className="font-bold">Developer Mode</span>
+                    </div>
+                    <div className={`text-xs ${credentialMode === 'local' ? 'text-slate-300' : 'text-slate-400'}`}>
+                      Use custom API configuration
+                    </div>
+                    {credentialMode === 'local' && <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
+                  </button>
+                </div>
+                {/* 云端模式下显示同步按钮 */}
+                {credentialMode === 'cloud' && (
+                  <button
+                    onClick={handleSyncCloudCredentials}
+                    disabled={isSyncingCredentials}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-sm rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSyncingCredentials ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {isSyncingCredentials ? 'Syncing...' : 'Sync API Authorization'}
+                  </button>
+                )}
+                <p className="text-xs text-slate-400 font-medium">
+                  {credentialMode === 'cloud' 
+                    ? 'Cloud mode syncs API settings from your invitation code. Click the button above to refresh.' 
+                    : 'Developer mode uses your local settings. API will not be overwritten by cloud sync.'}
+                </p>
+              </div>
               
               {/* 账号类型 */}
               <div className="space-y-4">

@@ -29,6 +29,7 @@ interface ApiConfig {
   videoModel?: 'quality' | 'fast'; // 视频生成模型：Quality 或 Fast
   isManaged?: boolean; // 是否为托管模式
   userId?: string; // 用户ID
+  credentialMode?: 'cloud' | 'local'; // 凭证模式：cloud=云端同步（邀请码用户），local=本地开发者模式
 }
 
 // 状态接口定义
@@ -121,6 +122,7 @@ const loadApiConfig = (): ApiConfig => {
       accountTier: 'pro', // 行级注释：默认 Pro 账号
       imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
       videoModel: 'quality',
+      credentialMode: 'cloud', // 行级注释：默认云端模式
     };
   }
 
@@ -143,6 +145,7 @@ const loadApiConfig = (): ApiConfig => {
         imageModel: parsed?.imageModel || 'nanobanana', // 行级注释：兼容旧配置，默认 Banana (Preview)
         videoModel: parsed?.videoModel || 'quality', // 行级注释：兼容旧配置，默认 quality
         isManaged: parsed?.isManaged || false,
+        credentialMode: parsed?.credentialMode || 'cloud', // 行级注释：兼容旧配置，默认云端模式
       };
     }
   } catch (error) {
@@ -164,6 +167,7 @@ const loadApiConfig = (): ApiConfig => {
     imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
     videoModel: 'quality', // 行级注释：视频生成模型 quality 或 fast
     isManaged: false,
+    credentialMode: 'cloud', // 行级注释：默认云端模式
   };
 };
 

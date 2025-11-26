@@ -52,7 +52,14 @@ export default function ConnectionMenuRoot({
 
                 </button>
                 <button
-                  onClick={callbacks.onShowVideoSubmenu}
+                  onClick={() => {
+                    // 行级注释：图片节点直接生成视频（根据图片比例），文字节点显示比例选择
+                    if (state.sourceNodeType === 'image') {
+                      callbacks.onGenerateVideoFromImage();
+                    } else {
+                      callbacks.onShowVideoSubmenu();
+                    }
+                  }}
                   className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">

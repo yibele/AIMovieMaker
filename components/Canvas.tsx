@@ -1454,6 +1454,33 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [createVideoNodeFromImage, resetConnectionMenu]
   );
 
+  // 行级注释：从图片生成视频（自动根据图片比例）
+  const handleGenerateVideoFromImage = useCallback(() => {
+    const sourceNodeId = connectionMenu.sourceNodeId;
+    if (!sourceNodeId) return;
+
+    const sourceNode = elements.find(
+      (el) => el.id === sourceNodeId && el.type === 'image'
+    ) as ImageElement | undefined;
+
+    if (!sourceNode) {
+      resetConnectionMenu();
+      return;
+    }
+
+    // 行级注释：根据图片尺寸判断比例（与 ImageNode 的 getAspectRatio 逻辑一致）
+    const width = sourceNode.size?.width || 320;
+    const height = sourceNode.size?.height || 180;
+    const ratio = width / height;
+
+    // 行级注释：视频只支持 16:9 和 9:16，方形图片默认用横屏
+    const aspectRatio: '9:16' | '16:9' = Math.abs(ratio - 9 / 16) < 0.1 ? '9:16' : '16:9';
+
+    console.log('🎬 根据图片比例自动生成视频:', { width, height, aspectRatio });
+
+    handleImageToVideo(sourceNode, aspectRatio);
+  }, [connectionMenu.sourceNodeId, elements, handleImageToVideo, resetConnectionMenu]);
+
   // 处理镜头控制重拍（生成视频）
   const handleGenerateReshoot = useCallback(
     async (motionType: ReshootMotionType) => {
@@ -2048,6 +2075,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onShowVideoSubmenu: showVideoSubmenu,
           onGenerateImage: handleGenerateImage,
           onGenerateVideo: handleGenerateVideo,
+          onGenerateVideoFromImage: handleGenerateVideoFromImage,
           onImagePromptInputChange: handleImagePromptInputChange,
           onConfirmImagePrompt: handleConfirmImagePrompt,
           onBackToMain: backToMain,

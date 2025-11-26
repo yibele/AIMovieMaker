@@ -23,6 +23,7 @@ export type ConnectionMenuCallbacks = {
   onShowVideoSubmenu: () => void;
   onGenerateImage: (aspectRatio: '9:16' | '16:9' | '1:1') => void;
   onGenerateVideo: (aspectRatio: '9:16' | '16:9') => void;
+  onGenerateVideoFromImage: () => void; // 行级注释：从图片生成视频，自动根据图片比例
   onImagePromptInputChange: (value: string) => void;
   onConfirmImagePrompt: () => void;
   onBackToMain: () => void;
