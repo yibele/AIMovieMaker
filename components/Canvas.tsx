@@ -74,17 +74,26 @@ async function analyzeImageForVideoPrompt(
 ): Promise<string> {
   const isStartEndMode = Boolean(endImageUrl);
   
+  // 行级注释：8秒视频，需要 1-2 个镜头切换，每个镜头 2-3 秒
   const systemPrompt = isStartEndMode
-    ? `Analyze these two images (start frame and end frame) and generate a video transition prompt.
-Describe the motion, camera movement, and transformation that would naturally connect these two frames.
-Focus on: character movement, camera pan/zoom, environmental changes, mood transition.
-Output ONLY the prompt text, no explanation. Keep it under 50 words. Write in English.`
-    : `Analyze this image and generate a video motion prompt.
-Imagine this as the first frame of a video. Describe natural movement that could happen:
-- Character actions (walking, turning, gesturing, breathing)
-- Camera movement (slow zoom, gentle pan, slight drift)
-- Environmental motion (wind, light shifts, subtle movements)
-Output ONLY the prompt text, no explanation. Keep it under 40 words. Write in English.`;
+    ? `Analyze these two images (start frame and end frame) and generate an 8-second video prompt.
+
+STRUCTURE: Design 2-3 shots (each 2-3 seconds) that transition from Frame A to Frame B:
+- Shot 1 (0-3s): Starting action/camera from Frame A
+- Shot 2 (3-6s): Transition movement, camera change, or mid-action
+- Shot 3 (6-8s): Arriving at Frame B's composition
+
+Include: character movement, camera cuts/pans, environmental changes, mood shifts.
+Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`
+    : `Analyze this image and generate an 8-second cinematic video prompt.
+
+STRUCTURE: Design 2-3 shots (each 2-3 seconds):
+- Shot 1 (0-3s): Initial scene, subtle movement begins
+- Shot 2 (3-6s): Camera change or new action (cut to different angle, pan, or zoom)
+- Shot 3 (6-8s): Concluding motion or reveal
+
+Include: character actions, camera movements (pan/zoom/cut), environmental motion.
+Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`;
 
   const messages: any[] = [{
     role: 'user',
