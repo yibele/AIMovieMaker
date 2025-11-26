@@ -173,7 +173,7 @@ export default function Toolbar() {
       },
       size: NOTE_NODE_DEFAULT_SIZE,
       content: '', // 空内容
-      title: '记事本',
+      title: '分镜',
     };
     addElement(newNote);
   };

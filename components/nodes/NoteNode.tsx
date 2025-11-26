@@ -5,7 +5,6 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { FileText, Maximize2, Minimize2 } from 'lucide-react';
 import type { NoteElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
-import ReactMarkdown from 'react-markdown';
 
 // 行级注释：记事本节点组件，用于长文本（剧本、分镜等），支持 Markdown 显示
 function NoteNode({ data, id, selected }: NodeProps) {
@@ -13,7 +12,7 @@ function NoteNode({ data, id, selected }: NodeProps) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(noteData.content || '');
-  const [title, setTitle] = useState(noteData.title || '记事本');
+  const [title, setTitle] = useState(noteData.title || '分镜');
   const [isExpanded, setIsExpanded] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +21,7 @@ function NoteNode({ data, id, selected }: NodeProps) {
   // 行级注释：同步外部数据变化
   useEffect(() => {
     setContent(noteData.content || '');
-    setTitle(noteData.title || '记事本');
+    setTitle(noteData.title || '分镜');
   }, [noteData.content, noteData.title]);
 
   // 行级注释：进入编辑模式时自动聚焦
@@ -54,7 +53,7 @@ function NoteNode({ data, id, selected }: NodeProps) {
     // Escape 取消编辑
     if (e.key === 'Escape') {
       setContent(noteData.content || '');
-      setTitle(noteData.title || '记事本');
+      setTitle(noteData.title || '分镜');
       setIsEditing(false);
     }
     // Cmd/Ctrl + Enter 保存
@@ -137,15 +136,8 @@ function NoteNode({ data, id, selected }: NodeProps) {
               onChange={(e) => setContent(e.target.value)}
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
-              className="w-full h-full p-3 bg-transparent border-none outline-none resize-none text-sm text-gray-800 dark:text-gray-200 font-mono leading-relaxed"
+              className="w-full h-full p-3 bg-transparent border-none outline-none resize-none text-sm text-gray-800 dark:text-gray-200 leading-relaxed"
               placeholder="在这里输入内容...
-
-支持 Markdown 格式：
-# 标题
-## 副标题
-- 列表项
-**粗体** *斜体*
-> 引用
 
 按 Cmd/Ctrl + Enter 保存"
               onClick={(e) => e.stopPropagation()}
@@ -153,42 +145,11 @@ function NoteNode({ data, id, selected }: NodeProps) {
           ) : (
             <div className="w-full h-full p-3 overflow-y-auto custom-scrollbar">
               {content ? (
-                <div className="prose prose-sm prose-amber dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
-                  <ReactMarkdown
-                    components={{
-                      // 行级注释：自定义 Markdown 渲染样式
-                      h1: ({ children }) => <h1 className="text-lg font-bold text-amber-900 dark:text-amber-100 mb-2">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-base font-semibold text-amber-800 dark:text-amber-200 mb-2">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-1">{children}</h3>,
-                      p: ({ children }) => <p className="text-sm leading-relaxed mb-2">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc list-inside text-sm mb-2 space-y-1">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside text-sm mb-2 space-y-1">{children}</ol>,
-                      li: ({ children }) => <li className="text-sm">{children}</li>,
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-2 border-amber-400 pl-3 italic text-sm text-gray-600 dark:text-gray-400 my-2">
-                          {children}
-                        </blockquote>
-                      ),
-                      code: ({ children }) => (
-                        <code className="bg-amber-100 dark:bg-amber-800/50 px-1 py-0.5 rounded text-xs font-mono">
-                          {children}
-                        </code>
-                      ),
-                      pre: ({ children }) => (
-                        <pre className="bg-amber-100 dark:bg-amber-800/50 p-2 rounded text-xs font-mono overflow-x-auto my-2">
-                          {children}
-                        </pre>
-                      ),
-                      strong: ({ children }) => <strong className="font-bold text-amber-900 dark:text-amber-100">{children}</strong>,
-                      em: ({ children }) => <em className="italic">{children}</em>,
-                      hr: () => <hr className="border-amber-200 dark:border-amber-700 my-3" />,
-                    }}
-                  >
-                    {content}
-                  </ReactMarkdown>
+                <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                  {content}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-amber-400 dark:text-amber-600 text-sm">
+                <div className="text-amber-400 dark:text-amber-600 text-sm">
                   双击编辑内容...
                 </div>
               )}
@@ -200,7 +161,7 @@ function NoteNode({ data, id, selected }: NodeProps) {
         {isEditing && (
           <div className="px-3 py-1.5 bg-amber-100 dark:bg-amber-800/30 rounded-b-xl border-t border-amber-200 dark:border-amber-700">
             <span className="text-[10px] text-amber-600 dark:text-amber-400">
-              支持 Markdown · Cmd/Ctrl+Enter 保存 · Esc 取消
+              Cmd/Ctrl+Enter 保存 · Esc 取消
             </span>
           </div>
         )}

@@ -108,6 +108,7 @@ html {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
+  transition: width 0.3s ease, height 0.3s ease !important;
 }
 
 .react-flow.custom-theme .react-flow__node-note.selectable.selected,
