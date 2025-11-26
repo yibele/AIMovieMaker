@@ -55,11 +55,17 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：复制提示词到剪贴板
   const [isCopied, setIsCopied] = useState(false);
-  const handleCopyPrompt = useCallback(() => {
+  const handleCopyPrompt = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (promptDisplayText) {
-      navigator.clipboard.writeText(promptDisplayText);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      try {
+        await navigator.clipboard.writeText(promptDisplayText);
+        console.log('✅ 视频提示词已复制到剪贴板');
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch (err) {
+        console.error('复制失败:', err);
+      }
     }
   }, [promptDisplayText]);
 
