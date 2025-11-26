@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Edit3, Download, Trash2, FolderInput } from 'lucide-react';
-import { Panel } from '@xyflow/react';
+import { Edit3, Download, Trash2, FolderInput, Film } from 'lucide-react';
+import { Panel, useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { ImageElement, VideoElement } from '@/lib/types';
 import { toast } from 'sonner';
+import { getVideoNodeSize } from '@/lib/constants/node-sizes';
 
 interface SelectionToolbarProps {
   onMultiImageEdit?: () => void;
@@ -51,6 +52,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
   const elements = useCanvasStore((state) => state.elements);
   const deleteSelectedElements = useCanvasStore((state) => state.deleteSelectedElements);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
+  const { setEdges } = useReactFlow();
 
   // 获取选中的图片元素
   const selectedImages = elements
@@ -235,6 +237,101 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
     }
   };
 
+  // 行级注释：首尾帧生成视频
+  const handleStartEndVideo = () => {
+    if (selectedImages.length !== 2) {
+      toast.error('请选择恰好 2 张图片作为首尾帧');
+      return;
+    }
+
+    // 检查是否有图片正在处理中
+    const hasProcessing = selectedImages.some(
+      (img) => img.uploadState === 'syncing' || !img.mediaGenerationId
+    );
+
+    if (hasProcessing) {
+      toast.error('存在未同步完成的图片，请稍后重试');
+      return;
+    }
+
+    // 行级注释：根据 x 坐标判断首尾帧（左边是首帧，右边是尾帧）
+    const sortedImages = [...selectedImages].sort((a, b) => a.position.x - b.position.x);
+    const startImage = sortedImages[0];
+    const endImage = sortedImages[1];
+
+    console.log('🎬 首尾帧生成视频:', {
+      startImage: startImage.id,
+      endImage: endImage.id,
+      startX: startImage.position.x,
+      endX: endImage.position.x,
+    });
+
+    // 行级注释：判断视频比例（根据首帧图片）
+    const width = startImage.size?.width || 320;
+    const height = startImage.size?.height || 180;
+    const ratio = width / height;
+    const aspectRatio: '9:16' | '16:9' = Math.abs(ratio - 9 / 16) < 0.1 ? '9:16' : '16:9';
+    const videoSize = getVideoNodeSize(aspectRatio);
+
+    // 行级注释：视频节点位置（两个图片中间偏下）
+    const centerX = (startImage.position.x + endImage.position.x) / 2;
+    const maxY = Math.max(startImage.position.y, endImage.position.y);
+    const videoPosition = {
+      x: centerX - videoSize.width / 2,
+      y: maxY + Math.max(startImage.size?.height || 360, endImage.size?.height || 360) + 80,
+    };
+
+    // 行级注释：创建视频节点
+    const videoId = `video-${Date.now()}`;
+    const addElement = useCanvasStore.getState().addElement;
+
+    const newVideo: VideoElement = {
+      id: videoId,
+      type: 'video',
+      src: '',
+      thumbnail: '',
+      duration: 0,
+      status: 'pending',
+      position: videoPosition,
+      size: videoSize,
+      promptText: '',
+      startImageId: startImage.id,
+      endImageId: endImage.id,
+      generationCount: 1,
+      generatedFrom: {
+        type: 'image-to-image',
+        sourceIds: [startImage.id, endImage.id],
+      },
+    };
+
+    addElement(newVideo);
+
+    // 行级注释：创建连线
+    setEdges((eds: any[]) => [
+      ...eds,
+      {
+        id: `edge-${startImage.id}-${videoId}-start`,
+        source: startImage.id,
+        target: videoId,
+        targetHandle: 'start-image',
+        type: 'default',
+        animated: false,
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
+      },
+      {
+        id: `edge-${endImage.id}-${videoId}-end`,
+        source: endImage.id,
+        target: videoId,
+        targetHandle: 'end-image',
+        type: 'default',
+        animated: false,
+        style: { stroke: '#8b5cf6', strokeWidth: 2 },
+      },
+    ]);
+
+    toast.success('已创建首尾帧视频节点，可输入提示词或直接发送');
+  };
+
   // 行级注释：阻止事件冒泡，避免触发画布的拖动
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -243,20 +340,35 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
   // 只有全部是图片时才显示"图片编辑"按钮
   const allImages = selection.length === selectedImages.length;
   const canEdit = allImages && selectedImages.length >= 2 && selectedImages.length <= 6;
+  // 行级注释：恰好选中 2 张图片时可以生成首尾帧视频
+  const canStartEndVideo = allImages && selectedImages.length === 2;
 
   return (
     <Panel position="top-center" className="!mt-20 !p-0 animate-in slide-in-from-top-4 fade-in duration-300">
       <div
-        className="flex items-center gap-2 bg-white/95 backdrop-blur-xl text-gray-700 rounded-xl border border-gray-200 shadow-2xl px-4 py-2 transition-all hover:shadow-lg"
+        className="flex items-center gap-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl text-gray-700 dark:text-slate-200 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xl px-4 py-2 transition-all hover:shadow-lg"
         onMouseDown={handleMouseDown}
       >
         {/* 选中数量提示 */}
-        <span className="px-2 py-1 text-xs font-medium text-gray-500">
+        <span className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-slate-400">
           已选中 {selection.length} {allImages ? '张图片' : '个元素'}
         </span>
 
+        {/* 首尾帧视频按钮（仅当选中恰好 2 张图片时显示） */}
+        {canStartEndVideo && (
+          <>
+            <div className="border-l border-gray-200 dark:border-slate-600 h-6 mx-1" />
+            <SelectionButton
+              onClick={handleStartEndVideo}
+              icon={Film}
+              title="首尾帧生成视频 (左=首帧, 右=尾帧)"
+              className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+            />
+          </>
+        )}
+
         {/* 分隔线 */}
-        {canEdit && <div className="border-l border-gray-200 h-6 mx-1" />}
+        {canEdit && <div className="border-l border-gray-200 dark:border-slate-600 h-6 mx-1" />}
 
         {/* 图片编辑按钮（仅当选中 2-6 张图片时显示） */}
         {canEdit && (
@@ -264,23 +376,23 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
             onClick={handleImageEdit}
             icon={Edit3}
             title="多图编辑 - 将选中的图片用于编辑和融合"
-            className="text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+            className="text-gray-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:text-purple-600 dark:hover:text-purple-400"
           />
         )}
 
         {/* 分隔线 */}
-        <div className="border-l border-gray-200 h-6 mx-1" />
+        <div className="border-l border-gray-200 dark:border-slate-600 h-6 mx-1" />
 
         {/* 批量入库按钮 */}
         <SelectionButton
           onClick={handleBatchArchive}
           icon={FolderInput}
           title="将选中素材保存到精选库"
-          className="text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+          className="text-gray-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400"
         />
 
         {/* 分隔线 */}
-        <div className="border-l border-gray-200 h-6 mx-1" />
+        <div className="border-l border-gray-200 dark:border-slate-600 h-6 mx-1" />
 
         {/* 下载按钮 */}
         <SelectionButton
@@ -288,7 +400,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
           icon={Download}
           title="下载选中的图片"
           disabled={selectedImages.length === 0}
-          className="text-gray-700 hover:bg-gray-100"
+          className="text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
         />
 
         {/* 删除按钮 */}
@@ -296,7 +408,7 @@ export default function SelectionToolbar({ onMultiImageEdit }: SelectionToolbarP
           onClick={handleDelete}
           icon={Trash2}
           title="删除选中的元素"
-          className="text-red-600 hover:bg-red-50"
+          className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
         />
       </div>
     </Panel>
