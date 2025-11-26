@@ -4,7 +4,8 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft, Lock } from 'lucide-react';
+import { useCanvasStore } from '@/lib/store';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -49,6 +50,10 @@ export default function ConnectionMenuRoot({
   callbacks,
   promptInputRef,
 }: ConnectionMenuRootProps) {
+  // 行级注释：获取凭证模式，Cloud Mode 下禁用高级视频功能
+  const credentialMode = useCanvasStore((s) => s.apiConfig.credentialMode);
+  const isCloudMode = credentialMode === 'cloud';
+
   if (!state.visible) {
     return null;
   }
@@ -101,27 +106,40 @@ export default function ConnectionMenuRoot({
                 />
               </>
             ) : (
-              // 视频节点的主菜单 - 镜头控制
-              <>
-                <MenuButton
-                  icon={Camera}
-                  label="镜头控制"
-                  color="purple"
-                  onClick={callbacks.onShowCameraControlSubmenu}
-                />
-                <MenuButton
-                  icon={Move}
-                  label="镜头位置"
-                  color="purple"
-                  onClick={callbacks.onShowCameraPositionSubmenu}
-                />
-                <MenuButton
-                  icon={Sparkles}
-                  label="延长视频"
-                  color="purple"
-                  onClick={callbacks.onShowExtendVideoSubmenu}
-                />
-              </>
+              // 视频节点的主菜单 - 镜头控制（Cloud Mode 下禁用）
+              isCloudMode ? (
+                // 行级注释：Cloud Mode 下显示禁用提示
+                <div className="px-3 py-4 text-center">
+                  <Lock className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    视频高级功能仅限开发者模式
+                  </p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                    请在设置中切换到 Developer Mode
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <MenuButton
+                    icon={Camera}
+                    label="镜头控制"
+                    color="purple"
+                    onClick={callbacks.onShowCameraControlSubmenu}
+                  />
+                  <MenuButton
+                    icon={Move}
+                    label="镜头位置"
+                    color="purple"
+                    onClick={callbacks.onShowCameraPositionSubmenu}
+                  />
+                  <MenuButton
+                    icon={Sparkles}
+                    label="延长视频"
+                    color="purple"
+                    onClick={callbacks.onShowExtendVideoSubmenu}
+                  />
+                </>
+              )
             )}
           </div>
         )}
