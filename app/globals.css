@@ -84,23 +84,14 @@ html {
   padding: 0; /* 移除默认 padding */
 }
 
-.react-flow.custom-theme .react-flow__node.selectable:focus {
-  box-shadow: 0px 0px 0px 1px #3b82f6; /* 细蓝线 */
-  border-color: #3b82f6;
-}
-
-.react-flow.custom-theme .react-flow__node.selectable:focus:active {
-  box-shadow: var(--xy-node-boxshadow-default);
-}
-
+/* 行级注释：移除所有节点的默认蓝色选中边框，让节点使用自己的边框样式 */
+.react-flow.custom-theme .react-flow__node.selectable:focus,
+.react-flow.custom-theme .react-flow__node.selectable:focus:active,
 .react-flow.custom-theme .react-flow__node.selectable:hover,
-.react-flow.custom-theme .react-flow__node.draggable:hover {
-  border-color: var(--xy-theme-hover);
-}
-
+.react-flow.custom-theme .react-flow__node.draggable:hover,
 .react-flow.custom-theme .react-flow__node.selectable.selected {
-  border-color: var(--xy-theme-selected);
-  box-shadow: 0px 0px 0px 1px #3b82f6; /* 细蓝线 */
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* 记事本节点：移除默认选中边框，使用节点自己的边框样式 */
