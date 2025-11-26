@@ -2155,10 +2155,8 @@ Return ONLY a JSON array of ${count} strings.`
     const midY = (startImage.position.y + endImage.position.y) / 2;
     const size = startImage.size || IMAGE_NODE_DEFAULT_SIZE;
 
-    // 2. 创建占位节点（先创建一个，后续根据 AI 返回的数量调整）
-    const placeholderIds: string[] = [];
+    // 2. 创建 1 个占位节点
     const placeholderId = `image-${Date.now()}-transition`;
-    placeholderIds.push(placeholderId);
 
     const placeholderImage: ImageElement = {
       id: placeholderId,
@@ -2210,29 +2208,17 @@ Return ONLY a JSON array of ${count} strings.`
           endImageUrl = endImage.base64.startsWith('data:') ? endImage.base64 : `data:image/png;base64,${endImage.base64}`;
         }
 
-        // B. 调用 Qwen VL 分析两张图片，生成衔接分镜
-        const systemPrompt = `You are a professional film director and storyboard artist.
+        // B. 调用 Qwen VL 分析两张图片，生成 1 个衔接分镜
+        const systemPrompt = `You are a professional film director.
 
-TASK: Analyze these two images as "Frame A" (starting point) and "Frame B" (ending point).
-Generate 1-3 TRANSITION SHOTS that would naturally bridge from Frame A to Frame B in a cinematic way.
+TASK: Analyze "Frame A" (first image) and "Frame B" (second image).
+Generate exactly ONE cinematic transition shot that bridges from A to B.
 
-ANALYSIS STEPS:
-1. Identify what changes between Frame A and Frame B (character position, camera angle, setting, mood, action)
-2. Design cinematic transitions that connect these two moments naturally
-3. Each transition shot should advance the narrative smoothly
+Identify what changes between the two frames (character, camera, mood, action).
+Design a single smooth transition that connects these moments naturally.
 
-CINEMATOGRAPHY TECHNIQUES TO CONSIDER:
-- Match cut (similar shapes/movements between shots)
-- Camera movement (pan, dolly, crane)
-- Time progression (moments in between)
-- Perspective shift (different angle of same scene)
-- Reaction shots (character responses)
-
-OUTPUT FORMAT: Return ONLY a JSON array of 1-3 prompt strings.
-Each prompt should be under 60 words, in English, describing the transition shot.
-
-Example output:
-["Medium shot, character begins to turn, motion blur suggesting movement, same lighting", "Over-the-shoulder shot, character mid-turn, background shifting into focus", "Close-up of character's face completing the turn, new expression revealed"]`;
+OUTPUT: Return ONLY ONE prompt string (not JSON array), under 60 words, in English.
+Example: "Medium shot, character mid-turn with motion blur, same warm lighting, tension building as the scene transitions"`;
 
         const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
           method: 'POST',
@@ -2259,74 +2245,26 @@ Example output:
         }
 
         const data = await response.json();
-        let content = data.choices[0]?.message?.content || '';
+        let transitionPrompt = data.choices[0]?.message?.content || '';
 
-        // 清理 markdown 代码块
-        content = content.replace(/```json\n?|\n?```/g, '').trim();
+        // 清理 markdown 和多余格式
+        transitionPrompt = transitionPrompt.replace(/```json\n?|\n?```/g, '').replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim();
 
-        // 解析 JSON 数组
-        let transitionPrompts: string[] = [];
-        try {
-          const parsed = JSON.parse(content);
-          if (Array.isArray(parsed)) {
-            transitionPrompts = parsed.map(p => String(p));
-          } else if (typeof parsed === 'string') {
-            transitionPrompts = [parsed];
-          }
-        } catch (e) {
-          console.warn('Failed to parse VL response as JSON, using raw text', e);
-          transitionPrompts = [content];
-        }
-
-        if (transitionPrompts.length === 0) {
+        if (!transitionPrompt) {
           throw new Error('AI 未返回有效的分镜描述');
         }
 
-        console.log('🎬 VL 分析结果 - 衔接分镜:', transitionPrompts);
+        console.log('🎬 VL 分析结果 - 衔接分镜:', transitionPrompt);
 
-        // C. 根据实际返回的分镜数量创建更多占位节点
-        const spacing = size.width + 50;
-        const totalWidth = transitionPrompts.length * spacing;
-        const startX = midX - totalWidth / 2 + spacing / 2;
-
-        // 更新第一个占位节点位置
+        // C. 更新占位节点状态
         updateElement(placeholderId, {
-          position: { x: startX, y: midY },
-          uploadMessage: `正在生成衔接镜头 1/${transitionPrompts.length}...`,
+          uploadMessage: '正在生成衔接镜头...',
+          generatedFrom: {
+            type: 'image-to-image',
+            sourceIds: [startImage.id, endImage.id],
+            prompt: transitionPrompt,
+          },
         } as Partial<ImageElement>);
-
-        // 如果有多个分镜，创建额外的占位节点
-        for (let i = 1; i < transitionPrompts.length; i++) {
-          const newId = `image-${Date.now()}-transition-${i}`;
-          placeholderIds.push(newId);
-
-          addElement({
-            id: newId,
-            type: 'image',
-            position: { x: startX + i * spacing, y: midY },
-            size,
-            src: '',
-            uploadState: 'syncing',
-            uploadMessage: `正在生成衔接镜头 ${i + 1}/${transitionPrompts.length}...`,
-            generatedFrom: {
-              type: 'image-to-image',
-              sourceIds: [startImage.id, endImage.id],
-              prompt: transitionPrompts[i],
-            },
-          } as ImageElement);
-
-          // 创建连线
-          setEdges((eds) => [
-            ...eds,
-            {
-              id: `edge-${startImage.id}-${newId}`,
-              source: startImage.id,
-              target: newId,
-              animated: true,
-              style: { stroke: '#06b6d4', strokeWidth: 2, strokeDasharray: '5,5' },
-            },
-          ]);
-        }
 
         // D. 调用图生图 API 生成衔接镜头
         let effectiveMediaId = startImage.mediaId || startImage.mediaGenerationId;
@@ -2343,45 +2281,40 @@ Example output:
 
         const { imageToImage } = await import('@/lib/api-mock');
         const result = await imageToImage(
-          transitionPrompts[0],
+          transitionPrompt,
           startImage.src,
           '16:9',
           startImage.caption || '',
           effectiveMediaId,
-          transitionPrompts.length,
-          transitionPrompts
+          1 // 只生成 1 张
         );
 
         // E. 更新占位节点
         if (result.images && result.images.length > 0) {
-          placeholderIds.forEach((imageId, index) => {
-            const imgData = result.images![index];
-            if (imgData) {
-              updateElement(imageId, {
-                src: imgData.imageUrl || imgData.fifeUrl,
-                base64: imgData.base64,
-                promptId: result.promptId,
-                mediaId: imgData.mediaId || imgData.mediaGenerationId,
-                mediaGenerationId: imgData.mediaGenerationId,
-                uploadState: 'synced',
-                uploadMessage: undefined,
-                generatedFrom: {
-                  type: 'image-to-image',
-                  sourceIds: [startImage.id, endImage.id],
-                  prompt: imgData.prompt || transitionPrompts[index]
-                }
-              } as Partial<ImageElement>);
-
-              // 停止连线动画
-              setEdges((eds) => eds.map(e => 
-                e.target === imageId || e.source === imageId
-                  ? { ...e, animated: false, style: { stroke: '#06b6d4', strokeWidth: 2 } }
-                  : e
-              ));
+          const imgData = result.images[0];
+          updateElement(placeholderId, {
+            src: imgData.imageUrl || imgData.fifeUrl,
+            base64: imgData.base64,
+            promptId: result.promptId,
+            mediaId: imgData.mediaId || imgData.mediaGenerationId,
+            mediaGenerationId: imgData.mediaGenerationId,
+            uploadState: 'synced',
+            uploadMessage: undefined,
+            generatedFrom: {
+              type: 'image-to-image',
+              sourceIds: [startImage.id, endImage.id],
+              prompt: imgData.prompt || transitionPrompt
             }
-          });
+          } as Partial<ImageElement>);
 
-          toast.success(`已生成 ${result.images.length} 个衔接镜头`);
+          // 停止连线动画
+          setEdges((eds) => eds.map(e => 
+            e.target === placeholderId || e.source === placeholderId
+              ? { ...e, animated: false, style: { stroke: '#06b6d4', strokeWidth: 2 } }
+              : e
+          ));
+
+          toast.success('衔接镜头生成完成');
         } else {
           throw new Error('No images generated');
         }
@@ -2389,8 +2322,8 @@ Example output:
       } catch (error) {
         console.error('Transition shots generation failed:', error);
         toast.error(`生成失败: ${error instanceof Error ? error.message : '未知错误'}`);
-        // 删除所有占位节点
-        placeholderIds.forEach(id => deleteElement(id));
+        // 删除占位节点
+        deleteElement(placeholderId);
       }
     })();
 
