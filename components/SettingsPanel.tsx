@@ -64,15 +64,17 @@ export default function SettingsPanel() {
         const data = await response.json();
         if (data.activated && data.credentials) {
           const creds = data.credentials;
+          // 行级注释：只更新凭证字段，不覆盖用户的 accountTier、credentialMode、videoModel 设置
           setApiConfig({
             apiKey: creds.apiKey || '',
             bearerToken: creds.bearerToken || '',
             cookie: creds.cookie || '',
             projectId: creds.projectId || '',
-            accountTier: 'ultra',
             isManaged: true,
-            videoModel: 'fast',
-            credentialMode: 'cloud',
+            // 行级注释：不再强制覆盖以下设置，保留用户的选择
+            // accountTier: 保留用户设置
+            // videoModel: 保留用户设置
+            // credentialMode: 保留用户设置
           });
           toast.success('API 授权同步成功');
         } else {
