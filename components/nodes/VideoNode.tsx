@@ -425,7 +425,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
           position={Position.Top}
           align="center"
           offset={15}
-          className="flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 px-3 py-2 animate-in fade-in zoom-in-95 duration-200"
+          className="flex items-center gap-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 px-3 py-2 animate-in fade-in zoom-in-95 duration-200"
           onMouseDown={(e) => {
             e.stopPropagation();
           }}

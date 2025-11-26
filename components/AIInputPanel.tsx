@@ -102,10 +102,10 @@ export default function AIInputPanel() {
       className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 transition-all duration-500 ease-in-out"
     >
       <div className={`
-        bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] 
-        border border-white/60 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+        bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.4)]
+        border border-white/60 dark:border-slate-700/60 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
         ${isExpanded || showSelectedThumbnails ? 'p-5' : 'p-3'}
-        ring-1 ring-black/5
+        ring-1 ring-black/5 dark:ring-white/5
       `}>
 
         {/* 选中图片的缩略图区域 */}
@@ -114,7 +114,7 @@ export default function AIInputPanel() {
           ${showSelectedThumbnails ? 'max-h-32 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}
         `}>
           <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar px-1">
-            <div className="flex-shrink-0 flex items-center justify-center h-12 px-4 rounded-2xl bg-violet-50 text-violet-600 text-xs font-medium border border-violet-100 whitespace-nowrap shadow-sm">
+            <div className="flex-shrink-0 flex items-center justify-center h-12 px-4 rounded-2xl bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-xs font-medium border border-violet-100 dark:border-violet-800 whitespace-nowrap shadow-sm">
               <ImageIcon size={16} className="mr-2" />
               选中 {selectedImages.length} 张参考图
             </div>
@@ -159,8 +159,8 @@ export default function AIInputPanel() {
             className={`
               w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex-shrink-0
               ${isExpanded
-                ? 'bg-gray-100 text-gray-900 rotate-90 shadow-inner'
-                : 'bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-900 hover:shadow-sm hover:scale-105'}
+                ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rotate-90 shadow-inner'
+                : 'bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:shadow-sm hover:scale-105'}
             `}
             title="生成设置"
           >
@@ -177,7 +177,7 @@ export default function AIInputPanel() {
               onKeyDown={handleKeyDown}
               onFocus={() => setIsExpanded(true)}
               placeholder={getPlaceholder()}
-              className="w-full pl-5 pr-14 py-3.5 bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-transparent focus:border-violet-200/50 rounded-2xl outline-none text-gray-800 placeholder-gray-400 transition-all duration-300 text-[15px] leading-relaxed shadow-inner focus:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.1)]"
+              className="w-full pl-5 pr-14 py-3.5 bg-gray-50/80 dark:bg-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-700 border border-transparent focus:border-violet-200/50 dark:focus:border-violet-500/30 rounded-2xl outline-none text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 transition-all duration-300 text-[15px] leading-relaxed shadow-inner focus:shadow-[0_4px_20px_-4px_rgba(139,92,246,0.1)]"
             />
 
 
@@ -191,7 +191,7 @@ export default function AIInputPanel() {
               flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-300 shadow-sm min-w-[100px]
               ${prompt.trim()
                 ? 'bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'}
+                : 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed'}
             `}
           >
             <Sparkles size={18} className={prompt.trim() ? 'animate-[spin_3s_linear_infinite]' : ''} />
@@ -202,7 +202,7 @@ export default function AIInputPanel() {
         {/* 扩展设置区域 - 使用 grid 实现高度动画 */}
         <div className={`
           grid transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-          ${isExpanded ? 'grid-rows-[1fr] mt-5 pt-5 border-t border-gray-100 opacity-100' : 'grid-rows-[0fr] mt-0 pt-0 border-t-0 border-transparent opacity-0'}
+          ${isExpanded ? 'grid-rows-[1fr] mt-5 pt-5 border-t border-gray-100 dark:border-slate-700 opacity-100' : 'grid-rows-[0fr] mt-0 pt-0 border-t-0 border-transparent opacity-0'}
         `}>
           <div className="overflow-hidden min-h-0">
             <div className="grid grid-cols-1 gap-5 pb-1 md:grid-cols-3">
@@ -210,7 +210,7 @@ export default function AIInputPanel() {
               {/* 1. 比例和数量 */}
               <div className="space-y-3">
                 {/* 比例选择 */}
-                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
+                <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
                   {[
                     { id: '16:9', label: '横屏', icon: RectangleHorizontal },
                     { id: '9:16', label: '竖屏', icon: RectangleVertical },
@@ -222,8 +222,8 @@ export default function AIInputPanel() {
                       className={`
                         flex-1 h-full flex flex-col items-center justify-center gap-1 text-[10px] font-medium rounded-xl transition-all duration-200
                         ${aspectRatio === item.id
-                          ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5 scale-100'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                          ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10 scale-100'
+                          : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                       `}
                     >
                       <item.icon size={16} strokeWidth={2.5} />
@@ -233,7 +233,7 @@ export default function AIInputPanel() {
                 </div>
 
                 {/* 数量选择 */}
-                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
+                <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
                   {[1, 2, 3, 4].map((count) => (
                     <button
                       key={count}
@@ -241,8 +241,8 @@ export default function AIInputPanel() {
                       className={`
                         flex-1 h-full flex items-center justify-center text-sm font-bold rounded-xl transition-all duration-200
                         ${generationCount === count
-                          ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5 scale-110 z-10'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                          ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10 scale-110 z-10'
+                          : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                       `}
                     >
                       {count}
@@ -254,17 +254,17 @@ export default function AIInputPanel() {
               {/* 2. 模型设置 */}
               <div className="space-y-3">
                 {/* 图片模型 */}
-                <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
+                <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
                   <button
                     onClick={() => setApiConfig({ imageModel: 'nanobanana' })}
                     className={`
                       flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                       ${imageModel === 'nanobanana'
-                        ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                        ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                        : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                     `}
                   >
-                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobanana' ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobanana' ? 'bg-violet-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
                     Banana
                   </button>
                   <button
@@ -272,18 +272,18 @@ export default function AIInputPanel() {
                     className={`
                       flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200 relative overflow-hidden
                       ${imageModel === 'nanobananapro'
-                        ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-fuchsia-700 shadow-sm ring-1 ring-fuchsia-200'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                        ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-900/50 dark:to-fuchsia-900/50 text-fuchsia-700 dark:text-fuchsia-400 shadow-sm ring-1 ring-fuchsia-200 dark:ring-fuchsia-700'
+                        : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                     `}
                   >
-                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobananapro' ? 'bg-fuchsia-500' : 'bg-gray-300'}`} />
+                    <div className={`w-2 h-2 rounded-full ${imageModel === 'nanobananapro' ? 'bg-fuchsia-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
                     Pro
                   </button>
                 </div>
 
                 {/* 视频模型 (Ultra) */}
                 {apiConfig.accountTier === 'ultra' && (
-                  <div className="flex bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100 h-[62px] items-center">
+                  <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
                     <button
                       onClick={() => !apiConfig.isManaged && setApiConfig({ videoModel: 'quality' })}
                       disabled={apiConfig.isManaged}
@@ -291,13 +291,13 @@ export default function AIInputPanel() {
                       className={`
                         flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                         ${videoModel === 'quality'
-                          ? 'bg-white text-violet-700 shadow-sm ring-1 ring-black/5'
+                          ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
                           : apiConfig.isManaged 
-                            ? 'text-gray-300 cursor-not-allowed opacity-50 bg-transparent' 
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                            ? 'text-gray-300 dark:text-slate-600 cursor-not-allowed opacity-50 bg-transparent' 
+                            : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                       `}
                     >
-                      <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                      <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
                       Quality
                     </button>
                     <button
@@ -305,11 +305,11 @@ export default function AIInputPanel() {
                       className={`
                         flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                         ${videoModel === 'fast'
-                          ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/50'}
+                          ? 'bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                          : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                       `}
                     >
-                      <div className={`w-2 h-2 rounded-full ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                      <div className={`w-2 h-2 rounded-full ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
                       Fast
                     </button>
                   </div>
@@ -323,11 +323,11 @@ export default function AIInputPanel() {
                   className={`
                     w-full h-full min-h-[136px] flex flex-col items-center justify-center gap-2 p-2 rounded-2xl text-xs font-medium transition-all duration-300 border
                     ${prefixPromptEnabled
-                      ? 'bg-gradient-to-br from-violet-50 to-indigo-50 border-violet-200 text-violet-700 shadow-sm'
-                      : 'bg-gray-50/50 border-dashed border-gray-200 text-gray-400 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-500'}
+                      ? 'bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-400 shadow-sm'
+                      : 'bg-gray-50/50 dark:bg-slate-700/30 border-dashed border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:border-gray-300 dark:hover:border-slate-500 hover:text-gray-500 dark:hover:text-slate-400'}
                   `}
                 >
-                  <Sparkles size={24} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 scale-100"}`} />
+                  <Sparkles size={24} className={`transition-all duration-500 ${prefixPromptEnabled ? "text-violet-500 fill-violet-200 scale-110" : "text-gray-300 dark:text-slate-500 scale-100"}`} />
                   {prefixPromptEnabled ? '风格增强' : '风格增强'}
                 </button>
               </div>

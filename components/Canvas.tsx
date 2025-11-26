@@ -34,6 +34,8 @@ import Toolbar from './Toolbar';
 import SelectionToolbar from './SelectionToolbar';
 import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
+import ThemeToggle from './ThemeToggle';
+import { useThemeStore } from '@/lib/theme-store';
 import { CanvasElement, VideoElement, ImageElement, TextElement, ReshootMotionType } from '@/lib/types';
 import { generateVideoFromText, generateVideoFromImages, generateImage, imageToImage, registerUploadedImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
@@ -72,6 +74,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const setSelection = useCanvasStore((state) => state.setSelection);
   const uiState = useCanvasStore((state) => state.uiState);
   const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
+  
+  // 主题状态
+  const theme = useThemeStore((state) => state.theme);
 
   // 图片编辑器状态 - 使用响应式 hooks
   const annotatorTarget = useCanvasStore((state) => state.annotatorTarget);
@@ -2038,14 +2043,19 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           className="!bottom-24"
         />
 
-        {/* 背景网格 */}
+        {/* 主题切换按钮 - 右下角 */}
+        <div className="absolute bottom-4 right-4 z-10">
+          <ThemeToggle />
+        </div>
+
+        {/* 背景网格 - 根据主题切换颜色 */}
         {uiState.showGrid && (
           <Background
             variant={BackgroundVariant.Dots}
             gap={40}
             size={4}
-            color="#dddddd"
-            bgColor="#f0f0f0"
+            color={theme === 'dark' ? '#334155' : '#dddddd'}
+            bgColor={theme === 'dark' ? '#0f172a' : '#f0f0f0'}
           />
         )}
 

@@ -209,15 +209,15 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
       {/* 面板 - 右侧抽屉 - 调整宽度和位置 */}
       <div
         className={`
-          fixed right-[80px] top-4 bottom-4 w-[440px] max-w-[90vw] bg-white/90 backdrop-blur-2xl z-[50] 
-          rounded-3xl border border-white/50 shadow-[0_20px_60px_rgba(0,0,0,0.05)] overflow-hidden
+          fixed right-[80px] top-4 bottom-4 w-[440px] max-w-[90vw] bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl z-[50] 
+          rounded-3xl border border-white/50 dark:border-slate-700/50 shadow-[0_20px_60px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden
           transform transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1)
           flex flex-col
           ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'}
         `}
       >
         {/* 头部 */}
-        <div className="flex-shrink-0 px-6 py-5 border-b border-gray-100 flex flex-col gap-4 bg-white/50">
+        <div className="flex-shrink-0 px-6 py-5 border-b border-gray-100 dark:border-slate-700 flex flex-col gap-4 bg-white/50 dark:bg-slate-800/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md transition-colors ${activeTab.startsWith('trash') ? 'bg-red-500 shadow-red-500/20' : 'bg-gradient-to-tr from-blue-500 to-sky-500 shadow-blue-500/20'
@@ -225,42 +225,42 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
                 {activeTab.startsWith('trash') ? <Trash2 size={18} strokeWidth={2.5} /> : <FolderOpen size={18} strokeWidth={2.5} />}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
                   {activeTab.startsWith('trash') ? '回收站' : '素材库'}
                 </h2>
-                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wider">
                   {activeTab.startsWith('trash') ? 'Trash Bin' : 'Project Assets'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-all"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Tabs - 紧凑型 Segment Control */}
-          <div className="flex bg-gray-100/80 p-1 rounded-xl">
+          <div className="flex bg-gray-100/80 dark:bg-slate-700/50 p-1 rounded-xl">
             <button
               className={`
                 flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all duration-300
-                ${activeTab === 'library_image' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}
+                ${activeTab === 'library_image' ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'}
               `}
               onClick={() => setActiveTab('library_image')}
             >
-              <Image size={14} className={activeTab === 'library_image' ? 'text-blue-600' : ''} />
+              <Image size={14} className={activeTab === 'library_image' ? 'text-blue-600 dark:text-blue-400' : ''} />
               图片
             </button>
             <button
               className={`
                 flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all duration-300
-                ${activeTab === 'library_video' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}
+                ${activeTab === 'library_video' ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'}
               `}
               onClick={() => setActiveTab('library_video')}
             >
-              <Video size={14} className={activeTab === 'library_video' ? 'text-blue-600' : ''} />
+              <Video size={14} className={activeTab === 'library_video' ? 'text-blue-600 dark:text-blue-400' : ''} />
               视频
             </button>
 
@@ -394,7 +394,7 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
         )}
 
         {/* 素材列表 - 滚动区域 */}
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/30 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/30 dark:bg-slate-800/30 custom-scrollbar">
           {isLoading && materials.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />

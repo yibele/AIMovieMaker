@@ -20,7 +20,9 @@ export function ToolbarButton({
   const baseClass =
     'flex items-center justify-center w-9 h-9 text-xs font-medium rounded-xl transition-all duration-200 ease-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100';
   const variantClass =
-    variant === 'danger' ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
+    variant === 'danger' 
+      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30' 
+      : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white';
 
   return (
 
@@ -48,6 +50,6 @@ export function ToolbarButton({
 
 // 行级注释：统一工具栏分割线
 export function ToolbarDivider() {
-  return <div className="h-6 w-px bg-gray-200" />;
+  return <div className="h-6 w-px bg-gray-200 dark:bg-slate-600" />;
 }
 

@@ -274,10 +274,10 @@ export default function Toolbar() {
     <>
       {/* 左侧工具栏 - 垂直居中，与右侧风格一致 */}
       <div className="absolute left-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-4 pointer-events-none">
-        <div className="pointer-events-auto bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-white/60 p-2 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+        <div className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.3)] border border-white/60 dark:border-slate-700/60 p-2 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)]">
           
           {toolGroups.map((group, groupIndex) => (
-            <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100' : ''}`}>
+            <div key={group.id} className={`flex flex-col gap-2 ${groupIndex > 0 ? 'pt-2 border-t border-gray-100 dark:border-slate-700' : ''}`}>
               {group.items.map((tool, btnIndex) => {
         const Icon = tool.icon;
 
@@ -288,8 +288,8 @@ export default function Toolbar() {
                       className={`
                         relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300
                         ${tool.isActive 
-                          ? 'bg-gray-100 text-gray-900 shadow-inner' 
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:scale-105 active:scale-95'}
+                          ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white shadow-inner' 
+                          : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white hover:scale-105 active:scale-95'}
                       `}
           >
             <Icon 
