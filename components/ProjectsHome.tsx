@@ -485,65 +485,9 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
     fetchProjects(); // 总是调用 fetchProjects，它会自动判断是否需要后台刷新
   }, [fetchProjects, isHydrated]);
 
-  // 自动同步云端凭证 (Auto-Sync Credentials)
-  // 行级注释：只在 cloud 模式下自动同步，local 模式下跳过（避免覆盖用户手动设置的配置）
-  useEffect(() => {
-    const syncCredentials = async () => {
-      // 检查当前凭证模式
-      const currentConfig = useCanvasStore.getState().apiConfig;
-      
-      // 如果是 local（开发者）模式，跳过自动同步
-      if (currentConfig.credentialMode === 'local') {
-        console.log('🔒 开发者模式：跳过云端凭证自动同步');
-        return;
-      }
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      try {
-        const response = await fetch('/api/activation/activate', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.activated && data.credentials) {
-            console.log('🔄 自动同步云端凭证成功');
-            
-            const newCreds = data.credentials;
-
-            // 简单对比关键字段，避免不必要的更新
-            if (currentConfig.cookie !== newCreds.cookie || currentConfig.bearerToken !== newCreds.bearerToken) {
-               useCanvasStore.getState().setApiConfig({
-                apiKey: newCreds.apiKey || currentConfig.apiKey,
-                bearerToken: newCreds.bearerToken || '',
-                cookie: newCreds.cookie || '',
-                projectId: newCreds.projectId || currentConfig.projectId,
-                accountTier: 'ultra', // VIP 用户默认 Ultra
-                isManaged: true, // 标记为托管模式
-                videoModel: 'fast', // 托管模式下强制使用 Fast 模型
-                credentialMode: 'cloud', // 保持云端模式
-              });
-              toast.success('已同步最新 API 授权');
-              
-              // 凭证更新后，刷新项目列表
-              setTimeout(() => fetchProjects(true), 500);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('自动同步凭证失败:', error);
-      }
-    };
-
-    if (isHydrated) {
-      syncCredentials();
-    }
-  }, [isHydrated, fetchProjects]);
+  // 行级注释：已禁用自动同步云端凭证
+  // 用户要求只在手动点击 "Sync API Authorization" 按钮时才同步
+  // 自动同步逻辑已移至 SettingsPanel.tsx 中的 handleSyncCloudCredentials 函数
 
   const handleOpenProject = (projectId: string) => {
     router.push(`/canvas/project/${projectId}`);

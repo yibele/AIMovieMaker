@@ -96,6 +96,25 @@ export default function SettingsPanel() {
     toast.success('New session context generated');
   };
 
+  // 行级注释：切换凭证模式并立即保存到 localStorage
+  const handleCredentialModeChange = (mode: 'cloud' | 'local') => {
+    setCredentialMode(mode);
+    setApiConfig({
+      credentialMode: mode,
+      isManaged: mode === 'cloud',
+    });
+    toast.success(mode === 'cloud' ? '已切换到 Cloud Mode' : '已切换到 Developer Mode');
+  };
+
+  // 行级注释：切换账号类型并立即保存到 localStorage
+  const handleAccountTierChange = (tier: 'pro' | 'ultra') => {
+    setAccountTier(tier);
+    setApiConfig({
+      accountTier: tier,
+    });
+    toast.success(tier === 'ultra' ? '已切换到 Ultra Plan' : '已切换到 Pro Plan');
+  };
+
   // 保存设置 - 只更新修改的字段，保留其他配置
   const handleSave = () => {
     setApiConfig({
@@ -159,7 +178,7 @@ export default function SettingsPanel() {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setCredentialMode('cloud')}
+                    onClick={() => handleCredentialModeChange('cloud')}
                     className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       credentialMode === 'cloud'
                         ? 'bg-gradient-to-br from-sky-500 to-blue-600 border-transparent text-white shadow-lg shadow-sky-500/30'
@@ -176,7 +195,7 @@ export default function SettingsPanel() {
                     {credentialMode === 'cloud' && <div className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full animate-pulse" />}
                   </button>
                   <button
-                    onClick={() => setCredentialMode('local')}
+                    onClick={() => handleCredentialModeChange('local')}
                     className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       credentialMode === 'local'
                         ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20'
@@ -223,7 +242,7 @@ export default function SettingsPanel() {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setAccountTier('pro')}
+                    onClick={() => handleAccountTierChange('pro')}
                     className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       accountTier === 'pro'
                         ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20'
@@ -235,7 +254,7 @@ export default function SettingsPanel() {
                     {accountTier === 'pro' && <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
                   </button>
                   <button
-                    onClick={() => setAccountTier('ultra')}
+                    onClick={() => handleAccountTierChange('ultra')}
                     className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
                       accountTier === 'ultra'
                         ? 'bg-gradient-to-br from-violet-600 to-indigo-600 border-transparent text-white shadow-lg shadow-violet-500/30'
