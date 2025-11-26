@@ -66,16 +66,13 @@ function NoteNode({ data, id, selected }: NodeProps) {
     e.stopPropagation();
   }, [noteData.content, noteData.title, handleSave]);
 
-  // 行级注释：展开/折叠 - 切换固定的两种尺寸
+  // 行级注释：展开/折叠 - 只改变宽度，高度固定，通过 updateElement 更新让选中边框跟随
   const toggleExpand = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    const newWidth = isExpanded ? 400 : 700; // 收起 400，展开 700
+    updateElement(id, { size: { width: newWidth, height: 300 } } as Partial<NoteElement>);
     setIsExpanded(!isExpanded);
-  }, [isExpanded]);
-
-  // 行级注释：根据展开状态确定节点尺寸
-  const nodeSize = isExpanded 
-    ? { width: 600, height: 500 } 
-    : { width: 400, height: 300 };
+  }, [isExpanded, id, updateElement]);
 
   return (
     <div
@@ -85,8 +82,8 @@ function NoteNode({ data, id, selected }: NodeProps) {
           : 'border-amber-200 dark:border-amber-700 shadow-lg hover:shadow-xl'
       }`}
       style={{ 
-        width: nodeSize.width, 
-        height: nodeSize.height,
+        width: '100%', 
+        height: '100%',
       }}
       onDoubleClick={handleDoubleClick}
     >
