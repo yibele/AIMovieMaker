@@ -547,9 +547,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
       <div
         className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full ${selected
           ? 'ring-2 ring-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.25)] scale-[1.01]'
-          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:shadow-lg'
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-lg'
           }`}
-        style={{ overflow: 'visible', backgroundColor: '#fff' }}
+        style={{ overflow: 'visible' }}
       >
         {/* 输入连接点（左侧） - 条件显示 */}
         {shouldShowInputHandle && (
@@ -562,14 +562,14 @@ function ImageNode({ data, selected, id }: NodeProps) {
           />
         )}
 
-        <div className="absolute inset-0 rounded-xl overflow-hidden bg-gray-50">
+        <div className="absolute inset-0 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-700">
 
           {/* 1. Loading Layer - 绝对定位，通过 opacity 控制显示 */}
           <div
             className="absolute inset-0 z-20 transition-opacity duration-700 ease-in-out"
             style={{ opacity: loadingOpacity, pointerEvents: loadingOpacity > 0.5 ? 'auto' : 'none' }}
           >
-            <div className="flex h-full w-full items-center justify-center bg-white">
+            <div className="flex h-full w-full items-center justify-center bg-slate-200 dark:bg-slate-700">
               <div className="loading-glow w-full h-full rounded-xl" />
             </div>
           </div>
@@ -652,15 +652,15 @@ function ImageNode({ data, selected, id }: NodeProps) {
                   onClick={handleCopyPrompt}
                   className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded cursor-pointer transition-all duration-200 transform active:scale-95 ${isCopied
                     ? 'text-gray-400 bg-gray-600 border-gray-600'
-                    : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm'
+                    : 'text-white bg-black dark:bg-slate-900 border-gray-600 dark:border-slate-500 hover:bg-gray-800 shadow-sm'
                     }`}
                   title={isCopied ? "已复制!" : "复制提示词"}
                 >
                   {isCopied ? 'Copied!' : 'Copy Prompt'}
                 </button>
-                <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+                <div className="w-full bg-white dark:bg-slate-700 rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                   <p
-                    className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
+                    className="text-[10px] font-light text-gray-900 dark:text-slate-200 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
                     title={promptDisplayText}
                   >
                     {promptDisplayText}

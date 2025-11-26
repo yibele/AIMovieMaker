@@ -416,9 +416,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
       <div
         className={`relative rounded-xl transition-all duration-300 ease-out w-full h-full ${selected
           ? 'ring-2 ring-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.25)] scale-[1.01]'
-          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] hover:shadow-lg'
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:shadow-lg'
           }`}
-        style={{ overflow: 'visible', backgroundColor: '#fff' }}
+        style={{ overflow: 'visible' }}
       >
         <NodeToolbar
           isVisible={selected && selection.length === 1}
@@ -681,16 +681,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 className={`absolute -top-1.5 left-2 text-[6px] font-semibold uppercase tracking-wider leading-none px-2 py-0.5 z-10 border rounded transition-all duration-200 transform active:scale-95 ${promptInput.trim() && !isGenerating
                   ? isCopied
                     ? 'text-gray-400 bg-gray-600 border-gray-600 cursor-pointer'
-                    : 'text-white bg-black border-gray-600 hover:bg-gray-800 shadow-sm cursor-pointer'
-                  : 'text-gray-500 bg-gray-200 border-gray-300 cursor-not-allowed'
+                    : 'text-white bg-black dark:bg-slate-900 border-gray-600 dark:border-slate-500 hover:bg-gray-800 shadow-sm cursor-pointer'
+                  : 'text-gray-500 dark:text-slate-500 bg-gray-200 dark:bg-slate-600 border-gray-300 dark:border-slate-500 cursor-not-allowed'
                   }`}
                 title={isGenerating ? "生成中..." : !promptInput.trim() ? "输入提示词后可复制" : isCopied ? "已复制!" : "复制提示词"}
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
 
-              {/* 行级注释：白色背景容器 - 包含输入框和数量选择 */}
-              <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow hover:shadow-md">
+              {/* 行级注释：背景容器 - 包含输入框和数量选择 */}
+              <div className="w-full bg-white dark:bg-slate-700 rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow hover:shadow-md">
                 {/* 行级注释：输入框 */}
                 <input
                   type="text"
@@ -704,16 +704,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   }}
                   placeholder="输入视频描述，按 Enter 生成..."
                   disabled={isGenerating}
-                  className={`w-full text-[10px] font-light text-gray-1000 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 transition-colors ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''
+                  className={`w-full text-[10px] font-light text-gray-900 dark:text-slate-200 leading-relaxed border-none outline-none bg-transparent placeholder:text-gray-400 dark:placeholder:text-slate-500 transition-colors ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 />
 
                 {/* 行级注释：数量选择 - 放在输入框下方，只更新本地状态，不频繁触发全局更新 */}
-                <div className={`flex items-center gap-2 mt-2 pt-1 border-t border-gray-100 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <span className="text-[9px] text-gray-400 font-medium select-none">生成数量</span>
-                  <div className="flex items-center bg-gray-100 rounded-md p-0.5 gap-0.5">
+                <div className={`flex items-center gap-2 mt-2 pt-1 border-t border-gray-100 dark:border-slate-600 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <span className="text-[9px] text-gray-400 dark:text-slate-500 font-medium select-none">生成数量</span>
+                  <div className="flex items-center bg-gray-100 dark:bg-slate-600 rounded-md p-0.5 gap-0.5">
                     {[1, 2, 3, 4].map((num) => (
                       <button
                         key={num}
@@ -729,8 +729,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
                         className={`
                           w-5 h-4 flex items-center justify-center rounded text-[9px] font-medium transition-all duration-200
                           ${generationCount === num
-                            ? 'bg-white text-blue-600 shadow-sm scale-105'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 hover:scale-105'}
+                            ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm scale-105'
+                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-600/50 hover:scale-105'}
                         `}
                         title={`生成 ${num} 个视频`}
                       >
@@ -801,9 +801,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
               >
                 {isCopied ? 'Copied!' : 'Copy Prompt'}
               </button>
-              <div className="w-full bg-white rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
+              <div className="w-full bg-white dark:bg-slate-700 rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                 <p
-                  className="text-[10px] font-light text-gray-1000 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
+                  className="text-[10px] font-light text-gray-900 dark:text-slate-200 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
                   title={promptDisplayText}
                 >
                   {promptDisplayText}

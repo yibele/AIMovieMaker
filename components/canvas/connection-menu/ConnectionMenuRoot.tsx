@@ -4,7 +4,7 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, Layers, ArrowRight } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -12,6 +12,36 @@ type ConnectionMenuRootProps = {
   callbacks: ConnectionMenuCallbacks;
   promptInputRef: React.RefObject<HTMLInputElement | null>;
 };
+
+// 行级注释：简洁的菜单按钮组件
+function MenuButton({
+  icon: Icon,
+  label,
+  color,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  color: string;
+  onClick: () => void;
+}) {
+  const colorClasses: Record<string, string> = {
+    blue: 'text-blue-500 hover:bg-blue-500/10 dark:hover:bg-blue-500/20',
+    purple: 'text-purple-500 hover:bg-purple-500/10 dark:hover:bg-purple-500/20',
+    green: 'text-green-500 hover:bg-green-500/10 dark:hover:bg-green-500/20',
+    orange: 'text-orange-500 hover:bg-orange-500/10 dark:hover:bg-orange-500/20',
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-all duration-150 text-left ${colorClasses[color]}`}
+    >
+      <Icon size={18} strokeWidth={2} />
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</span>
+    </button>
+  );
+}
 
 // 行级注释：连线菜单根组件 - 处理菜单显示逻辑和子菜单切换
 export default function ConnectionMenuRoot({
@@ -25,9 +55,9 @@ export default function ConnectionMenuRoot({
 
   return (
     <>
-      {/* 行级注释：菜单容器 */}
+      {/* 行级注释：菜单容器 - 简洁胶囊风格 */}
       <div
-        className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden min-w-[240px]"
+        className="fixed z-50 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden min-w-[180px] p-1.5"
         style={{
           left: `${state.position.x}px`,
           top: `${state.position.y}px`,
@@ -35,107 +65,62 @@ export default function ConnectionMenuRoot({
       >
         {/* 行级注释：主菜单 - 选择生成图片或视频 */}
         {state.activeSubmenu === null && (
-          <div>
+          <div className="space-y-0.5">
             {state.sourceNodeType !== 'video' ? (
               <>
-                <button
+                <MenuButton
+                  icon={ImageIcon}
+                  label="生成图片"
+                  color="blue"
                   onClick={callbacks.onShowImageSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left border-b border-gray-50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
-                    <ImageIcon size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">生成图片</div>
-                    <div className="text-xs text-gray-500">Generate Image</div>
-                  </div>
-
-                </button>
-                <button
+                />
+                <MenuButton
+                  icon={VideoIcon}
+                  label="生成视频"
+                  color="purple"
                   onClick={() => {
-                    // 行级注释：图片节点直接生成视频（根据图片比例），文字节点显示比例选择
                     if (state.sourceNodeType === 'image') {
                       callbacks.onGenerateVideoFromImage();
                     } else {
                       callbacks.onShowVideoSubmenu();
                     }
                   }}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
-                    <VideoIcon size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">生成视频</div>
-                    <div className="text-xs text-gray-500">Generate Video</div>
-                  </div>
-                </button>
-
-                {/* Next Shot Options */}
-                <button
+                />
+                <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
+                <MenuButton
+                  icon={Clapperboard}
+                  label="自动分镜"
+                  color="green"
                   onClick={callbacks.onShowAutoNextShotCountSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors text-left border-b border-gray-50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-200 transition-colors">
-                    <Clapperboard size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">自动分镜</div>
-                    <div className="text-xs text-gray-500">Auto Next Shot</div>
-                  </div>
-                </button>
-                <button
+                />
+                <MenuButton
+                  icon={MessageSquarePlus}
+                  label="自定义分镜"
+                  color="orange"
                   onClick={callbacks.onCustomNextShot}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors text-left group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors">
-                    <MessageSquarePlus size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">自定义分镜</div>
-                    <div className="text-xs text-gray-500">Custom Next Shot</div>
-                  </div>
-                </button>
+                />
               </>
             ) : (
               // 视频节点的主菜单 - 镜头控制
               <>
-                <button
+                <MenuButton
+                  icon={Camera}
+                  label="镜头控制"
+                  color="purple"
                   onClick={callbacks.onShowCameraControlSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
-                    <Camera size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">镜头控制</div>
-                    <div className="text-xs text-gray-500">Camera Control</div>
-                  </div>
-                </button>
-                <button
+                />
+                <MenuButton
+                  icon={Move}
+                  label="镜头位置"
+                  color="purple"
                   onClick={callbacks.onShowCameraPositionSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left border-b border-gray-50 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
-                    <Move size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">镜头位置</div>
-                    <div className="text-xs text-gray-500">Camera Position</div>
-                  </div>
-                </button>
-                <button
+                />
+                <MenuButton
+                  icon={Sparkles}
+                  label="延长视频"
+                  color="purple"
                   onClick={callbacks.onShowExtendVideoSubmenu}
-                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors text-left group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
-                    <Sparkles size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">延长视频</div>
-                    <div className="text-xs text-gray-500">Extend Video</div>
-                  </div>
-                </button>
+                />
               </>
             )}
           </div>
@@ -174,7 +159,7 @@ export default function ConnectionMenuRoot({
           <ImagePromptInput
             title="输入分镜内容"
             placeholder="描述你想要的下一个分镜..."
-            aspectRatio={state.pendingImageConfig?.aspectRatio ?? '16:9'} // Default to 16:9 for next shot
+            aspectRatio={state.pendingImageConfig?.aspectRatio ?? '16:9'}
             prompt={state.pendingImageConfig?.prompt ?? ''}
             inputRef={promptInputRef}
             onPromptChange={callbacks.onImagePromptInputChange}
@@ -183,32 +168,26 @@ export default function ConnectionMenuRoot({
           />
         )}
 
-        {/* Auto Next Shot Count Selection */}
+        {/* 自动分镜数量选择 - 简化版 */}
         {state.activeSubmenu === 'autoNextShotCount' && (
-          <div className="w-[240px]">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+          <div className="w-[160px]">
+            <div className="px-3 py-2 flex items-center gap-2">
               <button
                 onClick={callbacks.onBackToMain}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
-                <ArrowRight className="w-4 h-4 rotate-180" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-semibold text-gray-900">选择分镜数量</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">分镜数量</span>
             </div>
-            <div className="p-2 flex flex-col gap-1">
+            <div className="px-1.5 pb-1.5 flex gap-1">
               {[1, 2, 3, 4].map((count) => (
                 <button
                   key={count}
                   onClick={() => callbacks.onAutoNextShot(count)}
-                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 rounded-lg transition-colors text-left group"
+                  className="flex-1 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-green-500/10 dark:hover:bg-green-500/20 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-all"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors font-medium">
-                    {count}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">生成 {count} 个分镜</div>
-                    <div className="text-xs text-gray-500">Generate {count} Shot{count > 1 ? 's' : ''}</div>
-                  </div>
+                  {count}
                 </button>
               ))}
             </div>
@@ -232,11 +211,10 @@ export default function ConnectionMenuRoot({
             onSelect={callbacks.onGenerateReshoot}
           />
         )}
-      </div >
+      </div>
 
       {/* 行级注释：点击外部关闭菜单的遮罩层 */}
-      < div className="fixed inset-0 z-40" onClick={callbacks.onClose} />
+      <div className="fixed inset-0 z-40" onClick={callbacks.onClose} />
     </>
   );
 }
-

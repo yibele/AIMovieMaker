@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, X, Sparkles, Bot, User, Loader2, Copy, Check } from 'lucide-react';
+import { Send, X, Sparkles, Bot, User, Loader2, Copy, Check, Key, Eye, EyeOff } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +17,12 @@ export default function GrokAssistantPanel() {
   const isOpen = useCanvasStore((state) => state.isAssistantOpen);
   const setIsOpen = useCanvasStore((state) => state.setIsAssistantOpen);
   const dashScopeApiKey = useCanvasStore((state) => state.apiConfig.dashScopeApiKey);
+  const setApiConfig = useCanvasStore((state) => state.setApiConfig);
+  
+  // API Key 配置状态
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isConfiguring, setIsConfiguring] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -273,21 +279,85 @@ export default function GrokAssistantPanel() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white/80 backdrop-blur border-t border-gray-100">
-        {!dashScopeApiKey && (
-          <div className="mb-3 px-3 py-2 bg-orange-50 text-orange-600 text-xs rounded-lg border border-orange-100 flex items-center gap-2">
-            <span className="font-bold">⚠️ Setup Required:</span>
-            Please add your DashScope API Key in Settings.
+      <div className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur border-t border-gray-100 dark:border-slate-700">
+        {/* API Key 配置区域 */}
+        {(!dashScopeApiKey || isConfiguring) && (
+          <div className="mb-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Key className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-bold text-orange-700 dark:text-orange-400">
+                {dashScopeApiKey ? '修改 API Key' : '配置 DashScope API Key'}
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="sk-xxxxxxxxxxxxxxxx"
+                className="w-full pl-3 pr-20 py-2 bg-white dark:bg-slate-700 border border-orange-200 dark:border-orange-700/50 rounded-lg text-xs text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => {
+                    if (apiKeyInput.trim()) {
+                      setApiConfig({ dashScopeApiKey: apiKeyInput.trim() });
+                      toast.success('API Key 已保存');
+                      setApiKeyInput('');
+                      setIsConfiguring(false);
+                    }
+                  }}
+                  disabled={!apiKeyInput.trim()}
+                  className="px-2 py-1 bg-orange-500 text-white text-[10px] font-bold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-orange-600/70 dark:text-orange-400/70">
+              从 <a href="https://dashscope.console.aliyun.com/apiKey" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange-700 dark:hover:text-orange-300">阿里云控制台</a> 获取 API Key
+            </p>
+            {dashScopeApiKey && (
+              <button
+                onClick={() => setIsConfiguring(false)}
+                className="mt-2 text-[10px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                取消修改
+              </button>
+            )}
           </div>
         )}
+        
+        {/* 已配置 API Key 时的提示 */}
+        {dashScopeApiKey && !isConfiguring && (
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] text-green-600 dark:text-green-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              API Key 已配置
+            </div>
+            <button
+              onClick={() => setIsConfiguring(true)}
+              className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline"
+            >
+              修改
+            </button>
+          </div>
+        )}
+        
         <div className="relative">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Qwen to refine a prompt..."
-            className="w-full pl-4 pr-12 py-3 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm resize-none max-h-32 min-h-[50px] custom-scrollbar shadow-inner"
+            placeholder="让 AI 帮你润色提示词..."
+            className="w-full pl-4 pr-12 py-3 bg-slate-50 dark:bg-slate-700 border-transparent focus:bg-white dark:focus:bg-slate-600 border focus:border-slate-200 dark:focus:border-slate-500 rounded-xl outline-none text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 resize-none max-h-32 min-h-[50px] custom-scrollbar shadow-inner"
             rows={1}
             disabled={isLoading || !dashScopeApiKey}
           />
@@ -297,12 +367,12 @@ export default function GrokAssistantPanel() {
             className={`absolute right-2 bottom-2 p-1.5 rounded-lg transition-all duration-200
               ${input.trim() && !isLoading && dashScopeApiKey
                 ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600 hover:scale-105' 
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                : 'bg-slate-200 dark:bg-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'}`}
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-center text-slate-400 font-medium">
+        <p className="mt-2 text-[10px] text-center text-slate-400 dark:text-slate-500 font-medium">
           Powered by Qwen-Plus (DashScope)
         </p>
       </div>
