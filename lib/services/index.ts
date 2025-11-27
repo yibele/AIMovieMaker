@@ -14,3 +14,6 @@ export * from './image-generation.service';
 // 视频生成服务
 export * from './video-generation.service';
 
+// 节点管理服务
+export * from './node-management.service';
+
