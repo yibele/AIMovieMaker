@@ -11,4 +11,5 @@ export { useNodeOperations, type UseNodeOperationsReturn } from './useNodeOperat
 export { useVideoGeneration, type UseVideoGenerationReturn, type UseVideoGenerationOptions } from './useVideoGeneration';
 export { useNextShot, type UseNextShotReturn, type UseNextShotOptions } from './useNextShot';
 export { useVideoActions, type UseVideoActionsReturn, type UseVideoActionsOptions } from './useVideoActions';
+export { useConnectionHandler, type UseConnectionHandlerReturn, type UseConnectionHandlerOptions, type ConnectionStartInfo } from './useConnectionHandler';
 
