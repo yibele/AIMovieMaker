@@ -1,4 +1,4 @@
-import { GenerationMode, ImageElement, ReshootMotionType } from './types';
+import { ImageElement, ReshootMotionType } from './types';
 import { useCanvasStore } from './store';
 // 行级注释：导入服务层函数
 import {
@@ -7,9 +7,7 @@ import {
   updateSessionContext,
 } from './services/prompt-builder.service';
 import {
-  pollVideoOperation,
   pollFlowVideoOperation,  // 内部使用
-  type VideoPollingResult,
 } from './services/video-polling.service';
 
 // 行级注释：重新导出 pollFlowVideoOperation 以保持向后兼容
@@ -783,57 +781,6 @@ export async function editImage(
   };
 }
 
-// 批量生成接口（基于多张源图）
-export async function batchGenerate(
-  prompt: string,
-  sourceImageUrls: string[],
-  aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
-  caption: string = '',
-  sourceImageMediaIds?: Array<string | undefined>
-): Promise<{
-  imageUrls: string[];
-  promptId: string;
-  mediaGenerationIds?: Array<string | undefined>;
-  workflowIds?: Array<string | undefined>;
-  translatedPrompts?: Array<string | undefined>;
-}> {
-  const apiConfig = useCanvasStore.getState().apiConfig;
-
-  if (!apiConfig.bearerToken || !apiConfig.bearerToken.trim()) {
-    throw new Error('批量图生图需要配置 Bearer Token，请在右上角设置中配置');
-  }
-  if (!apiConfig.projectId || !apiConfig.projectId.trim()) {
-    throw new Error('批量图生图需要配置 Flow Project ID，请在右上角设置中配置');
-  }
-
-  console.log('🚀 使用 Flow API 批量图生图:', prompt, aspectRatio, sourceImageUrls.length, '张图片');
-
-  // 为每个源图生成一张新图
-  const imagePromises = sourceImageUrls.map((sourceUrl, index) =>
-    imageToImage(
-      prompt,
-      sourceUrl,
-      aspectRatio,
-      caption,
-      sourceImageMediaIds?.[index]
-    )
-  );
-
-  const results = await Promise.all(imagePromises);
-  const imageUrls = results.map(r => r.imageUrl);
-  const mediaGenerationIds = results.map((r) => r.mediaGenerationId);
-  const workflowIds = results.map((r) => r.workflowId);
-  const translatedPrompts = results.map((r) => r.translatedPrompt);
-
-  return {
-    imageUrls,
-    promptId: generateId(),
-    mediaGenerationIds,
-    workflowIds,
-    translatedPrompts,
-  };
-}
-
 // 生成视频接口（文生视频）- 直接调用 Google API
 export async function generateVideoFromText(
   prompt: string,
@@ -1038,43 +985,6 @@ export async function generateVideoFromImages(
     mediaGenerationId: videoResult.mediaGenerationId,
   };
 }
-
-// 通用生成接口（根据模式调用不同方法）
-export async function generateByMode(
-  mode: GenerationMode,
-  prompt: string,
-  options?: {
-    imageId?: string;
-    imageIds?: string[];
-    variationType?: 'regenerate' | 'similar';
-  }
-): Promise<{
-  imageUrl?: string;
-  imageUrls?: string[];
-  promptId: string;
-}> {
-  switch (mode) {
-    case 'generate':
-      return await generateImage(prompt);
-
-    case 'regenerate':
-    case 'similar':
-      if (!options?.imageId) {
-        throw new Error('imageId is required for regenerate/similar mode');
-      }
-      return await editImage(prompt, options.imageId, mode);
-
-    case 'batch':
-      if (!options?.imageIds || options.imageIds.length === 0) {
-        throw new Error('imageIds are required for batch mode');
-      }
-      return await batchGenerate(prompt, options.imageIds);
-
-    default:
-      throw new Error(`Unknown mode: ${mode}`);
-  }
-}
-
 // 行级注释：视频超清放大（1080p）- 直接调用 Google API
 export async function generateVideoUpsample(
   originalMediaId: string,
