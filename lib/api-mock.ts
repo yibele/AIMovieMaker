@@ -1,86 +1,11 @@
 import { GenerationMode, ImageElement, ReshootMotionType } from './types';
 import { useCanvasStore } from './store';
-// 行级注释：导入套餐配置适配器，统一管理 Pro/Ultra 差异
+// 行级注释：导入服务层函数
 import {
-  getEffectiveVideoMode,
-  getVideoApiConfig,
-  getImageApiConfig,
-  type AccountTier,
-  type AspectRatio,
-  type VideoMode,
-  type ImageModel,
-  type VideoGenerationType,
-} from './config/tier-config';
-
-// ============================================================================
-// 业务逻辑工具函数
-// ============================================================================
-
-/**
- * 拼接用户提示词和前置提示词（前置提示词实际后置）
- * @param userPrompt 用户输入的提示词
- * @param prefixPrompt 前置提示词（可选，默认从 store 读取）
- * @returns 完整的提示词
- */
-function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
-  // 行级注释：检查前置提示词是否启用
-  const store = useCanvasStore.getState();
-  const isEnabled = store.prefixPromptEnabled;
-
-  if (!isEnabled) {
-    return userPrompt; // 未启用，直接返回用户提示词
-  }
-
-  const prefix = prefixPrompt !== undefined
-    ? prefixPrompt
-    : store.currentPrefixPrompt;
-
-  if (!prefix || !prefix.trim()) {
-    return userPrompt;
-  }
-
-  // 行级注释：前置提示词实际后置（附加在用户提示词之后）
-  return `${userPrompt}, ${prefix.trim()}`;
-}
-
-/**
- * 获取 API 配置和会话信息
- * 行级注释：使用 tier-config 适配器获取有效的视频模式，不再硬编码条件判断
- */
-function getApiContext() {
-  const apiConfig = useCanvasStore.getState().apiConfig;
-
-  let sessionId = apiConfig.sessionId;
-  if (!sessionId || !sessionId.trim()) {
-    const context = useCanvasStore.getState().regenerateFlowContext();
-    sessionId = context.sessionId;
-  }
-
-  const accountTier: AccountTier = apiConfig.accountTier || 'pro';
-  const imageModel: ImageModel = apiConfig.imageModel || 'nanobanana';
-  // 行级注释：使用 tier-config 适配器获取有效视频模式（Pro 自动降级为 fast）
-  const videoModel: VideoMode = getEffectiveVideoMode(accountTier, apiConfig.videoModel as VideoMode | undefined);
-
-  return {
-    apiConfig,
-    sessionId,
-    accountTier,
-    imageModel,
-    videoModel,
-  };
-}
-
-/**
- * 更新会话上下文（如果 sessionId 变化）
- */
-function updateSessionContext(newSessionId?: string) {
-  if (!newSessionId) return;
-
-  const apiConfig = useCanvasStore.getState().apiConfig;
-  if (newSessionId !== apiConfig.sessionId) {
-    useCanvasStore.getState().setApiConfig({ sessionId: newSessionId });
-  }
-}
+  buildFinalPrompt,
+  getApiContext,
+  updateSessionContext,
+} from './services/prompt-builder.service';
 
 // ============================================================================
 // Flow API 类型定义和工具函数（从 flow-api.ts 合并）
