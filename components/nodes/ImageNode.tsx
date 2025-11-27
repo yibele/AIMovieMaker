@@ -5,13 +5,14 @@ import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xy
 import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput, Clapperboard } from 'lucide-react';
 import type { ImageElement, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
-import { useMaterialsStore } from '@/lib/materials-store'; // 引入素材库
+import { useMaterialsStore } from '@/lib/materials-store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
 import { VisionAnalysisModal } from '../VisionAnalysisModal';
 import { toast } from 'sonner';
 import { IMAGE_NODE_DEFAULT_SIZE, TEXT_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
+import { useImageOperations } from '@/hooks/canvas';
 
 // 行级注释：图片节点组件
 function ImageNode({ data, selected, id }: NodeProps) {
@@ -28,6 +29,14 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
 
   const reactFlowInstance = useReactFlow();
+
+  // 行级注释：使用图片操作 Hook（复制、删除、下载、入库）
+  const {
+    handleDuplicate,
+    handleDelete,
+    handleArchive,
+    handleDownload,
+  } = useImageOperations(id);
 
   // 行级注释：图生图状态
   const updateElement = useCanvasStore((state) => state.updateElement);
@@ -275,37 +284,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
     }
   }, [imageData, mediaBase64Cache]);
 
-  // 下载图片
-  // 下载图片 - 直接打开 URL
-  const handleDownload = useCallback(() => {
-    if (!imageData.src) return;
-    window.open(imageData.src, '_blank');
-  }, [imageData.src]);
-
-  // 删除 - 生成/处理中不允许删除
-  const handleDelete = useCallback(() => {
-    // 行级注释：如果正在处理（syncing 或没有 mediaId 且没有错误），禁止删除
-    if (isProcessing) {
-      alert('图片正在生成/处理中，无法删除');
-      return;
-    }
-
-    deleteElement(id);
-  }, [deleteElement, id, isProcessing]);
-
-  // 复制
-  const handleDuplicate = useCallback(() => {
-    const newImage: ImageElement = {
-      ...imageData,
-      id: `image-${Date.now()}`,
-      position: {
-        x: imageData.position.x + (imageData.size?.width || 400) + 30,
-        y: imageData.position.y,
-      },
-    };
-    addElement(newImage);
-    setSelection([newImage.id]);
-  }, [imageData, addElement, setSelection]);
+  // 行级注释：handleDownload, handleDelete, handleDuplicate 已移至 useImageOperations Hook
 
   // 再次生成
   const handleRegenerate = useCallback(async () => {
@@ -348,41 +327,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
     );
   }, [imageData, promptsHistory, addElement, updateElement, deleteElement, addPromptHistory]);
 
-  // 入库（归档到精选素材）
-  const handleArchive = useCallback(async () => {
-    if (!imageData.src) {
-      toast.error('图片未生成，无法入库');
-      return;
-    }
-
-    // 获取 userId (实际应从 auth store 获取，这里假设 context 或 store 中有)
-    // 这里做一个简单的 mock 或从 store 获取
-    // const userId = useUserStore.getState().user?.id; 
-
-    try {
-      const { addMaterial } = useMaterialsStore.getState();
-      const apiConfig = useCanvasStore.getState().apiConfig;
-
-      await addMaterial({
-        type: 'image',
-        name: imageData.generatedFrom?.prompt || 'Untitled Image',
-        src: imageData.src,
-        thumbnail: imageData.src,
-        mediaId: imageData.mediaId,
-        mediaGenerationId: imageData.mediaGenerationId || '',
-        metadata: {
-          prompt: imageData.generatedFrom?.prompt,
-          width: imageData.size?.width,
-          height: imageData.size?.height,
-        },
-        projectId: apiConfig.projectId, // 关联当前项目
-      });
-      toast.success('已添加到精选素材库');
-    } catch (error) {
-      console.error('入库失败:', error);
-      toast.error('入库失败，请重试');
-    }
-  }, [imageData]);
+  // 行级注释：handleArchive 已移至 useImageOperations Hook
 
   // 视觉识别
   const [isAnalyzing, setIsAnalyzing] = useState(false);
