@@ -9,6 +9,7 @@ import { useMaterialsStore } from '@/lib/materials-store';
 import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
 import { VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
+import { useVideoOperations } from '@/hooks/canvas';
 
 // 行级注释：视频节点组件
 function VideoNode({ data, selected, id }: NodeProps) {
@@ -16,8 +17,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  // const [isDownloading, setIsDownloading] = useState(false); // Removed
-  // const [downloadProgress, setDownloadProgress] = useState(0); // Removed
   const [promptInput, setPromptInput] = useState(videoData.promptText || '');
   // 行级注释：使用本地 state 管理生成数量，避免频繁更新全局 store 导致卡顿
   const [generationCount, setGenerationCount] = useState(videoData.generationCount || 1);
@@ -27,6 +26,16 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const triggerVideoGeneration = useCanvasStore((state) => state.triggerVideoGeneration);
   const selection = useCanvasStore((state) => state.selection); // 行级注释：获取选中状态，用于判断是否单选
   const { setEdges, getEdges } = useReactFlow(); // 行级注释：用于创建连线和获取连线
+
+  // 行级注释：使用视频操作 Hook（下载、删除、入库）
+  const {
+    isGenerating,
+    canDelete,
+    canUpscale,
+    handleDownload,
+    handleDelete,
+    handleArchive,
+  } = useVideoOperations(id);
 
   const generationStatusText = useMemo(() => {
     const hasPrompt = Boolean(videoData.promptText?.trim() || promptInput.trim());
@@ -84,17 +93,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.generationCount]);
 
-  // 行级注释：检查是否支持超清（只有 16:9 横屏支持）
-  const canUpscale = useMemo(() => {
-    if (!videoData.src || !videoData.mediaGenerationId) return false;
-
-    const width = videoData.size?.width || 640;
-    const height = videoData.size?.height || 360;
-    const ratio = width / height;
-
-    // 行级注释：只有 16:9 横屏视频支持超清（竖屏 9:16 和方形 1:1 不支持）
-    return Math.abs(ratio - 16 / 9) < 0.1;
-  }, [videoData.src, videoData.mediaGenerationId, videoData.size]);
+  // 行级注释：canUpscale 已移至 useVideoOperations Hook
 
   // 处理视频点击 - 播放/暂停
   const handleVideoClick = () => {
@@ -199,14 +198,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }, 100);
   }, [id, videoData, addElement, getEdges, setEdges, triggerVideoGeneration]);
 
-  // 行级注释：处理下载视频 - 直接打开 URL
-  const handleDownload = useCallback(() => {
-    if (!videoData.src) {
-      console.error('没有可下载的视频源');
-      return;
-    }
-    window.open(videoData.src, '_blank');
-  }, [videoData.src]);
+  // 行级注释：handleDownload 已移至 useVideoOperations Hook
 
   // 行级注释：处理超清放大 - 创建新视频节点并生成超清版本
   const handleUpscale = useCallback(async () => {
@@ -364,64 +356,10 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.src, videoData.mediaGenerationId, videoData.size, videoData.position, videoData.promptText, id, updateElement]);
 
-  // 入库（归档到精选素材）
-  const handleArchive = useCallback(async () => {
-    if (!videoData.src) {
-      toast.error('视频未生成，无法入库');
-      return;
-    }
+  // 行级注释：handleArchive 已移至 useVideoOperations Hook
 
-    try {
-      const { addMaterial } = useMaterialsStore.getState();
-      const apiConfig = useCanvasStore.getState().apiConfig;
-
-      // Calculate aspect ratio
-      let aspectRatio: '16:9' | '9:16' | '1:1' | '4:3' = '16:9';
-      if (videoData.size) {
-        const { width = 640, height = 360 } = videoData.size;
-        const ratio = width / height;
-        if (Math.abs(ratio - 16 / 9) < 0.1) aspectRatio = '16:9';
-        else if (Math.abs(ratio - 9 / 16) < 0.1) aspectRatio = '9:16';
-        else if (Math.abs(ratio - 1) < 0.1) aspectRatio = '1:1';
-        else if (Math.abs(ratio - 4 / 3) < 0.1) aspectRatio = '4:3';
-      }
-
-      await addMaterial({
-        type: 'video',
-        name: videoData.promptText || 'Untitled Video',
-        src: videoData.src,
-        thumbnail: videoData.thumbnail || videoData.src,
-        mediaGenerationId: videoData.mediaGenerationId || '',
-        metadata: {
-          prompt: videoData.promptText,
-          width: videoData.size?.width,
-          height: videoData.size?.height,
-          duration: videoData.duration,
-          aspectRatio: aspectRatio,
-        },
-        projectId: apiConfig.projectId,
-      });
-      toast.success('已添加到精选素材库');
-    } catch (error) {
-      console.error('入库失败:', error);
-      toast.error('入库失败，请重试');
-    }
-  }, [videoData]);
-
-  // 处理删除 - 生成中不允许删除
-  const handleDelete = useCallback(() => {
-    // 行级注释：如果正在生成，禁止删除
-    if (videoData.status === 'queued' || videoData.status === 'generating') {
-      alert('视频正在生成中，无法删除');
-      return;
-    }
-
-    const deleteElement = useCanvasStore.getState().deleteElement;
-    deleteElement(id);
-  }, [id, videoData.status]);
-
-  // 状态判断
-  const isGenerating = videoData.status === 'queued' || videoData.status === 'generating';
+  // 行级注释：handleDelete 已移至 useVideoOperations Hook
+  // 行级注释：isGenerating, canDelete 已从 useVideoOperations Hook 获取
   const isReady = videoData.status === 'ready';
   const hasSource = Boolean(videoData.src);
 
