@@ -12,6 +12,7 @@ import ImageCropperModal, {
   CroppedImageResult,
 } from './ImageCropperModal';
 import { useNodeOperations } from '@/hooks/canvas';
+import { getImageNodeSize } from '@/lib/constants/node-sizes';
 
 export default function Toolbar() {
   const activeTool = useCanvasStore((state) => state.uiState.activeTool);
@@ -155,7 +156,7 @@ export default function Toolbar() {
   };
 
   const placeImageOnCanvas = async (result: CroppedImageResult) => {
-    const { dataUrl, width, height, aspect } = result;
+    const { dataUrl, aspect } = result;
           const imageId = `image-${Date.now()}`;
           const hasFlowCredential =
             Boolean(apiConfig.bearerToken && apiConfig.bearerToken.trim()) &&
@@ -167,10 +168,10 @@ export default function Toolbar() {
           };
           const flowPosition = screenToFlowPosition(screenCenter);
           
-    const maxWidth = 500;
-    const scale = width > maxWidth ? maxWidth / width : 1;
-    const imageWidth = width * scale;
-    const imageHeight = height * scale;
+    // 行级注释：使用与生成图片相同的标准尺寸
+    const nodeSize = getImageNodeSize(aspect);
+    const imageWidth = nodeSize.width;
+    const imageHeight = nodeSize.height;
           
           const newImage: ImageElement = {
             id: imageId,
