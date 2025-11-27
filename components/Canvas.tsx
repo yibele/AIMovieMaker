@@ -59,7 +59,7 @@ import {
   detectVideoAspectRatio,
   detectAspectRatio,
 } from '@/lib/constants/node-sizes';
-import { createVideoFromImage } from '@/lib/services/node-management.service';
+import { createVideoFromImage, generateNodeId } from '@/lib/services/node-management.service';
 import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
 
 // 注册自定义节点类型
@@ -1235,19 +1235,16 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
     if (!currentMainImage || !result.promptText?.trim()) return;
 
-    const newImageId = `image-${Date.now()}`;
+    const newImageId = generateNodeId('image');
     const hasReferenceImages = currentReferenceImages.length > 0;
     const allSourceImages = [currentMainImage, ...currentReferenceImages];
 
     try {
-      const aspectRatio = (() => {
-        const width = currentMainImage.size?.width || 640;
-        const height = currentMainImage.size?.height || 360;
-        const ratio = width / height;
-        if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
-        if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
-        return '1:1';
-      })() as '16:9' | '9:16' | '1:1';
+      // 行级注释：使用统一的宽高比检测函数
+      const aspectRatio = detectAspectRatio(
+        currentMainImage.size?.width || 640,
+        currentMainImage.size?.height || 360
+      );
 
       const size = getImageNodeSize(aspectRatio);
 
@@ -1393,7 +1390,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       const videoSize = getVideoNodeSize(aspectRatio);
 
-      const newVideoId = `video-${Date.now()}`;
+      const newVideoId = generateNodeId('video');
       const newVideo: VideoElement = {
         id: newVideoId,
         type: 'video',
