@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Send, X, Sparkles, Bot, User, Loader2, Copy, Check, Key, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, X, Sparkles, Bot, User, Loader2, Copy, Check, Key, Eye, EyeOff, Cloud, CloudOff } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
@@ -23,6 +24,8 @@ export default function GrokAssistantPanel() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isConfiguring, setIsConfiguring] = useState(false);
+  const [isSavingToServer, setIsSavingToServer] = useState(false);
+  const [isLoadedFromServer, setIsLoadedFromServer] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -47,6 +50,84 @@ export default function GrokAssistantPanel() {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // 从服务器加载 API Key
+  const loadApiKeyFromServer = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.log('📌 未登录，跳过从服务器加载 API Key');
+        return;
+      }
+
+      const response = await fetch('/api/user/apikey', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('获取 API Key 失败:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.dashScopeApiKey) {
+        // 只有当本地没有 API Key 或与服务器不同时才更新
+        if (!dashScopeApiKey || dashScopeApiKey !== data.dashScopeApiKey) {
+          setApiConfig({ dashScopeApiKey: data.dashScopeApiKey });
+          setIsLoadedFromServer(true);
+          console.log('✅ 从服务器加载 API Key 成功');
+        }
+      }
+    } catch (error) {
+      console.error('加载 API Key 失败:', error);
+    }
+  }, [dashScopeApiKey, setApiConfig]);
+
+  // 保存 API Key 到服务器
+  const saveApiKeyToServer = useCallback(async (apiKey: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.log('📌 未登录，API Key 仅保存到本地');
+        return false;
+      }
+
+      setIsSavingToServer(true);
+      const response = await fetch('/api/user/apikey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ dashScopeApiKey: apiKey }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '保存失败');
+      }
+
+      setIsLoadedFromServer(true);
+      console.log('✅ API Key 已同步到服务器');
+      return true;
+    } catch (error) {
+      console.error('保存 API Key 到服务器失败:', error);
+      toast.error('API Key 保存到云端失败，但已保存到本地');
+      return false;
+    } finally {
+      setIsSavingToServer(false);
+    }
+  }, []);
+
+  // 初始化时从服务器加载 API Key
+  useEffect(() => {
+    if (isOpen && !dashScopeApiKey) {
+      loadApiKeyFromServer();
+    }
+  }, [isOpen, dashScopeApiKey, loadApiKeyFromServer]);
 
   // 清空会话
   const handleClearChat = () => {
@@ -305,17 +386,22 @@ export default function GrokAssistantPanel() {
                   {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (apiKeyInput.trim()) {
-                      setApiConfig({ dashScopeApiKey: apiKeyInput.trim() });
-                      toast.success('API Key 已保存');
+                      const trimmedKey = apiKeyInput.trim();
+                      // 先保存到本地
+                      setApiConfig({ dashScopeApiKey: trimmedKey });
+                      // 同步到服务器
+                      const savedToServer = await saveApiKeyToServer(trimmedKey);
+                      toast.success(savedToServer ? 'API Key 已保存到云端' : 'API Key 已保存到本地');
                       setApiKeyInput('');
                       setIsConfiguring(false);
                     }
                   }}
-                  disabled={!apiKeyInput.trim()}
-                  className="px-2 py-1 bg-orange-500 text-white text-[10px] font-bold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors"
+                  disabled={!apiKeyInput.trim() || isSavingToServer}
+                  className="px-2 py-1 bg-orange-500 text-white text-[10px] font-bold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors flex items-center gap-1"
                 >
+                  {isSavingToServer ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                   保存
                 </button>
               </div>
@@ -340,6 +426,12 @@ export default function GrokAssistantPanel() {
             <div className="flex items-center gap-1.5 text-[10px] text-green-600 dark:text-green-400">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               API Key 已配置
+              {isLoadedFromServer && (
+                <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400 ml-1">
+                  <Cloud className="w-3 h-3" />
+                  云端同步
+                </span>
+              )}
             </div>
             <button
               onClick={() => setIsConfiguring(true)}
