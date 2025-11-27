@@ -14,8 +14,6 @@ import {
   SelectionMode,
   OnSelectionChangeParams,
   ConnectionLineType,
-  OnConnectStart,
-  OnConnectEnd,
   useReactFlow,
   type Connection,
 } from '@xyflow/react';
@@ -36,8 +34,8 @@ import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
 import ThemeToggle from './ThemeToggle';
 import { useThemeStore } from '@/lib/theme-store';
-import { CanvasElement, VideoElement, ImageElement, TextElement, NoteElement, ReshootMotionType } from '@/lib/types';
-import { generateVideoFromText, generateVideoFromImages, generateImage, imageToImage, registerUploadedImage } from '@/lib/api-mock';
+import { CanvasElement, VideoElement, ImageElement, TextElement, NoteElement } from '@/lib/types';
+import { imageToImage, registerUploadedImage } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
   getPositionAboveInput,
