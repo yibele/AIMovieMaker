@@ -1,6 +1,12 @@
 // 画布元素类型定义
 export type ElementType = 'image' | 'text' | 'video' | 'note';
 
+// 宽高比类型（统一定义，避免多处重复）
+export type AspectRatio = '16:9' | '9:16' | '1:1';
+
+// 视频宽高比（只支持 16:9 和 9:16）
+export type VideoAspectRatio = '16:9' | '9:16';
+
 // 生成模式
 export type GenerationMode = 'generate' | 'regenerate' | 'similar' | 'batch' | 'edit' | 'next-shot';
 
