@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
 import { VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 import { useVideoOperations } from '@/hooks/canvas';
+import { createUpsampleVideoPlaceholder, updateVideoPlaceholders, markPlaceholdersAsError } from '@/lib/services/node-management.service';
 
 // 行级注释：视频节点组件
 function VideoNode({ data, selected, id }: NodeProps) {
@@ -200,7 +201,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：handleDownload 已移至 useVideoOperations Hook
 
-  // 行级注释：处理超清放大 - 创建新视频节点并生成超清版本
+  // 行级注释：处理超清放大 - 使用节点管理服务创建 placeholder
   const handleUpscale = useCallback(async () => {
     if (!videoData.src || !videoData.mediaGenerationId) {
       alert('无法超清放大：缺少视频源或 mediaGenerationId');
@@ -208,11 +209,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
 
     // 行级注释：检查视频宽高比，只有 16:9 横屏支持超清
-    const width = videoData.size?.width || 640;
-    const height = videoData.size?.height || 360;
-    const ratio = width / height;
-
-    if (Math.abs(ratio - 16 / 9) >= 0.1) {
+    if (!canUpscale) {
       alert('超清放大仅支持 16:9 横屏视频！\n竖屏（9:16）和方形（1:1）视频暂不支持超清功能。');
       return;
     }
@@ -220,67 +217,26 @@ function VideoNode({ data, selected, id }: NodeProps) {
     try {
       console.log('🎬 开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
 
-      // 行级注释：获取原视频的宽高比
-      const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
-        const width = videoData.size?.width || 640;
-        const height = videoData.size?.height || 360;
-        const ratio = width / height;
-        if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
-        if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
-        return '1:1';
-      };
-
-      const aspectRatio = getAspectRatio();
-
-      // 行级注释：计算新视频节点位置（在原视频右侧）
-      const newPosition = {
-        x: videoData.position.x + (videoData.size?.width || 640) + 50,
-        y: videoData.position.y,
-      };
-
-      // 行级注释：创建新视频节点尺寸（与原视频相同）
-      const size = videoData.size || VIDEO_NODE_DEFAULT_SIZE;
-
-      // 行级注释：创建新的超清视频节点（placeholder）
-      const newVideoId = `video-${Date.now()}`;
-      const newVideo: import('@/lib/types').VideoElement = {
-        id: newVideoId,
-        type: 'video',
-        src: '',
-        thumbnail: '',
-        duration: 0,
-        status: 'generating',
-        progress: 0,
-        position: newPosition,
-        size: size,
-        promptText: '超清放大：' + (videoData.promptText || '视频'),
-        generatedFrom: {
-          type: 'upsample', // 行级注释：标记为超清放大类型
-          sourceIds: [id],
-          prompt: '超清放大',
-        },
-      };
-
-      // 行级注释：添加节点到画布
-      updateElement(id, {} as any); // 行级注释：触发 re-render
+      // 行级注释：使用节点管理服务创建超清视频 placeholder
+      const newVideo = createUpsampleVideoPlaceholder(videoData);
       const addElement = useCanvasStore.getState().addElement;
       addElement(newVideo);
 
-      // 行级注释：创建从原视频到超清视频的连线
-      const edgeId = `edge-${id}-${newVideoId}-upsample`;
+      // 行级注释：创建从原视频到超清视频的连线（连线逻辑保留在组件内）
+      const edgeId = `edge-${id}-${newVideo.id}-upsample`;
       setEdges((eds: any[]) => [
         ...eds,
         {
           id: edgeId,
           source: id,
-          target: newVideoId,
+          target: newVideo.id,
           type: 'default',
           animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 2 }, // 行级注释：紫色表示超清
+          style: { stroke: '#a855f7', strokeWidth: 2 },
         },
       ]);
 
-      console.log('✅ 创建超清视频 placeholder 和连线:', newVideoId);
+      console.log('✅ 创建超清视频 placeholder 和连线:', newVideo.id);
 
       // 行级注释：调用超清 API
       const { generateVideoUpsample, pollFlowVideoOperation } = await import('@/lib/api-mock');
@@ -288,15 +244,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
       const result = await generateVideoUpsample(
         videoData.mediaGenerationId,
-        aspectRatio
+        '16:9' // 超清只支持 16:9
       );
 
       console.log('✅ 超清请求已发起:', result);
 
       // 行级注释：更新节点状态为 queued
-      updateElement(newVideoId, {
-        status: 'queued',
-      } as any);
+      updateElement(newVideo.id, { status: 'queued' } as any);
 
       // 行级注释：开始轮询视频生成状态
       pollFlowVideoOperation(
@@ -308,37 +262,28 @@ function VideoNode({ data, selected, id }: NodeProps) {
         .then((videoResult) => {
           console.log('✅ 超清视频生成完成:', videoResult);
 
-          // 行级注释：更新节点为完成状态
-          updateElement(newVideoId, {
-            src: videoResult.videoUrl,
-            thumbnail: videoResult.thumbnailUrl,
+          // 行级注释：使用节点管理服务更新 placeholder 为实际视频
+          updateVideoPlaceholders([newVideo.id], [{
+            videoUrl: videoResult.videoUrl,
+            thumbnailUrl: videoResult.thumbnailUrl,
             duration: videoResult.duration,
             mediaGenerationId: videoResult.mediaGenerationId,
-            status: 'ready',
-            progress: 100,
-          } as any);
+          }]);
 
           // 行级注释：停止连线动画
-          const edgeId = `edge-${id}-${newVideoId}-upsample`;
           setEdges((eds: any[]) =>
             eds.map((edge: any) =>
-              edge.id === edgeId
-                ? { ...edge, animated: false }
-                : edge
+              edge.id === edgeId ? { ...edge, animated: false } : edge
             )
           );
         })
         .catch((error) => {
           console.error('❌ 超清视频生成失败:', error);
 
-          // 行级注释：更新节点为错误状态
-          updateElement(newVideoId, {
-            status: 'error',
-            progress: 0,
-          } as any);
+          // 行级注释：使用节点管理服务标记为错误状态
+          markPlaceholdersAsError([newVideo.id], error instanceof Error ? error.message : '未知错误');
 
           // 行级注释：连线变红色表示错误
-          const edgeId = `edge-${id}-${newVideoId}-upsample`;
           setEdges((eds: any[]) =>
             eds.map((edge: any) =>
               edge.id === edgeId
@@ -354,7 +299,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       console.error('❌ 超清放大失败:', error);
       alert(`超清放大失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
-  }, [videoData.src, videoData.mediaGenerationId, videoData.size, videoData.position, videoData.promptText, id, updateElement]);
+  }, [videoData, canUpscale, id, updateElement, setEdges]);
 
   // 行级注释：handleArchive 已移至 useVideoOperations Hook
 
