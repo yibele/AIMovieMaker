@@ -59,6 +59,7 @@ import {
   detectVideoAspectRatio,
 } from '@/lib/constants/node-sizes';
 import { createVideoFromImage } from '@/lib/services/node-management.service';
+import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -69,73 +70,6 @@ const nodeTypes: NodeTypes = {
 };
 
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
-
-// 行级注释：使用 VL 模型分析图片生成视频提示词
-async function analyzeImageForVideoPrompt(
-  imageUrl: string,
-  endImageUrl: string | null,
-  dashScopeApiKey: string
-): Promise<string> {
-  const isStartEndMode = Boolean(endImageUrl);
-  
-  // 行级注释：8秒视频，需要 1-2 个镜头切换，每个镜头 2-3 秒
-  const systemPrompt = isStartEndMode
-    ? `Analyze these two images (start frame and end frame) and generate an 8-second video prompt.
-
-STRUCTURE: Design 2-3 shots (each 2-3 seconds) that transition from Frame A to Frame B:
-- Shot 1 (0-3s): Starting action/camera from Frame A
-- Shot 2 (3-6s): Transition movement, camera change, or mid-action
-- Shot 3 (6-8s): Arriving at Frame B's composition
-
-Include: character movement, camera cuts/pans, environmental changes, mood shifts.
-Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`
-    : `Analyze this image and generate an 8-second cinematic video prompt.
-
-STRUCTURE: Design 2-3 shots (each 2-3 seconds):
-- Shot 1 (0-3s): Initial scene, subtle movement begins
-- Shot 2 (3-6s): Camera change or new action (cut to different angle, pan, or zoom)
-- Shot 3 (6-8s): Concluding motion or reveal
-
-Include: character actions, camera movements (pan/zoom/cut), environmental motion.
-Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`;
-
-  const messages: any[] = [{
-    role: 'user',
-    content: isStartEndMode
-      ? [
-          { type: 'image_url', image_url: { url: imageUrl } },
-          { type: 'image_url', image_url: { url: endImageUrl! } },
-          { type: 'text', text: systemPrompt }
-        ]
-      : [
-          { type: 'image_url', image_url: { url: imageUrl } },
-          { type: 'text', text: systemPrompt }
-        ]
-  }];
-
-  const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${dashScopeApiKey}`
-    },
-    body: JSON.stringify({
-      model: 'qwen-vl-max',
-      messages
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || 'VL API request failed');
-  }
-
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content || '';
-  
-  // 清理返回内容
-  return content.trim().replace(/^["']|["']$/g, '');
-}
 
 function CanvasContent({ projectId }: { projectId?: string }) {
   const elements = useCanvasStore((state) => state.elements);

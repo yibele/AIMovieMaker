@@ -133,5 +133,67 @@ Describe:
 2. What happens next in the scene
 3. The emotional progression
 Keep it concise, suitable for video generation prompt.`,
+
+  // 单图视频提示词生成（8秒电影级视频）
+  VIDEO_PROMPT_SINGLE: `Analyze this image and generate an 8-second cinematic video prompt.
+
+STRUCTURE: Design 2-3 shots (each 2-3 seconds):
+- Shot 1 (0-3s): Initial scene, subtle movement begins
+- Shot 2 (3-6s): Camera change or new action (cut to different angle, pan, or zoom)
+- Shot 3 (6-8s): Concluding motion or reveal
+
+Include: character actions, camera movements (pan/zoom/cut), environmental motion.
+Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`,
+
+  // 首尾帧视频提示词生成（8秒过渡视频）
+  VIDEO_PROMPT_START_END: `Analyze these two images (start frame and end frame) and generate an 8-second video prompt.
+
+STRUCTURE: Design 2-3 shots (each 2-3 seconds) that transition from Frame A to Frame B:
+- Shot 1 (0-3s): Starting action/camera from Frame A
+- Shot 2 (3-6s): Transition movement, camera change, or mid-action
+- Shot 3 (6-8s): Arriving at Frame B's composition
+
+Include: character movement, camera cuts/pans, environmental changes, mood shifts.
+Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`,
 } as const;
+
+// ============================================================================
+// 视频提示词生成函数
+// ============================================================================
+
+/**
+ * 分析图片生成视频提示词
+ * 
+ * @param imageUrl 首帧图片 URL 或 base64
+ * @param endImageUrl 尾帧图片 URL 或 base64（可选）
+ * @param apiKey DashScope API Key
+ * @returns 生成的视频提示词
+ * 
+ * @example
+ * // 单图生成视频提示词
+ * const prompt = await analyzeImageForVideoPrompt(imageUrl, null, apiKey);
+ * 
+ * // 首尾帧生成视频提示词
+ * const prompt = await analyzeImageForVideoPrompt(startUrl, endUrl, apiKey);
+ */
+export async function analyzeImageForVideoPrompt(
+  imageUrl: string,
+  endImageUrl: string | null,
+  apiKey: string
+): Promise<string> {
+  // 行级注释：根据是否有尾帧选择不同的 prompt
+  const systemPrompt = endImageUrl
+    ? VL_PROMPTS.VIDEO_PROMPT_START_END
+    : VL_PROMPTS.VIDEO_PROMPT_SINGLE;
+
+  const result = await analyzeImage({
+    imageUrl,
+    endImageUrl: endImageUrl || undefined,
+    apiKey,
+    prompt: systemPrompt
+  });
+
+  // 行级注释：清理返回内容，移除可能的引号包裹
+  return result.content.replace(/^["']|["']$/g, '');
+}
 
