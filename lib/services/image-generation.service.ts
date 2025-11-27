@@ -5,14 +5,18 @@
  * 依赖：
  * - 工具层 (lib/tools/image-api.ts)
  * - 配置层 (lib/config/tier-config.ts)
- * - 服务层 (prompt-builder.service.ts)
+ * - 服务层 (prompt-builder.service.ts, node-management.service.ts)
  */
 
 import { ImageElement } from '../types';
-import { useCanvasStore } from '../store';
 import { generateImageDirectly, uploadImageDirectly } from '../tools/image-api';
 import { buildFinalPrompt, getApiContext, updateSessionContext, validateApiConfig } from './prompt-builder.service';
-import { getImageNodeSize } from '../constants/node-sizes';
+import {
+  createImagePlaceholders,
+  updateImagePlaceholders,
+  deletePlaceholders,
+  getRightSidePosition,
+} from './node-management.service';
 import type { AspectRatio } from '../config/tier-config';
 
 // ============================================================================
@@ -84,11 +88,11 @@ export async function generateImages(options: GenerateImageOptions): Promise<Gen
   // 行级注释：构建最终提示词（根据选项决定是否附加前置提示词）
   const finalPrompt = usePrefixPrompt ? buildFinalPrompt(prompt) : prompt;
 
-  // 行级注释：计算节点尺寸
-  const size = getImageNodeSize(aspectRatio);
-
-  // 行级注释：创建占位符节点
-  const placeholderIds = createPlaceholderNodes(count, position, size, prompt);
+  // 行级注释：使用节点管理服务创建占位符节点
+  const placeholderIds = createImagePlaceholders(count, position, aspectRatio, {
+    prompt,
+    generatedFromType: 'input',
+  });
 
   try {
     // 行级注释：调用工具层 API 生成图片
@@ -108,8 +112,13 @@ export async function generateImages(options: GenerateImageOptions): Promise<Gen
     // 行级注释：更新会话上下文
     updateSessionContext(result.sessionId);
 
-    // 行级注释：更新占位符节点为实际图片
-    updatePlaceholderNodes(placeholderIds, result.images);
+    // 行级注释：使用节点管理服务更新占位符节点
+    updateImagePlaceholders(placeholderIds, result.images.map(img => ({
+      imageUrl: img.fifeUrl,
+      base64: img.encodedImage,
+      mediaId: img.mediaId || img.mediaGenerationId,
+      mediaGenerationId: img.mediaGenerationId,
+    })));
 
     return {
       nodeIds: placeholderIds,
@@ -121,8 +130,8 @@ export async function generateImages(options: GenerateImageOptions): Promise<Gen
       })),
     };
   } catch (error) {
-    // 行级注释：生成失败时删除占位符节点
-    placeholderIds.forEach(id => useCanvasStore.getState().deleteElement(id));
+    // 行级注释：生成失败时使用节点管理服务删除占位符
+    deletePlaceholders(placeholderIds);
     throw error;
   }
 }
@@ -163,17 +172,18 @@ export async function generateImageFromImage(
     }
   }
 
-  // 行级注释：计算位置（源图片右侧）
-  const position = {
-    x: sourceImage.position.x + (sourceImage.size?.width || 400) + 50,
-    y: sourceImage.position.y,
-  };
+  // 行级注释：使用节点管理服务计算位置（源图片右侧）
+  const position = getRightSidePosition(
+    sourceImage.position,
+    sourceImage.size || { width: 400, height: 225 }
+  );
 
-  // 行级注释：计算节点尺寸
-  const size = getImageNodeSize(aspectRatio);
-
-  // 行级注释：创建占位符节点（标记来源为图生图）
-  const placeholderIds = createPlaceholderNodes(count, position, size, prompt, sourceImage.id);
+  // 行级注释：使用节点管理服务创建占位符节点（标记来源为图生图）
+  const placeholderIds = createImagePlaceholders(count, position, aspectRatio, {
+    prompt,
+    generatedFromType: 'image-to-image',
+    sourceIds: [sourceImage.id],
+  });
 
   try {
     // 行级注释：图生图不使用前置提示词（除非明确指定）
@@ -196,8 +206,13 @@ export async function generateImageFromImage(
     // 行级注释：更新会话上下文
     updateSessionContext(result.sessionId);
 
-    // 行级注释：更新占位符节点
-    updatePlaceholderNodes(placeholderIds, result.images);
+    // 行级注释：使用节点管理服务更新占位符节点
+    updateImagePlaceholders(placeholderIds, result.images.map(img => ({
+      imageUrl: img.fifeUrl,
+      base64: img.encodedImage,
+      mediaId: img.mediaId || img.mediaGenerationId,
+      mediaGenerationId: img.mediaGenerationId,
+    })));
 
     return {
       nodeIds: placeholderIds,
@@ -209,7 +224,8 @@ export async function generateImageFromImage(
       })),
     };
   } catch (error) {
-    placeholderIds.forEach(id => useCanvasStore.getState().deleteElement(id));
+    // 行级注释：生成失败时使用节点管理服务删除占位符
+    deletePlaceholders(placeholderIds);
     throw error;
   }
 }
@@ -239,80 +255,7 @@ export async function uploadImage(imageBase64: string, aspectRatio?: AspectRatio
 // 私有辅助函数
 // ============================================================================
 
-/**
- * 创建占位符节点
- */
-function createPlaceholderNodes(
-  count: number,
-  position: { x: number; y: number },
-  size: { width: number; height: number },
-  prompt: string,
-  sourceImageId?: string
-): string[] {
-  const { addElement } = useCanvasStore.getState();
-  const placeholderIds: string[] = [];
-  const spacing = 20;
-  const totalWidth = count * size.width + (count - 1) * spacing;
-  const startX = position.x - totalWidth / 2;
-
-  for (let i = 0; i < count; i++) {
-    const newImageId = `image-${Date.now()}-${i}`;
-    placeholderIds.push(newImageId);
-
-    const placeholderImage: ImageElement = {
-      id: newImageId,
-      type: 'image',
-      src: '',  // 占位符，等待填充
-      position: {
-        x: startX + i * (size.width + spacing),
-        y: position.y,
-      },
-      size,
-      generatedFrom: {
-        type: sourceImageId ? 'image-to-image' : 'input',
-        sourceIds: sourceImageId ? [sourceImageId] : undefined,
-        prompt,
-      },
-    };
-
-    addElement(placeholderImage);
-  }
-
-  return placeholderIds;
-}
-
-/**
- * 更新占位符节点为实际图片
- */
-function updatePlaceholderNodes(
-  placeholderIds: string[],
-  images: Array<{
-    fifeUrl?: string;
-    encodedImage?: string;
-    mediaId?: string;
-    mediaGenerationId?: string;
-  }>
-) {
-  const { updateElement, deleteElement } = useCanvasStore.getState();
-
-  images.forEach((img, index) => {
-    if (index < placeholderIds.length) {
-      updateElement(placeholderIds[index], {
-        src: img.fifeUrl || '',
-        base64: img.encodedImage,
-        mediaId: img.mediaId || img.mediaGenerationId,
-        mediaGenerationId: img.mediaGenerationId,
-      } as Partial<ImageElement>);
-    }
-  });
-
-  // 行级注释：删除多余的占位符（如果 API 返回的图片数量少于请求数量）
-  if (images.length < placeholderIds.length) {
-    for (let i = images.length; i < placeholderIds.length; i++) {
-      deleteElement(placeholderIds[i]);
-    }
-  }
-}
+// 行级注释：createPlaceholderNodes 和 updatePlaceholderNodes 已移至 node-management.service.ts
 
 /**
  * 从 Data URL 提取 base64

@@ -298,6 +298,241 @@ export function createUpsampleVideoPlaceholder(
   };
 }
 
+// ============================================================================
+// 批量创建 Placeholder 节点（统一入口）
+// ============================================================================
+
+/**
+ * 批量创建图片 Placeholder 节点
+ * 
+ * @param count 创建数量
+ * @param centerPosition 中心位置（节点会围绕此位置水平排列）
+ * @param aspectRatio 宽高比
+ * @param options 额外选项
+ * @returns 创建的节点 ID 数组
+ * 
+ * @example
+ * // 文生图：创建 3 个 placeholder
+ * const ids = createImagePlaceholders(3, position, '16:9', { prompt: '...' });
+ * 
+ * // 图生图：创建 1 个 placeholder，关联源图片
+ * const ids = createImagePlaceholders(1, position, '16:9', { 
+ *   prompt: '...', 
+ *   sourceIds: [sourceImageId],
+ *   generatedFromType: 'image-to-image'
+ * });
+ */
+export function createImagePlaceholders(
+  count: number,
+  centerPosition: NodePosition,
+  aspectRatio: '16:9' | '9:16' | '1:1' = '16:9',
+  options?: {
+    prompt?: string;
+    generatedFromType?: ImageGeneratedFromType;
+    sourceIds?: string[];
+    spacing?: number; // 节点间距，默认 20
+  }
+): string[] {
+  const { addElement } = useCanvasStore.getState();
+  const size = getImageNodeSize(aspectRatio);
+  const spacing = options?.spacing ?? 20;
+  
+  // 行级注释：计算总宽度和起始位置，使节点围绕中心位置排列
+  const totalWidth = count * size.width + (count - 1) * spacing;
+  const startX = centerPosition.x - totalWidth / 2;
+  
+  const placeholderIds: string[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const nodeId = generateNodeId('image');
+    placeholderIds.push(nodeId);
+    
+    const placeholderImage: ImageElement = {
+      id: nodeId,
+      type: 'image',
+      src: '', // 行级注释：空 src，等待填充
+      alt: options?.prompt || '生成中的图片',
+      position: {
+        x: startX + i * (size.width + spacing),
+        y: centerPosition.y,
+      },
+      size,
+      uploadState: 'syncing', // 行级注释：标记为同步中状态
+      generatedFrom: {
+        type: options?.generatedFromType || 'input',
+        sourceIds: options?.sourceIds,
+        prompt: options?.prompt,
+      },
+    };
+    
+    addElement(placeholderImage);
+  }
+  
+  return placeholderIds;
+}
+
+/**
+ * 批量创建视频 Placeholder 节点
+ * 
+ * @param count 创建数量
+ * @param centerPosition 中心位置
+ * @param aspectRatio 宽高比
+ * @param options 额外选项
+ * @returns 创建的节点 ID 数组
+ */
+export function createVideoPlaceholders(
+  count: number,
+  centerPosition: NodePosition,
+  aspectRatio: '16:9' | '9:16' = '16:9',
+  options?: {
+    promptText?: string;
+    startImageId?: string;
+    endImageId?: string;
+    status?: VideoElement['status'];
+    spacing?: number;
+  }
+): string[] {
+  const { addElement } = useCanvasStore.getState();
+  const size = getVideoNodeSize(aspectRatio);
+  const spacing = options?.spacing ?? 50;
+  
+  const totalWidth = count * size.width + (count - 1) * spacing;
+  const startX = centerPosition.x - totalWidth / 2;
+  
+  const placeholderIds: string[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const nodeId = generateNodeId('video');
+    placeholderIds.push(nodeId);
+    
+    const placeholderVideo: VideoElement = {
+      id: nodeId,
+      type: 'video',
+      src: '',
+      thumbnail: '',
+      duration: 0,
+      status: options?.status || 'generating',
+      progress: 0,
+      position: {
+        x: startX + i * (size.width + spacing),
+        y: centerPosition.y,
+      },
+      size,
+      promptText: options?.promptText,
+      startImageId: options?.startImageId,
+      endImageId: options?.endImageId,
+      generationCount: 1,
+    };
+    
+    addElement(placeholderVideo);
+  }
+  
+  return placeholderIds;
+}
+
+/**
+ * 更新 Placeholder 节点为实际图片
+ * 
+ * @param placeholderIds placeholder 节点 ID 数组
+ * @param images 图片数据数组
+ */
+export function updateImagePlaceholders(
+  placeholderIds: string[],
+  images: Array<{
+    imageUrl?: string;
+    base64?: string;
+    mediaId?: string;
+    mediaGenerationId?: string;
+  }>
+): void {
+  const { updateElement } = useCanvasStore.getState();
+  
+  placeholderIds.forEach((id, index) => {
+    const imageData = images[index];
+    if (!imageData) return;
+    
+    updateElement(id, {
+      src: imageData.imageUrl || (imageData.base64 ? `data:image/png;base64,${imageData.base64}` : ''),
+      base64: imageData.base64,
+      mediaId: imageData.mediaId,
+      mediaGenerationId: imageData.mediaGenerationId,
+      uploadState: 'synced',
+    } as Partial<ImageElement>);
+  });
+}
+
+/**
+ * 更新 Placeholder 节点为实际视频
+ * 
+ * @param placeholderIds placeholder 节点 ID 数组
+ * @param videos 视频数据数组
+ */
+export function updateVideoPlaceholders(
+  placeholderIds: string[],
+  videos: Array<{
+    videoUrl?: string;
+    thumbnailUrl?: string;
+    duration?: number;
+    mediaGenerationId?: string;
+  }>
+): void {
+  const { updateElement } = useCanvasStore.getState();
+  
+  placeholderIds.forEach((id, index) => {
+    const videoData = videos[index];
+    if (!videoData) return;
+    
+    updateElement(id, {
+      src: videoData.videoUrl || '',
+      thumbnail: videoData.thumbnailUrl || '',
+      duration: videoData.duration || 0,
+      mediaGenerationId: videoData.mediaGenerationId,
+      status: 'ready',
+      progress: 100,
+    } as Partial<VideoElement>);
+  });
+}
+
+/**
+ * 删除 Placeholder 节点（生成失败时调用）
+ * 
+ * @param placeholderIds placeholder 节点 ID 数组
+ */
+export function deletePlaceholders(placeholderIds: string[]): void {
+  const { deleteElement } = useCanvasStore.getState();
+  placeholderIds.forEach(id => deleteElement(id));
+}
+
+/**
+ * 标记 Placeholder 为错误状态
+ * 
+ * @param placeholderIds placeholder 节点 ID 数组
+ * @param errorMessage 错误信息
+ */
+export function markPlaceholdersAsError(
+  placeholderIds: string[],
+  errorMessage?: string
+): void {
+  const { updateElement } = useCanvasStore.getState();
+  
+  placeholderIds.forEach(id => {
+    // 行级注释：尝试更新图片节点
+    updateElement(id, {
+      uploadState: 'error',
+      uploadMessage: errorMessage,
+    } as Partial<ImageElement>);
+    
+    // 行级注释：尝试更新视频节点
+    updateElement(id, {
+      status: 'error',
+    } as Partial<VideoElement>);
+  });
+}
+
+// ============================================================================
+// 节点复制函数
+// ============================================================================
+
 /**
  * 复制图片节点
  */
