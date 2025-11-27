@@ -6,6 +6,14 @@ import {
   getApiContext,
   updateSessionContext,
 } from './services/prompt-builder.service';
+import {
+  pollVideoOperation,
+  pollFlowVideoOperation,  // 内部使用
+  type VideoPollingResult,
+} from './services/video-polling.service';
+
+// 行级注释：重新导出 pollFlowVideoOperation 以保持向后兼容
+export { pollFlowVideoOperation } from './services/video-polling.service';
 
 // ============================================================================
 // Flow API 类型定义和工具函数（从 flow-api.ts 合并）
@@ -333,8 +341,7 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const VIDEO_POLL_INTERVAL_MS = 15000; // 行级注释：视频状态轮询间隔（10秒）
-const VIDEO_MAX_ATTEMPTS = 60; // 行级注释：最多轮询 10 分钟
+// 行级注释：VIDEO_POLL_INTERVAL_MS 和 VIDEO_MAX_ATTEMPTS 已移至 video-polling.service.ts
 
 function inferVideoAspectRatio(
   startImage?: ImageElement,
@@ -405,82 +412,8 @@ function extractFlowVideoData(operation: any): FlowVideoResult | null {
   };
 }
 
-export async function pollFlowVideoOperation(
-  operationName: string,
-  bearerToken: string,
-  sceneId?: string,
-  proxy?: string
-): Promise<FlowVideoResult> {
-  // 行级注释：视频状态查询直接调用 Google API（绕过 Vercel）
-  const { checkVideoStatusDirectly } = await import('./direct-google-api');
-
-  for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
-    console.log(`🔁 视频生成轮询第 ${attempt} 次`);
-
-    try {
-      // 行级注释：直接调用 Google API 查询状态
-      const result = await checkVideoStatusDirectly(
-        operationName,
-        bearerToken,
-        sceneId
-      );
-
-      const status = result.status;
-      console.log('📦 Flow 视频状态:', status);
-
-      // 行级注释：失败状态 - 立即抛出错误
-      if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
-        const errorMessage = result.error || 'Flow 视频生成失败';
-        throw new Error(errorMessage);
-      }
-
-      // 行级注释：成功状态 - 直接返回视频数据
-      if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
-        console.log('🎉 视频生成成功！');
-
-        if (!result.videoUrl) {
-          throw new Error('Flow 返回缺少视频地址');
-        }
-
-        // 行级注释：更新积分到 store
-        if (typeof result.remainingCredits === 'number') {
-          const { useCanvasStore } = await import('@/lib/store');
-          useCanvasStore.getState().setCredits(result.remainingCredits);
-          console.log('💎 积分已更新:', result.remainingCredits);
-        }
-
-        console.log('✅ 视频数据解析成功:', {
-          videoUrl: result.videoUrl,
-          thumbnailUrl: result.thumbnailUrl,
-          duration: result.duration,
-          mediaGenerationId: result.mediaGenerationId,
-        });
-
-        return {
-          videoUrl: result.videoUrl,
-          thumbnailUrl: result.thumbnailUrl || '',
-          duration: result.duration || 8,
-          mediaGenerationId: result.mediaGenerationId || '',
-        };
-      }
-
-      // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
-      console.log('⏳ 视频还在生成中，等待下次轮询...');
-
-    } catch (error: any) {
-      console.error(`❌ 轮询第 ${attempt} 次出错:`, error);
-      console.error('错误详情:', error.message, error.stack);
-
-      // 行级注释：直接抛出错误，不要继续轮询了
-      throw error;
-    }
-
-    // 行级注释：等待后进行下一次轮询
-    await delay(VIDEO_POLL_INTERVAL_MS);
-  }
-
-  throw new Error('视频生成超时，请稍后重试');
-}
+// 行级注释：pollFlowVideoOperation 已移至 video-polling.service.ts
+// 为了向后兼容，从服务层重新导出（见文件顶部 import）
 
 // 生成唯一 ID
 function generateId(): string {
