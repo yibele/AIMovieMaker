@@ -2,21 +2,21 @@
 import { useCanvasStore } from './store';
 import { ImageElement } from './types';
 import { generateImage, imageToImage, runImageRecipe } from './api-mock';
+import {
+  createImagePlaceholders,
+  updateImagePlaceholders,
+  deletePlaceholders,
+  getRightSidePosition,
+} from './services/node-management.service';
+import { getImageNodeSize } from './constants/node-sizes';
 
 // 行级注释：优先使用 Flow 返回的 mediaId，若缺失则降级为 mediaGenerationId
 const resolveMediaId = (mediaId?: string, fallback?: string) =>
   mediaId?.trim() || fallback?.trim() || undefined;
 
-// 行级注释：根据比例计算尺寸
+// 行级注释：根据比例计算尺寸（保留向后兼容，但推荐使用 getImageNodeSize）
 export function getSizeFromAspectRatio(ratio: '16:9' | '9:16' | '1:1') {
-  switch (ratio) {
-    case '9:16':
-      return { width: 360, height: 640 };
-    case '16:9':
-      return { width: 640, height: 360 };
-    case '1:1':
-      return { width: 512, height: 512 };
-  }
+  return getImageNodeSize(ratio);
 }
 
 // 行级注释：计算输入框上方的生成位置
@@ -41,73 +41,57 @@ export async function generateFromInput(
   aspectRatio: '16:9' | '9:16' | '1:1',
   count: number,
   position: { x: number; y: number },
-  addElement: (el: ImageElement) => void,
+  addElement: (el: ImageElement) => void,  // 保留参数签名，但内部使用节点管理服务
   updateElement: (id: string, updates: Partial<ImageElement>) => void,
   deleteElement: (id: string) => void,
   addPromptHistory: (history: any) => void
 ) {
-  const size = getSizeFromAspectRatio(aspectRatio);
-  const placeholderIds: string[] = [];
-  const horizontalSpacing = 20;
-  const totalWidth = count * size.width + (count - 1) * horizontalSpacing;
-  const startX = position.x - totalWidth / 2;
-
-  // 行级注释：创建 placeholder 节点
-  for (let i = 0; i < count; i++) {
-    const newImageId = `image-${Date.now()}-${i}`;
-    placeholderIds.push(newImageId);
-
-    const placeholderImage: ImageElement = {
-      id: newImageId,
-      type: 'image',
-      src: '',
-      position: {
-        x: startX + i * (size.width + horizontalSpacing),
-        y: position.y,
-      },
-      size: size,
-      generatedFrom: {
-        type: 'input',
-        prompt: prompt,
-      },
-    };
-
-    addElement(placeholderImage);
-  }
+  // 行级注释：使用节点管理服务创建 placeholder 节点
+  const placeholderIds = createImagePlaceholders(count, position, aspectRatio, {
+    prompt,
+    generatedFromType: 'input',
+  });
 
   try {
     const result = await generateImage(prompt, aspectRatio, count);
 
-    // 行级注释：更新 placeholder 节点
+    // 行级注释：使用节点管理服务更新 placeholder 节点
     if (result.images && result.images.length > 0) {
+      updateImagePlaceholders(
+        placeholderIds.slice(0, result.images.length),
+        result.images.map(img => ({
+          imageUrl: img.imageUrl,
+          base64: img.base64,
+          mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
+          mediaGenerationId: img.mediaGenerationId,
+        }))
+      );
+
+      // 行级注释：删除多余的 placeholder
+      if (result.images.length < placeholderIds.length) {
+        deletePlaceholders(placeholderIds.slice(result.images.length));
+      }
+
+      // 行级注释：更新 promptId（节点管理服务不处理这个字段）
       result.images.forEach((img, index) => {
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
-            src: img.imageUrl,
-            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
-            mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
-            mediaGenerationId: img.mediaGenerationId,
           } as Partial<ImageElement>);
         }
       });
-
-      if (result.images.length < placeholderIds.length) {
-        for (let i = result.images.length; i < placeholderIds.length; i++) {
-          deleteElement(placeholderIds[i]);
-        }
-      }
     } else {
-      updateElement(placeholderIds[0], {
-        src: result.imageUrl,
-        promptId: result.promptId,
+      // 行级注释：兼容单图返回格式
+      updateImagePlaceholders([placeholderIds[0]], [{
+        imageUrl: result.imageUrl,
         mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
         mediaGenerationId: result.mediaGenerationId,
+      }]);
+      updateElement(placeholderIds[0], {
+        promptId: result.promptId,
       } as Partial<ImageElement>);
 
-      for (let i = 1; i < placeholderIds.length; i++) {
-        deleteElement(placeholderIds[i]);
-      }
+      deletePlaceholders(placeholderIds.slice(1));
     }
 
     addPromptHistory({
@@ -118,7 +102,8 @@ export async function generateFromInput(
       createdAt: Date.now(),
     });
   } catch (error: any) {
-    placeholderIds.forEach((id) => deleteElement(id));
+    // 行级注释：使用节点管理服务删除 placeholder
+    deletePlaceholders(placeholderIds);
     throw error;
   }
 }
@@ -129,56 +114,42 @@ export async function imageToImageFromInput(
   aspectRatio: '16:9' | '9:16' | '1:1',
   count: number,
   selectedImage: ImageElement,
-  addElement: (el: ImageElement) => void,
+  addElement: (el: ImageElement) => void,  // 保留参数签名
   updateElement: (id: string, updates: Partial<ImageElement>) => void,
   deleteElement: (id: string) => void,
   addPromptHistory: (history: any) => void,
   setEdges: any
 ) {
-  const size = getSizeFromAspectRatio(aspectRatio);
-  const placeholderIds: string[] = [];
+  // 行级注释：使用节点管理服务计算位置（源图片右侧）
+  const position = getRightSidePosition(
+    selectedImage.position,
+    selectedImage.size || { width: 400, height: 225 }
+  );
+
+  // 行级注释：使用节点管理服务创建 placeholder 节点
+  const placeholderIds = createImagePlaceholders(count, position, aspectRatio, {
+    prompt,
+    generatedFromType: 'image-to-image',
+    sourceIds: [selectedImage.id],
+  });
+
+  // 行级注释：创建连线（连线逻辑保留在此处，因为涉及 React Flow）
   const edgeIds: string[] = [];
-  const horizontalSpacing = 20;
-  const startX = selectedImage.position.x + (selectedImage.size?.width || 400) + 50;
-
-  // 行级注释：创建 placeholder 节点和连线
-  for (let i = 0; i < count; i++) {
-    const newImageId = `image-${Date.now()}-${i}`;
-    placeholderIds.push(newImageId);
-
-    const placeholderImage: ImageElement = {
-      id: newImageId,
-      type: 'image',
-      src: '',
-      position: {
-        x: startX + i * (size.width + horizontalSpacing),
-        y: selectedImage.position.y,
-      },
-      size: size,
-      sourceImageIds: [selectedImage.id],
-      generatedFrom: {
-        type: 'image-to-image',
-        sourceIds: [selectedImage.id],
-        prompt: prompt,
-      },
-    };
-
-    addElement(placeholderImage);
-
-    const edgeId = `edge-${selectedImage.id}-${newImageId}`;
+  placeholderIds.forEach(nodeId => {
+    const edgeId = `edge-${selectedImage.id}-${nodeId}`;
     edgeIds.push(edgeId);
     setEdges((eds: any) => [
       ...eds,
       {
         id: edgeId,
         source: selectedImage.id,
-        target: newImageId,
+        target: nodeId,
         type: 'default',
         animated: true,
         style: { stroke: '#3b82f6', strokeWidth: 1 },
       },
     ]);
-  }
+  });
 
   try {
     // 如果图片没有 mediaId，需要先上传（比如本地上传的图片）
@@ -187,10 +158,7 @@ export async function imageToImageFromInput(
     if (!effectiveMediaId) {
       console.log('⚠️ 图片缺少 mediaId，需要先上传...');
       
-      // 如果图片有 base64，使用 base64 上传
       let imageDataToUpload = selectedImage.base64 || selectedImage.src;
-      
-      // 如果是 data URL，提取 base64
       if (imageDataToUpload.startsWith('data:')) {
         imageDataToUpload = imageDataToUpload.split(',')[1];
       }
@@ -215,38 +183,51 @@ export async function imageToImageFromInput(
       count
     );
 
-    // 行级注释：更新 placeholder 节点
+    // 行级注释：使用节点管理服务更新 placeholder 节点
     if (result.images && result.images.length > 0) {
+      updateImagePlaceholders(
+        placeholderIds.slice(0, result.images.length),
+        result.images.map(img => ({
+          imageUrl: img.imageUrl,
+          base64: img.base64,
+          mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
+          mediaGenerationId: img.mediaGenerationId,
+        }))
+      );
+
+      // 行级注释：更新 promptId
       result.images.forEach((img, index) => {
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
-            src: img.imageUrl,
-            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
-            mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
-            mediaGenerationId: img.mediaGenerationId,
           } as Partial<ImageElement>);
         }
       });
 
-      if (result.images.length < placeholderIds.length) {
-        for (let i = result.images.length; i < placeholderIds.length; i++) {
-          deleteElement(placeholderIds[i]);
-          setEdges((eds: any) => eds.filter((edge: any) => edge.id !== edgeIds[i]));
-        }
+      // 行级注释：删除多余的 placeholder 和连线
+      const imageCount = result.images?.length || 0;
+      if (imageCount < placeholderIds.length) {
+        const extraIds = placeholderIds.slice(imageCount);
+        deletePlaceholders(extraIds);
+        setEdges((eds: any) => eds.filter((edge: any) => 
+          !edgeIds.slice(imageCount).includes(edge.id)
+        ));
       }
     } else {
-      updateElement(placeholderIds[0], {
-        src: result.imageUrl,
-        promptId: result.promptId,
+      // 行级注释：兼容单图返回格式
+      updateImagePlaceholders([placeholderIds[0]], [{
+        imageUrl: result.imageUrl,
         mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
         mediaGenerationId: result.mediaGenerationId,
+      }]);
+      updateElement(placeholderIds[0], {
+        promptId: result.promptId,
       } as Partial<ImageElement>);
 
-      for (let i = 1; i < placeholderIds.length; i++) {
-        deleteElement(placeholderIds[i]);
-        setEdges((eds: any) => eds.filter((edge: any) => edge.id !== edgeIds[i]));
-      }
+      deletePlaceholders(placeholderIds.slice(1));
+      setEdges((eds: any) => eds.filter((edge: any) => 
+        !edgeIds.slice(1).includes(edge.id)
+      ));
     }
 
     // 行级注释：停止连线动画
@@ -264,7 +245,7 @@ export async function imageToImageFromInput(
       createdAt: Date.now(),
     });
   } catch (error: any) {
-    placeholderIds.forEach((id) => deleteElement(id));
+    deletePlaceholders(placeholderIds);
     setEdges((eds: any) => eds.filter((edge: any) => !edgeIds.includes(edge.id)));
     throw error;
   }
@@ -276,7 +257,7 @@ export async function multiImageRecipeFromInput(
   aspectRatio: '16:9' | '9:16' | '1:1',
   count: number,
   selectedImages: ImageElement[],
-  addElement: (el: ImageElement) => void,
+  addElement: (el: ImageElement) => void,  // 保留参数签名
   updateElement: (id: string, updates: Partial<ImageElement>) => void,
   deleteElement: (id: string) => void,
   addPromptHistory: (history: any) => void,
@@ -303,48 +284,34 @@ export async function multiImageRecipeFromInput(
   }));
 
   const baseImage = selectedImages[0];
-  const size = getSizeFromAspectRatio(aspectRatio);
-  const placeholderIds: string[] = [];
+
+  // 行级注释：使用节点管理服务计算位置
+  const position = getRightSidePosition(
+    baseImage.position,
+    baseImage.size || { width: 400, height: 225 }
+  );
+
+  // 行级注释：使用节点管理服务创建 placeholder 节点
+  const placeholderIds = createImagePlaceholders(count, position, aspectRatio, {
+    prompt,
+    generatedFromType: 'image-to-image',
+    sourceIds: selectedImages.map(img => img.id),
+  });
+
+  // 行级注释：创建连线（多图到多个 placeholder）
   const allEdges: any[] = [];
-  const horizontalSpacing = 20;
-  const startX = baseImage.position.x + (baseImage.size?.width || 400) + 50;
-
-  // 行级注释：创建 placeholder 节点和连线
-  for (let i = 0; i < count; i++) {
-    const newImageId = `image-${Date.now()}-${i}`;
-    placeholderIds.push(newImageId);
-
-    const placeholderImage: ImageElement = {
-      id: newImageId,
-      type: 'image',
-      src: '',
-      position: {
-        x: startX + i * (size.width + horizontalSpacing),
-        y: baseImage.position.y,
-      },
-      size,
-      sourceImageIds: selectedImages.map((img) => img.id),
-      generatedFrom: {
-        type: 'image-to-image',
-        sourceIds: selectedImages.map((img) => img.id),
-        prompt: prompt,
-      },
-    };
-
-    addElement(placeholderImage);
-
-    const edgesForThisPlaceholder = selectedImages.map((sourceImg) => ({
-      id: `edge-${sourceImg.id}-${newImageId}`,
-      source: sourceImg.id,
-      target: newImageId,
-      type: 'default',
-      animated: true,
-      style: { stroke: '#3b82f6', strokeWidth: 1 },
-    }));
-
-    allEdges.push(...edgesForThisPlaceholder);
-  }
-
+  placeholderIds.forEach(nodeId => {
+    selectedImages.forEach(sourceImg => {
+      allEdges.push({
+        id: `edge-${sourceImg.id}-${nodeId}`,
+        source: sourceImg.id,
+        target: nodeId,
+        type: 'default',
+        animated: true,
+        style: { stroke: '#3b82f6', strokeWidth: 1 },
+      });
+    });
+  });
   setEdges((eds: any) => [...eds, ...allEdges]);
 
   try {
@@ -356,48 +323,57 @@ export async function multiImageRecipeFromInput(
       count
     );
 
-    // 行级注释：更新 placeholder 节点
+    // 行级注释：使用节点管理服务更新 placeholder 节点
     if (result.images && result.images.length > 0) {
+      updateImagePlaceholders(
+        placeholderIds.slice(0, result.images.length),
+        result.images.map(img => ({
+          imageUrl: img.imageUrl,
+          base64: img.base64,
+          mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
+          mediaGenerationId: img.mediaGenerationId,
+        }))
+      );
+
+      // 行级注释：更新 promptId
       result.images.forEach((img, index) => {
         if (index < placeholderIds.length) {
           updateElement(placeholderIds[index], {
-            src: img.imageUrl,
-            base64: img.base64, // 保存 base64，用于后续编辑
             promptId: result.promptId,
-            mediaId: resolveMediaId(img.mediaId, img.mediaGenerationId),
-            mediaGenerationId: img.mediaGenerationId,
           } as Partial<ImageElement>);
         }
       });
 
+      // 行级注释：删除多余的 placeholder 和连线
       if (result.images.length < placeholderIds.length) {
-        for (let i = result.images.length; i < placeholderIds.length; i++) {
-          deleteElement(placeholderIds[i]);
-          const edgesToRemove = allEdges.filter(
-            (edge) => edge.target === placeholderIds[i]
-          );
-          setEdges((eds: any) =>
-            eds.filter((edge: any) => !edgesToRemove.some((e) => e.id === edge.id))
-          );
-        }
-      }
-    } else {
-      updateElement(placeholderIds[0], {
-        src: result.imageUrl,
-        promptId: result.promptId,
-        mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
-        mediaGenerationId: result.mediaGenerationId,
-      } as Partial<ImageElement>);
-
-      for (let i = 1; i < placeholderIds.length; i++) {
-        deleteElement(placeholderIds[i]);
-        const edgesToRemove = allEdges.filter(
-          (edge) => edge.target === placeholderIds[i]
+        const extraIds = placeholderIds.slice(result.images.length);
+        deletePlaceholders(extraIds);
+        const edgesToRemove = allEdges.filter(edge => 
+          extraIds.includes(edge.target)
         );
         setEdges((eds: any) =>
-          eds.filter((edge: any) => !edgesToRemove.some((e) => e.id === edge.id))
+          eds.filter((edge: any) => !edgesToRemove.some((e: any) => e.id === edge.id))
         );
       }
+    } else {
+      // 行级注释：兼容单图返回格式
+      updateImagePlaceholders([placeholderIds[0]], [{
+        imageUrl: result.imageUrl,
+        mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
+        mediaGenerationId: result.mediaGenerationId,
+      }]);
+      updateElement(placeholderIds[0], {
+        promptId: result.promptId,
+      } as Partial<ImageElement>);
+
+      const extraIds = placeholderIds.slice(1);
+      deletePlaceholders(extraIds);
+      const edgesToRemove = allEdges.filter(edge => 
+        extraIds.includes(edge.target)
+      );
+      setEdges((eds: any) =>
+        eds.filter((edge: any) => !edgesToRemove.some((e: any) => e.id === edge.id))
+      );
     }
 
     // 行级注释：停止连线动画
@@ -417,7 +393,7 @@ export async function multiImageRecipeFromInput(
       createdAt: Date.now(),
     });
   } catch (error) {
-    placeholderIds.forEach((id) => deleteElement(id));
+    deletePlaceholders(placeholderIds);
     setEdges((eds: any) =>
       eds.filter((edge: any) => !allEdges.some((e: any) => e.id === edge.id))
     );
