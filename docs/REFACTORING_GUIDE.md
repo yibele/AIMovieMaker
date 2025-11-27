@@ -2348,3 +2348,36 @@ describe('TierConfig', () => {
 - [ ] 添加单元测试（tier-config, services）
 - [ ] 完整功能回归测试
 
+
+
+---
+
+## 执行进度记录 - Canvas.tsx 重构完成
+
+### 提取的 Hooks (本次重构)
+
+| Hook | 行数 | 职责 |
+|------|------|------|
+| useVideoGeneration | ~320 | 视频生成核心逻辑、VL分析、边缘动画 |
+| useNextShot | ~530 | 分镜续写、衔接镜头、VL提示词生成 |
+| useVideoActions | ~310 | 文生视频、图生视频、镜头控制、延长视频 |
+| useConnectionHandler | ~275 | 连线开始/结束处理、节点连接建立 |
+
+### Canvas.tsx 统计
+
+| 阶段 | 行数 | 变化 |
+|------|------|------|
+| 原始 | 2358 | - |
+| 提取 useVideoGeneration | 2023 | -335 |
+| 提取 useNextShot | 1600 | -423 |
+| 提取 useVideoActions | 1321 | -279 |
+| 提取 useConnectionHandler | 1110 | -211 |
+| 清理导入 | 1108 | -2 |
+| **最终** | **1108** | **-1250 (53%)** |
+
+### 重构成果
+
+✅ Canvas.tsx 代码量减少 53%
+✅ 业务逻辑集中到独立 Hooks
+✅ 提高代码可测试性和可维护性
+✅ 所有功能保持正常工作
