@@ -57,6 +57,7 @@ import {
   getVideoNodeSize,
   getImageNodeSize,
 } from '@/lib/constants/node-sizes';
+import { createVideoFromImage } from '@/lib/services/node-management.service';
 
 // 注册自定义节点类型
 const nodeTypes: NodeTypes = {
@@ -706,6 +707,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     };
   }, [handleGenerateFromInput]);
 
+  // 行级注释：使用节点管理服务创建视频节点（从图片派生）
   const createVideoNodeFromImage = useCallback(
     (
       imageNode: ImageElement,
@@ -713,49 +715,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       targetHandleId: 'start-image' | 'end-image' = 'start-image',
       sourceHandleId?: string | null
     ) => {
-      const videoId = `video-${Date.now()}`;
-      const baseSize = imageNode.size && imageNode.size.width && imageNode.size.height
-        ? imageNode.size
-        : VIDEO_NODE_DEFAULT_SIZE;
-
-      const nextVideoSize = {
-        width: baseSize.width,
-        height: baseSize.height,
-      };
-
-      const position = {
-        x: flowPosition.x - nextVideoSize.width / 2,
-        y: flowPosition.y - nextVideoSize.height / 2,
-      };
-
-      const startImageInfo =
-        targetHandleId === 'start-image'
-          ? { startImageId: imageNode.id, startImageUrl: imageNode.src }
-          : {};
-      const endImageInfo =
-        targetHandleId === 'end-image'
-          ? { endImageId: imageNode.id, endImageUrl: imageNode.src }
-          : {};
-
-      const newVideo: VideoElement = {
-        id: videoId,
-        type: 'video',
-        src: '',
-        thumbnail: '',
-        duration: 0,
-        status: 'pending',
-        progress: 0,
-        position,
-        size: { ...nextVideoSize },
-        readyForGeneration: false,
-        ...startImageInfo,
-        ...endImageInfo,
-      };
-
+      // 行级注释：使用节点管理服务创建视频节点
+      const newVideo = createVideoFromImage(imageNode, flowPosition, targetHandleId);
       addElement(newVideo);
 
-      const edgeId = `edge-${imageNode.id}-${videoId}-${targetHandleId}`;
-      // @ts-ignore
+      // 行级注释：创建连线（连线逻辑保留在组件内，因为涉及 React Flow）
+      const edgeId = `edge-${imageNode.id}-${newVideo.id}-${targetHandleId}`;
       setEdges((eds: any[]) => {
         const filtered = (eds as any[]).filter((edge: any) => edge.id !== edgeId);
         return [
@@ -763,7 +728,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           {
             id: edgeId,
             source: imageNode.id,
-            target: videoId,
+            target: newVideo.id,
             sourceHandle: sourceHandleId ?? undefined,
             targetHandle: targetHandleId,
             type: 'default',
