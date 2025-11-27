@@ -10,6 +10,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ImageElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { generateImageFromImage } from '@/lib/services/image-generation.service';
@@ -48,11 +49,13 @@ export function useImageOperations(imageId: string): UseImageOperationsReturn {
     state.elements.find(el => el.id === imageId && el.type === 'image') as ImageElement | undefined
   );
 
-  const { addElement, deleteElement, setSelection } = useCanvasStore(state => ({
-    addElement: state.addElement,
-    deleteElement: state.deleteElement,
-    setSelection: state.setSelection,
-  }));
+  const { addElement, deleteElement, setSelection } = useCanvasStore(
+    useShallow(state => ({
+      addElement: state.addElement,
+      deleteElement: state.deleteElement,
+      setSelection: state.setSelection,
+    }))
+  );
 
   // 计算状态
   const isProcessing = useMemo(() => {

@@ -9,6 +9,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { VideoElement, ReshootMotionType } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import {
@@ -51,12 +52,14 @@ export function useVideoOperations(videoId: string): UseVideoOperationsReturn {
     state.elements.find(el => el.id === videoId && el.type === 'video') as VideoElement | undefined
   );
 
-  const { addElement, updateElement, deleteElement, setSelection } = useCanvasStore(state => ({
-    addElement: state.addElement,
-    updateElement: state.updateElement,
-    deleteElement: state.deleteElement,
-    setSelection: state.setSelection,
-  }));
+  const { addElement, updateElement, deleteElement, setSelection } = useCanvasStore(
+    useShallow(state => ({
+      addElement: state.addElement,
+      updateElement: state.updateElement,
+      deleteElement: state.deleteElement,
+      setSelection: state.setSelection,
+    }))
+  );
 
   // 计算状态
   const isGenerating = useMemo(() => {
