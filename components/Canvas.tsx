@@ -48,6 +48,7 @@ import {
 import { useConnectionMenu } from '@/hooks/canvas/useConnectionMenu';
 import { useVideoGeneration } from '@/hooks/canvas/useVideoGeneration';
 import { useNextShot } from '@/hooks/canvas/useNextShot';
+import { useVideoActions } from '@/hooks/canvas/useVideoActions';
 import { ConnectionMenuCallbacks } from '@/types/connection-menu';
 import { useTextToImage } from '@/hooks/canvas/useTextToImage';
 import { useImageToImage } from '@/hooks/canvas/useImageToImage';
@@ -350,6 +351,24 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     },
     [addElement, setEdges]
   );
+
+  // 行级注释：使用视频操作 Hook（从 Canvas.tsx 提取 ~200 行代码）
+  const {
+    handleTextToVideo,
+    handleImageToVideo,
+    handleGenerateVideoFromImage,
+    handleGenerateReshoot,
+    handleShowExtendVideo,
+  } = useVideoActions({
+    setEdges: setEdges as any,
+    resetConnectionMenu,
+    createVideoNodeFromImage,
+    connectionMenu: {
+      sourceNodeId: connectionMenu.sourceNodeId,
+      position: connectionMenu.position,
+    },
+    reactFlowInstance,
+  });
 
   const createTextNodeForVideo = useCallback(
     (videoNode: VideoElement, flowPosition: { x: number; y: number }) => {
@@ -1054,304 +1073,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       );
     }
   }, [annotatorTarget, addElement, updateElement, setEdges]);
-
-  // 行级注释：文生视频处理函数
-  const handleTextToVideo = useCallback(
-    async (sourceNode: TextElement, aspectRatio: '9:16' | '16:9') => {
-      resetConnectionMenu();
-
-      const videoSize = getVideoNodeSize(aspectRatio);
-
-      const newVideoId = generateNodeId('video');
-      const newVideo: VideoElement = {
-        id: newVideoId,
-        type: 'video',
-        src: '',
-        thumbnail: '',
-        duration: 0,
-        status: 'generating',
-        progress: 0,
-        position: {
-          x: sourceNode.position.x + (sourceNode.size?.width || TEXT_NODE_DEFAULT_SIZE.width) + 100,
-          y: sourceNode.position.y,
-        },
-        size: videoSize,
-        promptText: sourceNode.text,
-        generatedFrom: {
-          type: 'text',
-          sourceIds: [sourceNode.id],
-          prompt: sourceNode.text,
-        },
-      };
-
-      addElement(newVideo);
-
-      // 创建连线
-      // @ts-ignore
-      setEdges((eds: any[]) => [
-        ...eds,
-        {
-          id: `edge-${sourceNode.id}-${newVideoId}-prompt-text`,
-          source: sourceNode.id,
-          target: newVideoId,
-          targetHandle: 'prompt-text',
-          type: 'default',
-          animated: true,
-          style: EDGE_GENERATING_STYLE,
-        },
-      ]);
-
-      try {
-        const result = await generateVideoFromText(sourceNode.text, aspectRatio);
-
-        updateElement(newVideoId, {
-          status: 'ready',
-          src: result.videoUrl,
-          thumbnail: result.thumbnail,
-          duration: result.duration,
-          progress: 100,
-          mediaGenerationId: result.mediaGenerationId,
-          promptText: sourceNode.text,
-          generatedFrom: {
-            type: 'text',
-            sourceIds: [sourceNode.id],
-            prompt: sourceNode.text,
-          },
-        } as Partial<VideoElement>);
-
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === `edge-${sourceNode.id}-${newVideoId}-prompt-text`
-              ? { ...edge, animated: false }
-              : edge
-          )
-        );
-
-        console.log('✅ 从文本节点生成视频:', sourceNode.text);
-      } catch (error) {
-        console.error('❌ 生成视频失败:', error);
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === `edge-${sourceNode.id}-${newVideoId}-prompt-text`
-              ? { ...edge, animated: false, style: EDGE_ERROR_STYLE }
-              : edge
-          )
-        );
-        alert('生成视频失败，请重试');
-      }
-    },
-    [addElement, updateElement, setEdges, resetConnectionMenu]
-  );
-
-  // 行级注释：图生视频处理函数
-  const handleImageToVideo = useCallback(
-    async (sourceNode: ImageElement, aspectRatio: '9:16' | '16:9') => {
-      resetConnectionMenu();
-
-      const flowPosition = {
-        x: sourceNode.position.x + (sourceNode.size?.width || IMAGE_NODE_DEFAULT_SIZE.width) + 100,
-        y: sourceNode.position.y,
-      };
-
-      // 行级注释：直接调用现有的 createVideoNodeFromImage 函数
-      createVideoNodeFromImage(sourceNode, flowPosition, 'start-image', 'right');
-
-      console.log('✅ 从图片节点创建视频节点:', sourceNode.id);
-    },
-    [createVideoNodeFromImage, resetConnectionMenu]
-  );
-
-  // 行级注释：从图片生成视频（自动根据图片比例）
-  const handleGenerateVideoFromImage = useCallback(() => {
-    const sourceNodeId = connectionMenu.sourceNodeId;
-    if (!sourceNodeId) return;
-
-    const sourceNode = elements.find(
-      (el) => el.id === sourceNodeId && el.type === 'image'
-    ) as ImageElement | undefined;
-
-    if (!sourceNode) {
-      resetConnectionMenu();
-      return;
-    }
-
-    // 行级注释：使用统一的 detectVideoAspectRatio 函数判断比例
-    const aspectRatio = detectVideoAspectRatio(
-      sourceNode.size?.width || 320,
-      sourceNode.size?.height || 180
-    );
-
-    console.log('🎬 根据图片比例自动生成视频:', aspectRatio);
-
-    handleImageToVideo(sourceNode, aspectRatio);
-  }, [connectionMenu.sourceNodeId, elements, handleImageToVideo, resetConnectionMenu]);
-
-  // 处理镜头控制重拍（生成视频）
-  const handleGenerateReshoot = useCallback(
-    async (motionType: ReshootMotionType) => {
-      const sourceNodeId = connectionMenu.sourceNodeId;
-      if (!sourceNodeId) return;
-
-      const sourceNode = elements.find((el) => el.id === sourceNodeId) as VideoElement | undefined;
-      if (!sourceNode) return;
-
-      resetConnectionMenu();
-
-      // 1. 创建新的视频节点
-      const newVideoId = `video-${Date.now()}`;
-      const flowPosition = reactFlowInstance.screenToFlowPosition({
-        x: connectionMenu.position.x,
-        y: connectionMenu.position.y,
-      });
-
-      const newVideo: VideoElement = {
-        id: newVideoId,
-        type: 'video',
-        src: '',
-        thumbnail: '',
-        duration: 0,
-        status: 'generating', // 直接开始生成
-        progress: 0,
-        position: { x: flowPosition.x, y: flowPosition.y },
-        size: sourceNode.size || VIDEO_NODE_DEFAULT_SIZE,
-        generatedFrom: {
-          type: 'reshoot',
-          sourceIds: [sourceNode.id],
-        },
-      };
-
-      addElement(newVideo);
-
-      // 2. 创建连线
-      const edgeId = `edge-${sourceNode.id}-${newVideoId}-reshoot`;
-      // @ts-ignore
-      setEdges((eds: any[]) => [
-        ...eds,
-        {
-          id: edgeId,
-          source: sourceNode.id,
-          target: newVideoId,
-          type: 'default',
-          animated: true,
-          style: EDGE_GENERATING_STYLE,
-          label: '镜头控制',
-        },
-      ]);
-
-      // 3. 调用 API 生成
-      try {
-        const effectiveMediaId = sourceNode.mediaGenerationId;
-
-        if (!effectiveMediaId) {
-          throw new Error('源视频缺少 mediaGenerationId');
-        }
-
-        // 行级注释：使用统一的视频宽高比检测函数
-        const aspectRatio = detectVideoAspectRatio(
-          sourceNode.size?.width || 640,
-          sourceNode.size?.height || 360
-        );
-
-        const { generateVideoReshoot } = await import('@/lib/api-mock');
-        const result = await generateVideoReshoot(
-          effectiveMediaId,
-          motionType,
-          aspectRatio as any
-        );
-
-        updateElement(newVideoId, {
-          status: 'ready',
-          src: result.videoUrl,
-          thumbnail: result.thumbnail,
-          duration: result.duration,
-          mediaGenerationId: result.mediaGenerationId,
-          progress: 100,
-          readyForGeneration: true,
-        } as Partial<VideoElement>);
-
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === edgeId
-              ? { ...edge, animated: false }
-              : edge
-          )
-        );
-
-        console.log('✅ 镜头控制视频生成成功');
-      } catch (error) {
-        console.error('❌ 镜头控制视频生成失败:', error);
-        updateElement(newVideoId, { status: 'error' } as Partial<VideoElement>);
-        // @ts-ignore
-        setEdges((eds: any[]) =>
-          eds.map((edge: any) =>
-            edge.id === edgeId
-              ? { ...edge, animated: false, style: EDGE_ERROR_STYLE }
-              : edge
-          )
-        );
-      }
-    },
-    [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, updateElement, reactFlowInstance, resetConnectionMenu]
-  );
-
-  // 处理延长视频 - 创建 pending 节点
-  const handleShowExtendVideo = useCallback(() => {
-    const sourceNodeId = connectionMenu.sourceNodeId;
-    if (!sourceNodeId) return;
-
-    const sourceNode = elements.find((el) => el.id === sourceNodeId) as VideoElement | undefined;
-    if (!sourceNode) return;
-
-    resetConnectionMenu();
-
-    // 1. 创建 pending 状态的视频节点（用户稍后输入提示词）
-    const newVideoId = `video-${Date.now()}`;
-    const flowPosition = reactFlowInstance.screenToFlowPosition({
-      x: connectionMenu.position.x,
-      y: connectionMenu.position.y,
-    });
-
-    const newVideo: VideoElement = {
-      id: newVideoId,
-      type: 'video',
-      src: '',
-      thumbnail: '',
-      duration: 0,
-      status: 'pending', // 行级注释：pending 状态会触发 VideoNode 显示输入面板
-      progress: 0,
-      position: { x: flowPosition.x, y: flowPosition.y },
-      size: sourceNode.size || VIDEO_NODE_DEFAULT_SIZE,
-      readyForGeneration: false,
-      generatedFrom: {
-        type: 'extend',
-        sourceIds: [sourceNode.id],
-      },
-    };
-
-    addElement(newVideo);
-
-    // 2. 创建连线
-    const edgeId = `edge-${sourceNode.id}-${newVideoId}-extend`;
-    // @ts-ignore
-    setEdges((eds: any[]) => [
-      ...eds,
-      {
-        id: edgeId,
-        source: sourceNode.id,
-        target: newVideoId,
-        type: 'default',
-        animated: false,
-        style: EDGE_GENERATING_STYLE,
-        label: '延长',
-      },
-    ]);
-
-    console.log('✅ 延长视频节点已创建，等待用户输入提示词');
-  }, [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, reactFlowInstance, resetConnectionMenu]);
-
   // 处理连线连接（生成视频）
   const handleConnect = useCallback(
     (connection: Connection) => {

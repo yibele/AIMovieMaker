@@ -10,4 +10,5 @@ export { useVideoOperations, type UseVideoOperationsReturn } from './useVideoOpe
 export { useNodeOperations, type UseNodeOperationsReturn } from './useNodeOperations';
 export { useVideoGeneration, type UseVideoGenerationReturn, type UseVideoGenerationOptions } from './useVideoGeneration';
 export { useNextShot, type UseNextShotReturn, type UseNextShotOptions } from './useNextShot';
+export { useVideoActions, type UseVideoActionsReturn, type UseVideoActionsOptions } from './useVideoActions';
 
