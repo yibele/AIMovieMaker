@@ -2285,3 +2285,66 @@ describe('TierConfig', () => {
 
 这样可以在早期就解决最容易出错的套餐差异问题，后续的服务层重构可以直接使用适配器。
 
+---
+
+## 八、执行进度记录
+
+### 8.1 完成项目 ✅
+
+| 日期 | 完成内容 | 相关 Commit |
+|------|----------|-------------|
+| 2025-11-27 | 阶段 0：创建 `lib/config/tier-config.ts` 套餐配置适配器 | ✅ |
+| 2025-11-27 | 阶段一：创建工具层 `lib/tools/` | ✅ |
+| 2025-11-27 | 创建 `lib/services/prompt-builder.service.ts` | ✅ |
+| 2025-11-27 | 创建 `lib/services/video-polling.service.ts` | ✅ |
+| 2025-11-27 | 创建 `lib/services/image-generation.service.ts` | ✅ |
+| 2025-11-27 | 创建 `lib/services/video-generation.service.ts` | ✅ |
+| 2025-11-27 | 阶段三：创建 Hooks 层 `hooks/canvas/` | ✅ |
+| 2025-11-27 | - `useImageOperations.ts` 图片节点操作 | ✅ |
+| 2025-11-27 | - `useVideoOperations.ts` 视频节点操作 | ✅ |
+| 2025-11-27 | - `useNodeOperations.ts` 通用节点操作 | ✅ |
+| 2025-11-27 | 创建 `lib/services/node-management.service.ts` 统一节点管理 | ✅ |
+| 2025-11-27 | 阶段四：重构节点组件 | ✅ |
+| 2025-11-27 | - `ImageNode.tsx` 使用 `useImageOperations` | ✅ |
+| 2025-11-27 | - `VideoNode.tsx` 使用 `useVideoOperations` | ✅ |
+| 2025-11-27 | - `Toolbar.tsx` 使用 `useNodeOperations` | ✅ |
+| 2025-11-27 | - `SelectionToolbar.tsx` 使用节点管理服务 | ✅ |
+| 2025-11-27 | - `Canvas.tsx` 使用节点管理服务 | ✅ |
+| 2025-11-27 | - `input-panel-generator.ts` 使用节点管理服务 | ✅ |
+| 2025-11-27 | 统一 `detectAspectRatio` 宽高比计算函数 | ✅ |
+| 2025-11-27 | 清理未使用的导入 | ✅ |
+
+### 8.2 代码变化统计
+
+| 文件 | 重构前行数 | 重构后行数 | 减少 |
+|------|-----------|-----------|------|
+| `ImageNode.tsx` | ~687 | ~630 | -57 |
+| `VideoNode.tsx` | ~840 | ~722 | -118 |
+| `Toolbar.tsx` | ~394 | ~289 | -105 |
+| `SelectionToolbar.tsx` | ~468 | ~424 | -44 |
+| `Canvas.tsx` | ~2459 | ~2420 | -39 |
+| `input-panel-generator.ts` | ~603 | ~427 | -176 |
+| **总计** | - | - | **-539** |
+
+### 8.3 新增服务层文件
+
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `lib/config/tier-config.ts` | ~120 | 套餐配置适配器 |
+| `lib/services/prompt-builder.service.ts` | ~80 | 提示词构建 |
+| `lib/services/video-polling.service.ts` | ~90 | 视频轮询 |
+| `lib/services/image-generation.service.ts` | ~200 | 图片生成业务 |
+| `lib/services/video-generation.service.ts` | ~400 | 视频生成业务 |
+| `lib/services/node-management.service.ts` | ~450 | 节点管理 |
+| `hooks/canvas/useImageOperations.ts` | ~180 | 图片操作 Hook |
+| `hooks/canvas/useVideoOperations.ts` | ~150 | 视频操作 Hook |
+| `hooks/canvas/useNodeOperations.ts` | ~120 | 节点操作 Hook |
+| `lib/tools/*.ts` | ~100 | 工具层导出 |
+
+### 8.4 待完成项目
+
+- [ ] 阶段五：进一步重构 `Canvas.tsx` 视频生成逻辑
+- [ ] 阶段六：清理 `api-mock.ts` 已迁移代码
+- [ ] 添加单元测试（tier-config, services）
+- [ ] 完整功能回归测试
+
