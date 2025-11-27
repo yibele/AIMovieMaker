@@ -57,6 +57,7 @@ import {
   getVideoNodeSize,
   getImageNodeSize,
   detectVideoAspectRatio,
+  detectAspectRatio,
 } from '@/lib/constants/node-sizes';
 import { createVideoFromImage } from '@/lib/services/node-management.service';
 import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
@@ -466,11 +467,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             throw new Error('源视频缺少 mediaGenerationId');
           }
 
-          const aspectRatio = videoElement.size?.width && videoElement.size?.height
-            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16 / 9) < 0.1 ? '16:9'
-              : Math.abs(videoElement.size.width / videoElement.size.height - 1) < 0.1 ? '1:1'
-                : '9:16')
-            : '16:9';
+          // 行级注释：使用统一的宽高比检测函数
+          const aspectRatio = detectAspectRatio(
+            videoElement.size?.width || 640,
+            videoElement.size?.height || 360
+          );
 
           const { generateVideoExtend } = await import('@/lib/api-mock');
           result = await generateVideoExtend(
@@ -494,11 +495,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           if (endImageId) combinedSourceIds.add(endImageId);
           generationType = 'image-to-image';
         } else {
-          // 行级注释：纯文本生成视频
+          // 行级注释：纯文本生成视频 - 使用统一的宽高比检测
           const aspectRatio = videoElement.size?.width && videoElement.size?.height
-            ? (Math.abs(videoElement.size.width / videoElement.size.height - 16 / 9) < 0.1 ? '16:9'
-              : Math.abs(videoElement.size.width / videoElement.size.height - 9 / 16) < 0.1 ? '9:16'
-                : '1:1')
+            ? detectAspectRatio(videoElement.size.width, videoElement.size.height)
             : '9:16'; // 行级注释：默认竖屏（与 Google 官方默认一致）
 
           console.log('🎬 调用文生视频:', { promptText, aspectRatio });
@@ -1576,9 +1575,11 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           throw new Error('源视频缺少 mediaGenerationId');
         }
 
-        const aspectRatio = sourceNode.size?.width && sourceNode.size?.height
-          ? (Math.abs(sourceNode.size.width / sourceNode.size.height - 16 / 9) < 0.1 ? '16:9' : '9:16')
-          : '16:9';
+        // 行级注释：使用统一的视频宽高比检测函数
+        const aspectRatio = detectVideoAspectRatio(
+          sourceNode.size?.width || 640,
+          sourceNode.size?.height || 360
+        );
 
         const { generateVideoReshoot } = await import('@/lib/api-mock');
         const result = await generateVideoReshoot(
