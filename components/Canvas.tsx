@@ -70,7 +70,11 @@ const nodeTypes: NodeTypes = {
   note: NoteNode, // 行级注释：记事本节点（剧本、分镜等长文本）
 };
 
+// 行级注释：统一的边缘样式常量
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
+const EDGE_GENERATING_STYLE = { stroke: '#a855f7', strokeWidth: 1 };
+const EDGE_ERROR_STYLE = { stroke: '#ef4444', strokeWidth: 1 };
+const EDGE_NEXT_SHOT_STYLE = { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' };
 
 function CanvasContent({ projectId }: { projectId?: string }) {
   const elements = useCanvasStore((state) => state.elements);
@@ -377,7 +381,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
                   target: newVideoId,
                   type: 'default',
                   animated: true,
-                  style: { stroke: '#a855f7', strokeWidth: 1 },
+                  style: EDGE_GENERATING_STYLE,
                   label: videoElement.generatedFrom?.type === 'extend' ? '延长' : '镜头控制',
                 },
               ]);
@@ -443,7 +447,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             ? {
               ...edge,
               animated: true,
-              style: { stroke: '#a855f7', strokeWidth: 1 },
+              style: EDGE_GENERATING_STYLE,
             }
             : edge
         )
@@ -546,7 +550,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
               ? {
                 ...edge,
                 animated: false,
-                style: { stroke: '#ef4444', strokeWidth: 1 },
+                style: EDGE_ERROR_STYLE,
               }
               : edge
           )
@@ -1281,7 +1285,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
             targetHandle: null,
             type: 'default',
             animated: true,
-            style: { stroke: '#a855f7', strokeWidth: 1 },
+            style: EDGE_GENERATING_STYLE,
           };
         });
         return [...eds, ...newEdges];
@@ -1375,7 +1379,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       setEdges((eds: any[]) =>
         eds.map((edge: any) =>
           edge.target === newImageId
-            ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
+            ? { ...edge, animated: false, style: EDGE_ERROR_STYLE }
             : edge
         )
       );
@@ -1424,7 +1428,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           targetHandle: 'prompt-text',
           type: 'default',
           animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 1 },
+          style: EDGE_GENERATING_STYLE,
         },
       ]);
 
@@ -1462,7 +1466,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         setEdges((eds: any[]) =>
           eds.map((edge: any) =>
             edge.id === `edge-${sourceNode.id}-${newVideoId}-prompt-text`
-              ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
+              ? { ...edge, animated: false, style: EDGE_ERROR_STYLE }
               : edge
           )
         );
@@ -1562,7 +1566,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           target: newVideoId,
           type: 'default',
           animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 1 },
+          style: EDGE_GENERATING_STYLE,
           label: '镜头控制',
         },
       ]);
@@ -1615,7 +1619,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         setEdges((eds: any[]) =>
           eds.map((edge: any) =>
             edge.id === edgeId
-              ? { ...edge, animated: false, style: { stroke: '#ef4444', strokeWidth: 1 } }
+              ? { ...edge, animated: false, style: EDGE_ERROR_STYLE }
               : edge
           )
         );
@@ -1671,7 +1675,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         target: newVideoId,
         type: 'default',
         animated: false,
-        style: { stroke: '#a855f7', strokeWidth: 1 },
+        style: EDGE_GENERATING_STYLE,
         label: '延长',
       },
     ]);
@@ -1864,7 +1868,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           source: sourceNode.id,
           target: newImageId,
           animated: true,
-          style: { stroke: '#a855f7', strokeWidth: 2, strokeDasharray: '5,5' },
+          style: EDGE_NEXT_SHOT_STYLE,
         },
       ]);
     }
