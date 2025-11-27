@@ -12,6 +12,7 @@ import ImageCropperModal, {
   AspectRatioOption,
   CroppedImageResult,
 } from './ImageCropperModal';
+import { useNodeOperations } from '@/hooks/canvas';
 
 export default function Toolbar() {
   const activeTool = useCanvasStore((state) => state.uiState.activeTool);
@@ -19,7 +20,10 @@ export default function Toolbar() {
   const addElement = useCanvasStore((state) => state.addElement);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
-  const { screenToFlowPosition } = useReactFlow(); // 获取屏幕坐标转画布坐标的方法
+  const { screenToFlowPosition } = useReactFlow();
+
+  // 行级注释：使用节点操作 Hook
+  const { addTextNode, addVideoNode, addNoteNode } = useNodeOperations();
 
   type CropperState = {
     open: boolean;
@@ -53,11 +57,11 @@ export default function Toolbar() {
     {
       id: 'base',
       items: [
-    {
-      id: 'select' as const,
-      icon: MousePointer2,
-      label: '移动',
-      action: () => setUIState({ activeTool: 'select' }),
+        {
+          id: 'select' as const,
+          icon: MousePointer2,
+          label: '移动',
+          action: () => setUIState({ activeTool: 'select' }),
           isActive: activeTool === 'select',
           dotColor: 'bg-blue-500'
         }
@@ -66,117 +70,43 @@ export default function Toolbar() {
     {
       id: 'create',
       items: [
-    {
-      id: 'text' as const,
-      icon: Type,
+        {
+          id: 'text' as const,
+          icon: Type,
           label: '添加文字',
-      action: () => handleAddText(),
+          action: () => addTextNode(), // 行级注释：使用 Hook
           isActive: false,
           dotColor: 'bg-purple-500'
-    },
-    {
-      id: 'upload' as const,
-      icon: Upload,
-      label: '上传图片',
-      action: () => handleUploadImage(),
+        },
+        {
+          id: 'upload' as const,
+          icon: Upload,
+          label: '上传图片',
+          action: () => handleUploadImage(),
           isActive: false,
           dotColor: 'bg-pink-500'
-    },
-    {
-      id: 'video' as const,
-      icon: Video,
-      label: '视频节点',
-      action: () => handleAddVideo(),
+        },
+        {
+          id: 'video' as const,
+          icon: Video,
+          label: '视频节点',
+          action: () => addVideoNode(), // 行级注释：使用 Hook
           isActive: false,
           dotColor: 'bg-orange-500'
-    },
-    {
-      id: 'note' as const,
-      icon: FileText,
-      label: '记事本',
-      action: () => handleAddNote(),
+        },
+        {
+          id: 'note' as const,
+          icon: FileText,
+          label: '记事本',
+          action: () => addNoteNode({ title: '分镜' }), // 行级注释：使用 Hook
           isActive: false,
           dotColor: 'bg-amber-500'
-    },
+        },
       ]
     }
-    ];
+  ];
 
-  // 添加文字
-  const handleAddText = () => {
-    // 获取屏幕中心的画布坐标
-    const screenCenter = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    };
-    const flowPosition = screenToFlowPosition(screenCenter);
-    
-    const newText: TextElement = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      text: '双击编辑文字',
-      position: {
-        x: flowPosition.x - TEXT_NODE_DEFAULT_SIZE.width / 2, // 居中对齐
-        y: flowPosition.y - TEXT_NODE_DEFAULT_SIZE.height / 2,
-      },
-      size: TEXT_NODE_DEFAULT_SIZE,
-      fontSize: 16,
-      color: '#000000',
-      fontWeight: 'normal',
-      fontStyle: 'normal',
-      textDecoration: 'none',
-    };
-    addElement(newText);
-  };
-
-  // 添加视频节点 - 创建空节点供文生视频
-  const handleAddVideo = () => {
-    // 获取屏幕中心的画布坐标
-    const screenCenter = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    };
-    const flowPosition = screenToFlowPosition(screenCenter);
-    
-    const newVideo: VideoElement = {
-      id: `video-${Date.now()}`,
-      type: 'video',
-      position: {
-        x: flowPosition.x - VIDEO_NODE_DEFAULT_SIZE.width / 2, // 居中对齐
-        y: flowPosition.y - VIDEO_NODE_DEFAULT_SIZE.height / 2,
-      },
-      size: VIDEO_NODE_DEFAULT_SIZE,
-      src: '', // 空源，等待生成
-      thumbnail: '',
-      duration: 0,
-      status: 'pending', // pending 状态会自动显示输入框
-      readyForGeneration: false,
-      generationCount: 1, // 默认生成 1 个视频
-    };
-    addElement(newVideo);
-  };
-
-  // 添加记事本节点 - 用于长文本（剧本、分镜等）
-  const handleAddNote = () => {
-    const screenCenter = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    };
-    const flowPosition = screenToFlowPosition(screenCenter);
-    
-    const newNote: NoteElement = {
-      id: `note-${Date.now()}`,
-      type: 'note',
-      position: {
-        x: flowPosition.x - NOTE_NODE_DEFAULT_SIZE.width / 2,
-        y: flowPosition.y - NOTE_NODE_DEFAULT_SIZE.height / 2,
-      },
-      size: NOTE_NODE_DEFAULT_SIZE,
-      content: '', // 空内容
-      title: '分镜',
-    };
-    addElement(newNote);
-  };
+  // 行级注释：handleAddText, handleAddVideo, handleAddNote 已移至 useNodeOperations Hook
 
   // 上传图片
   const handleUploadImage = () => {
