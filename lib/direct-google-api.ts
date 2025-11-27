@@ -1,6 +1,17 @@
 // 直接调用 Google API，不通过 Vercel 服务器
 // 用于节省 Fast Origin Transfer
 import { ReshootMotionType } from './types';
+// 行级注释：导入套餐配置适配器，统一管理 Pro/Ultra 差异
+import {
+  getVideoApiConfig,
+  getImageApiConfig,
+  getPaygateTier,
+  getVideoAspectRatioEnum,
+  type AccountTier,
+  type AspectRatio,
+  type VideoMode,
+  type VideoGenerationType,
+} from './config/tier-config';
 
 /**
  * 获取视频积分状态
@@ -306,9 +317,9 @@ export async function generateVideoTextDirectly(
   bearerToken: string,
   projectId: string,
   sessionId: string,
-  aspectRatio: '16:9' | '9:16' | '1:1',
-  accountTier: 'pro' | 'ultra',
-  videoModel: 'quality' | 'fast' = 'quality', // 新增参数
+  aspectRatio: AspectRatio,
+  accountTier: AccountTier,
+  videoModel: VideoMode = 'quality',
   seed?: number,
   sceneId?: string
 ): Promise<{
@@ -317,39 +328,8 @@ export async function generateVideoTextDirectly(
   status: string;
   remainingCredits?: number;
 }> {
-  // 规范化视频宽高比
-  const normalizedAspect = aspectRatio === '9:16'
-    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
-    : aspectRatio === '1:1'
-      ? 'VIDEO_ASPECT_RATIO_SQUARE'
-      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
-
-  // 行级注释：根据账号类型选择视频模型
-  let videoModelKey: string;
-  if (accountTier === 'ultra') {
-    // Ultra 账号使用带 _ultra 后缀的模型
-    // 根据 videoModel 选择 quality (无 fast) 或 fast
-    // Quality: veo_3_1_t2v (用户提供的正确负载)
-    // Fast: veo_3_1_t2v_fast_ultra
-    const baseModel = videoModel === 'fast' ? 'veo_3_1_t2v_fast_ultra' : 'veo_3_1_t2v';
-
-    videoModelKey = aspectRatio === '9:16'
-      ? baseModel // 假设 portrait 逻辑相同
-      : baseModel;
-
-    // 修正：如果 portrait 有特殊后缀，需要处理。目前代码显示 fast_portrait_ultra 不存在，而是 fast_ultra。
-    // 假设 quality 也是 veo_3_1_t2v_ultra。
-  } else {
-    // Pro 账号使用标准模型 (Pro 只有 fast?)
-    videoModelKey = aspectRatio === '9:16'
-      ? 'veo_3_1_t2v_fast_portrait'
-      : 'veo_3_1_t2v_fast';
-  }
-
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra'
-    ? 'PAYGATE_TIER_TWO'
-    : 'PAYGATE_TIER_ONE';
+  // 行级注释：使用 tier-config 适配器获取所有配置，消除条件判断
+  const config = getVideoApiConfig('text-to-video', accountTier, aspectRatio, videoModel);
 
   const requestSeed = typeof seed === 'number'
     ? seed
@@ -366,16 +346,16 @@ export async function generateVideoTextDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier,
+      userPaygateTier: config.userPaygateTier,  // 行级注释：使用 tier-config 获取的配置
     },
     requests: [
       {
-        aspectRatio: normalizedAspect,
+        aspectRatio: config.aspectRatioEnum,  // 行级注释：使用 tier-config 获取的配置
         seed: requestSeed,
         textInput: {
           prompt: prompt.trim(),
         },
-        videoModelKey,
+        videoModelKey: config.videoModelKey,  // 行级注释：使用 tier-config 获取的配置
         metadata: {
           sceneId: generatedSceneId,
         },
@@ -385,9 +365,10 @@ export async function generateVideoTextDirectly(
 
   console.log('🎬 直接调用 Google Flow API 生成视频（文生视频）...', {
     accountTier,
-    aspectRatio: normalizedAspect,
-    videoModelKey,
-    userPaygateTier,
+    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
+    aspectRatio: config.aspectRatioEnum,
+    videoModelKey: config.videoModelKey,
+    userPaygateTier: config.userPaygateTier,
     sceneId: generatedSceneId,
   });
 
@@ -443,9 +424,9 @@ export async function generateVideoImageDirectly(
   bearerToken: string,
   projectId: string,
   sessionId: string,
-  aspectRatio: '16:9' | '9:16' | '1:1',
-  accountTier: 'pro' | 'ultra',
-  videoModel: 'quality' | 'fast' = 'quality', // 新增参数
+  aspectRatio: AspectRatio,
+  accountTier: AccountTier,
+  videoModel: VideoMode = 'quality',
   startMediaId: string,
   endMediaId?: string,
   seed?: number,
@@ -456,59 +437,11 @@ export async function generateVideoImageDirectly(
   status: string;
   remainingCredits?: number;
 }> {
-  // 规范化视频宽高比
-  const normalizedAspect = aspectRatio === '9:16'
-    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
-    : aspectRatio === '1:1'
-      ? 'VIDEO_ASPECT_RATIO_SQUARE'
-      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
-
   const hasEndImage = Boolean(endMediaId && endMediaId.trim());
 
-  // 行级注释：根据账号类型和模式选择视频模型（注意：ultra 在 fl 之前）
-  let videoModelKey: string;
-  if (accountTier === 'ultra') {
-    // Ultra 账号使用带 _ultra 的模型
-    const isFast = videoModel === 'fast';
-
-    if (hasEndImage) {
-      // 首尾帧模式 - ultra 在 fl 之前
-      // fast: veo_3_1_i2v_s_fast_ultra_fl
-      // quality: veo_3_1_i2v_s_fl (推测，基于 veo_3_1_i2v_s)
-      const base = isFast ? 'veo_3_1_i2v_s_fast_ultra_fl' : 'veo_3_1_i2v_s_fl';
-
-      videoModelKey = aspectRatio === '9:16'
-        ? (isFast ? 'veo_3_1_i2v_s_fast_portrait_ultra_fl' : 'veo_3_1_i2v_s_portrait_fl')
-        : base;
-    } else {
-      // 仅首帧模式
-      // fast: veo_3_1_i2v_s_fast_ultra
-      // quality: veo_3_1_i2v_s (用户提供的正确负载)
-      const base = isFast ? 'veo_3_1_i2v_s_fast_ultra' : 'veo_3_1_i2v_s';
-
-      videoModelKey = aspectRatio === '9:16'
-        ? (isFast ? 'veo_3_1_i2v_s_fast_portrait_ultra' : 'veo_3_1_i2v_s_portrait')
-        : base;
-    }
-  } else {
-    // Pro 账号使用标准模型 (保持原样，Pro 只有 fast)
-    if (hasEndImage) {
-      // 首尾帧模式
-      videoModelKey = aspectRatio === '9:16'
-        ? 'veo_3_1_i2v_s_fast_portrait_fl'
-        : 'veo_3_1_i2v_s_fast_fl';
-    } else {
-      // 仅首帧模式
-      videoModelKey = aspectRatio === '9:16'
-        ? 'veo_3_1_i2v_s_fast_portrait'
-        : 'veo_3_1_i2v_s_fast';
-    }
-  }
-
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra'
-    ? 'PAYGATE_TIER_TWO'
-    : 'PAYGATE_TIER_ONE';
+  // 行级注释：使用 tier-config 适配器获取配置，根据是否有尾帧选择不同的生成类型
+  const generationType: VideoGenerationType = hasEndImage ? 'image-to-video-fl' : 'image-to-video';
+  const config = getVideoApiConfig(generationType, accountTier, aspectRatio, videoModel);
 
   const requestSeed = typeof seed === 'number'
     ? seed
@@ -522,12 +455,12 @@ export async function generateVideoImageDirectly(
 
   // 构建请求对象
   const requestObject: any = {
-    aspectRatio: normalizedAspect,
+    aspectRatio: config.aspectRatioEnum,  // 行级注释：使用 tier-config 获取的配置
     seed: requestSeed,
     textInput: {
       prompt: prompt.trim(),
     },
-    videoModelKey,
+    videoModelKey: config.videoModelKey,  // 行级注释：使用 tier-config 获取的配置
     startImage: {
       mediaId: startMediaId.trim(),
     },
@@ -548,7 +481,7 @@ export async function generateVideoImageDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier,
+      userPaygateTier: config.userPaygateTier,  // 行级注释：使用 tier-config 获取的配置
     },
     requests: [requestObject],
   };
@@ -560,10 +493,11 @@ export async function generateVideoImageDirectly(
 
   console.log('🎬 直接调用 Google Flow API 生成视频（图生视频）...', {
     accountTier,
+    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
     mode: hasEndImage ? '首尾帧' : '仅首帧',
-    aspectRatio: normalizedAspect,
-    videoModelKey,
-    userPaygateTier,
+    aspectRatio: config.aspectRatioEnum,
+    videoModelKey: config.videoModelKey,
+    userPaygateTier: config.userPaygateTier,
     sceneId: generatedSceneId,
   });
 
@@ -799,8 +733,8 @@ export async function generateVideoReshootDirectly(
   bearerToken: string,
   sessionId: string,
   projectId: string,
-  aspectRatio: '16:9' | '9:16' | '1:1',
-  accountTier: 'pro' | 'ultra',
+  aspectRatio: AspectRatio,
+  accountTier: AccountTier,
   seed?: number,
   sceneId?: string
 ): Promise<{
@@ -811,25 +745,8 @@ export async function generateVideoReshootDirectly(
 }> {
   const url = 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoReshootVideo';
 
-  // 规范化视频宽高比
-  const normalizedAspect = aspectRatio === '9:16'
-    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
-    : aspectRatio === '1:1'
-      ? 'VIDEO_ASPECT_RATIO_SQUARE'
-      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
-
-  // 行级注释：根据宽高比选择模型 Key (目前文档只展示了 landscape，暂且假设有 portrait)
-  // 如果 API 报错，可能需要统一用 landscape
-  const videoModelKey = aspectRatio === '9:16'
-    ? 'veo_3_0_reshoot_portrait'
-    : aspectRatio === '1:1'
-      ? 'veo_3_0_reshoot_square'
-      : 'veo_3_0_reshoot_landscape';
-
-  // 行级注释：根据账号类型选择 PaygateTier
-  const userPaygateTier = accountTier === 'ultra'
-    ? 'PAYGATE_TIER_TWO'
-    : 'PAYGATE_TIER_ONE';
+  // 行级注释：使用 tier-config 适配器获取配置（镜头控制只需要 modelKey 和 paygateTier）
+  const config = getVideoApiConfig('reshoot', accountTier, aspectRatio);
 
   const requestSeed = typeof seed === 'number'
     ? seed
@@ -846,17 +763,17 @@ export async function generateVideoReshootDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier,
+      userPaygateTier: config.userPaygateTier,  // 行级注释：使用 tier-config 获取的配置
     },
     requests: [
       {
         seed: requestSeed,
-        aspectRatio: normalizedAspect,
+        aspectRatio: config.aspectRatioEnum,  // 行级注释：使用 tier-config 获取的配置
         videoInput: {
           mediaId: mediaId.trim(),
         },
         reshootMotionType,
-        videoModelKey, // 使用计算出的 key
+        videoModelKey: config.videoModelKey,  // 行级注释：使用 tier-config 获取的配置
         metadata: {
           sceneId: generatedSceneId,
         },
@@ -867,7 +784,7 @@ export async function generateVideoReshootDirectly(
   console.log('🎬 直接调用 Google API 镜头控制重拍:', {
     mediaId: mediaId.substring(0, 20) + '...',
     reshootMotionType,
-    videoModelKey,
+    videoModelKey: config.videoModelKey,
     sceneId: generatedSceneId,
   });
 
@@ -920,9 +837,9 @@ export async function generateVideoExtendDirectly(
   bearerToken: string,
   sessionId: string,
   projectId: string,
-  aspectRatio: '16:9' | '9:16' | '1:1',
-  accountTier: 'pro' | 'ultra',
-  videoModel: 'quality' | 'fast',
+  aspectRatio: AspectRatio,
+  accountTier: AccountTier,
+  videoModel: VideoMode,
   startFrameIndex?: number,
   endFrameIndex?: number,
   seed?: number,
@@ -935,26 +852,8 @@ export async function generateVideoExtendDirectly(
 }> {
   const url = 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoExtendVideo';
 
-  // 规范化视频宽高比
-  const normalizedAspect = aspectRatio === '9:16'
-    ? 'VIDEO_ASPECT_RATIO_PORTRAIT'
-    : aspectRatio === '1:1'
-      ? 'VIDEO_ASPECT_RATIO_SQUARE'
-      : 'VIDEO_ASPECT_RATIO_LANDSCAPE';
-
-  // 行级注释：根据宽高比、账号类型和视频模型选择 videoModelKey
-  // quality 模式：veo_3_1_extend_{aspect}_{ultra|}
-  // fast 模式：veo_3_1_extend_fast_{aspect}_{ultra|}
-  const aspectSuffix = aspectRatio === '9:16'
-    ? 'portrait'
-    : aspectRatio === '1:1'
-      ? 'square'
-      : 'landscape';
-
-  const tierSuffix = accountTier === 'ultra' ? '_ultra' : '';
-  const videoModelKey = videoModel === 'fast'
-    ? `veo_3_1_extend_fast_${aspectSuffix}${tierSuffix}`
-    : `veo_3_1_extend_${aspectSuffix}${tierSuffix}`;
+  // 行级注释：使用 tier-config 适配器获取配置
+  const config = getVideoApiConfig('extend', accountTier, aspectRatio, videoModel);
 
   const requestSeed = typeof seed === 'number'
     ? seed
@@ -975,7 +874,7 @@ export async function generateVideoExtendDirectly(
       sessionId: sessionId.trim(),
       projectId: projectId.trim(),
       tool: 'PINHOLE',
-      userPaygateTier: accountTier === 'ultra' ? 'PAYGATE_TIER_TWO' : 'PAYGATE_TIER_ONE',
+      userPaygateTier: config.userPaygateTier,  // 行级注释：使用 tier-config 获取的配置
     },
     requests: [
       {
@@ -987,8 +886,8 @@ export async function generateVideoExtendDirectly(
           startFrameIndex: finalStartFrameIndex,
           endFrameIndex: finalEndFrameIndex,
         },
-        videoModelKey,
-        aspectRatio: normalizedAspect,
+        videoModelKey: config.videoModelKey,  // 行级注释：使用 tier-config 获取的配置
+        aspectRatio: config.aspectRatioEnum,  // 行级注释：使用 tier-config 获取的配置
         seed: requestSeed,
         metadata: {
           sceneId: generatedSceneId,
@@ -1000,7 +899,8 @@ export async function generateVideoExtendDirectly(
   console.log('🎬 直接调用 Google API 延长视频:', {
     mediaId: mediaId.substring(0, 20) + '...',
     prompt,
-    videoModelKey,
+    videoModelKey: config.videoModelKey,
+    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
     frames: `${finalStartFrameIndex}-${finalEndFrameIndex}`,
     sceneId: generatedSceneId,
   });

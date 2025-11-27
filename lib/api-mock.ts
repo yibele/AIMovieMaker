@@ -1,5 +1,16 @@
 import { GenerationMode, ImageElement, ReshootMotionType } from './types';
 import { useCanvasStore } from './store';
+// 行级注释：导入套餐配置适配器，统一管理 Pro/Ultra 差异
+import {
+  getEffectiveVideoMode,
+  getVideoApiConfig,
+  getImageApiConfig,
+  type AccountTier,
+  type AspectRatio,
+  type VideoMode,
+  type ImageModel,
+  type VideoGenerationType,
+} from './config/tier-config';
 
 // ============================================================================
 // 业务逻辑工具函数
@@ -34,6 +45,7 @@ function buildFinalPrompt(userPrompt: string, prefixPrompt?: string): string {
 
 /**
  * 获取 API 配置和会话信息
+ * 行级注释：使用 tier-config 适配器获取有效的视频模式，不再硬编码条件判断
  */
 function getApiContext() {
   const apiConfig = useCanvasStore.getState().apiConfig;
@@ -44,10 +56,10 @@ function getApiContext() {
     sessionId = context.sessionId;
   }
 
-  const accountTier = apiConfig.accountTier || 'pro';
-  const imageModel = apiConfig.imageModel || 'nanobanana';
-  // 行级注释：Pro 账户强制使用 fast 模式，Ultra 账户可选
-  const videoModel = accountTier === 'pro' ? 'fast' : (apiConfig.videoModel || 'quality');
+  const accountTier: AccountTier = apiConfig.accountTier || 'pro';
+  const imageModel: ImageModel = apiConfig.imageModel || 'nanobanana';
+  // 行级注释：使用 tier-config 适配器获取有效视频模式（Pro 自动降级为 fast）
+  const videoModel: VideoMode = getEffectiveVideoMode(accountTier, apiConfig.videoModel as VideoMode | undefined);
 
   return {
     apiConfig,
