@@ -8,6 +8,7 @@ import { useMaterialsStore } from '@/lib/materials-store';
 import { ImageElement, VideoElement } from '@/lib/types';
 import { toast } from 'sonner';
 import { getVideoNodeSize } from '@/lib/constants/node-sizes';
+import { createStartEndVideoNode, getRightSidePosition } from '@/lib/services/node-management.service';
 
 interface SelectionToolbarProps {
   onMultiImageEdit?: () => void;
@@ -266,7 +267,7 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
     }
   };
 
-  // 行级注释：首尾帧生成视频
+  // 行级注释：首尾帧生成视频 - 使用节点管理服务
   const handleStartEndVideo = () => {
     if (selectedImages.length !== 2) {
       toast.error('请选择恰好 2 张图片作为首尾帧');
@@ -291,65 +292,36 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
     console.log('🎬 首尾帧生成视频:', {
       startImage: startImage.id,
       endImage: endImage.id,
-      startX: startImage.position.x,
-      endX: endImage.position.x,
     });
 
-    // 行级注释：判断视频比例（根据首帧图片）
-    const width = startImage.size?.width || 320;
-    const height = startImage.size?.height || 180;
-    const ratio = width / height;
-    const aspectRatio: '9:16' | '16:9' = Math.abs(ratio - 9 / 16) < 0.1 ? '9:16' : '16:9';
-    const videoSize = getVideoNodeSize(aspectRatio);
+    // 行级注释：使用节点管理服务计算视频位置（尾帧图片右侧）
+    const videoPosition = getRightSidePosition(
+      endImage.position,
+      endImage.size || { width: 640, height: 360 },
+      80
+    );
 
-    // 行级注释：视频节点位置（放在右侧图片的右侧）
-    const endImageRight = endImage.position.x + (endImage.size?.width || 640);
-    const videoPosition = {
-      x: endImageRight + 80, // 右侧图片右边 + 间距
-      y: endImage.position.y, // 与右侧图片对齐
-    };
-
-    // 行级注释：创建视频节点
-    const videoId = `video-${Date.now()}`;
+    // 行级注释：使用节点管理服务创建首尾帧视频节点
+    const newVideo = createStartEndVideoNode(startImage, endImage, videoPosition);
     const addElement = useCanvasStore.getState().addElement;
-
-    const newVideo: VideoElement = {
-      id: videoId,
-      type: 'video',
-      src: '',
-      thumbnail: '',
-      duration: 0,
-      status: 'pending',
-      position: videoPosition,
-      size: videoSize,
-      promptText: '',
-      startImageId: startImage.id,
-      endImageId: endImage.id,
-      generationCount: 1,
-      generatedFrom: {
-        type: 'image-to-image',
-        sourceIds: [startImage.id, endImage.id],
-      },
-    };
-
     addElement(newVideo);
 
-    // 行级注释：创建连线
+    // 行级注释：创建连线（连线逻辑保留在组件内）
     setEdges((eds: any[]) => [
       ...eds,
       {
-        id: `edge-${startImage.id}-${videoId}-start`,
+        id: `edge-${startImage.id}-${newVideo.id}-start`,
         source: startImage.id,
-        target: videoId,
+        target: newVideo.id,
         targetHandle: 'start-image',
         type: 'default',
         animated: false,
         style: { stroke: '#3b82f6', strokeWidth: 2 },
       },
       {
-        id: `edge-${endImage.id}-${videoId}-end`,
+        id: `edge-${endImage.id}-${newVideo.id}-end`,
         source: endImage.id,
-        target: videoId,
+        target: newVideo.id,
         targetHandle: 'end-image',
         type: 'default',
         animated: false,
