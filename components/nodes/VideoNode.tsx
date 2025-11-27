@@ -5,7 +5,6 @@ import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xy
 import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send, FolderInput } from 'lucide-react';
 import type { VideoElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
-import { useMaterialsStore } from '@/lib/materials-store';
 import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
 import { VIDEO_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';

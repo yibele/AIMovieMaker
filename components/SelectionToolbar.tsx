@@ -7,7 +7,6 @@ import { useCanvasStore } from '@/lib/store';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { ImageElement, VideoElement } from '@/lib/types';
 import { toast } from 'sonner';
-import { getVideoNodeSize } from '@/lib/constants/node-sizes';
 import { createStartEndVideoNode, getRightSidePosition } from '@/lib/services/node-management.service';
 
 interface SelectionToolbarProps {

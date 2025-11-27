@@ -4,10 +4,9 @@ import { useState, useRef, useCallback } from 'react';
 import { MousePointer2, Type, Upload, Video, FileText } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
-import { TextElement, ImageElement, VideoElement, NoteElement } from '@/lib/types';
+import { ImageElement } from '@/lib/types';
 import { registerUploadedImage } from '@/lib/api-mock';
 import type { FlowAspectRatioEnum } from '@/lib/api-mock';
-import { TEXT_NODE_DEFAULT_SIZE, VIDEO_NODE_DEFAULT_SIZE, NOTE_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
 import ImageCropperModal, {
   AspectRatioOption,
   CroppedImageResult,

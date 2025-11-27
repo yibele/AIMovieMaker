@@ -5,7 +5,6 @@ import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xy
 import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput, Clapperboard } from 'lucide-react';
 import type { ImageElement, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
-import { useMaterialsStore } from '@/lib/materials-store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
