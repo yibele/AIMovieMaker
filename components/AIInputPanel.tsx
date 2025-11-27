@@ -281,39 +281,49 @@ export default function AIInputPanel() {
                   </button>
                 </div>
 
-                {/* 视频模型 (Ultra) */}
-                {apiConfig.accountTier === 'ultra' && (
-                  <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
-                    <button
-                      onClick={() => !apiConfig.isManaged && setApiConfig({ videoModel: 'quality' })}
-                      disabled={apiConfig.isManaged}
-                      title={apiConfig.isManaged ? "托管模式下仅支持快速模型" : "高质量生成"}
-                      className={`
-                        flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
-                        ${videoModel === 'quality'
-                          ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                          : apiConfig.isManaged 
-                            ? 'text-gray-300 dark:text-slate-600 cursor-not-allowed opacity-50 bg-transparent' 
+                {/* 视频模型 - Pro 只能用 Fast，Ultra 可以选 Quality/Fast */}
+                <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
+                  {apiConfig.accountTier === 'ultra' ? (
+                    <>
+                      <button
+                        onClick={() => !apiConfig.isManaged && setApiConfig({ videoModel: 'quality' })}
+                        disabled={apiConfig.isManaged}
+                        title={apiConfig.isManaged ? "托管模式下仅支持快速模型" : "高质量生成"}
+                        className={`
+                          flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
+                          ${videoModel === 'quality'
+                            ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                            : apiConfig.isManaged 
+                              ? 'text-gray-300 dark:text-slate-600 cursor-not-allowed opacity-50 bg-transparent' 
+                              : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
+                        `}
+                      >
+                        <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
+                        Quality
+                      </button>
+                      <button
+                        onClick={() => setApiConfig({ videoModel: 'fast' })}
+                        className={`
+                          flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
+                          ${videoModel === 'fast'
+                            ? 'bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
                             : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
-                      `}
-                    >
-                      <div className={`w-2 h-2 rounded-full ${videoModel === 'quality' ? 'bg-violet-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
-                      Quality
-                    </button>
+                        `}
+                      >
+                        <div className={`w-2 h-2 rounded-full ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
+                        Fast
+                      </button>
+                    </>
+                  ) : (
+                    // Pro 账户只显示 Fast 按钮（始终选中状态）
                     <button
-                      onClick={() => setApiConfig({ videoModel: 'fast' })}
-                      className={`
-                        flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
-                        ${videoModel === 'fast'
-                          ? 'bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                          : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
-                      `}
+                      className="flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200 bg-white dark:bg-slate-600 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                     >
-                      <div className={`w-2 h-2 rounded-full ${videoModel === 'fast' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-slate-500'}`} />
-                      Fast
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      Fast 视频
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* 3. 风格 */}

@@ -46,13 +46,15 @@ function getApiContext() {
 
   const accountTier = apiConfig.accountTier || 'pro';
   const imageModel = apiConfig.imageModel || 'nanobanana';
+  // 行级注释：Pro 账户强制使用 fast 模式，Ultra 账户可选
+  const videoModel = accountTier === 'pro' ? 'fast' : (apiConfig.videoModel || 'quality');
 
   return {
     apiConfig,
     sessionId,
     accountTier,
     imageModel,
-    videoModel: apiConfig.videoModel || 'quality',
+    videoModel,
   };
 }
 
