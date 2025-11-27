@@ -56,6 +56,7 @@ import {
   TEXT_NODE_DEFAULT_SIZE,
   getVideoNodeSize,
   getImageNodeSize,
+  detectVideoAspectRatio,
 } from '@/lib/constants/node-sizes';
 import { createVideoFromImage } from '@/lib/services/node-management.service';
 
@@ -1570,15 +1571,13 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       return;
     }
 
-    // 行级注释：根据图片尺寸判断比例（与 ImageNode 的 getAspectRatio 逻辑一致）
-    const width = sourceNode.size?.width || 320;
-    const height = sourceNode.size?.height || 180;
-    const ratio = width / height;
+    // 行级注释：使用统一的 detectVideoAspectRatio 函数判断比例
+    const aspectRatio = detectVideoAspectRatio(
+      sourceNode.size?.width || 320,
+      sourceNode.size?.height || 180
+    );
 
-    // 行级注释：视频只支持 16:9 和 9:16，方形图片默认用横屏
-    const aspectRatio: '9:16' | '16:9' = Math.abs(ratio - 9 / 16) < 0.1 ? '9:16' : '16:9';
-
-    console.log('🎬 根据图片比例自动生成视频:', { width, height, aspectRatio });
+    console.log('🎬 根据图片比例自动生成视频:', aspectRatio);
 
     handleImageToVideo(sourceNode, aspectRatio);
   }, [connectionMenu.sourceNodeId, elements, handleImageToVideo, resetConnectionMenu]);

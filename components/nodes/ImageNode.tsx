@@ -11,7 +11,7 @@ import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-gene
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
 import { VisionAnalysisModal } from '../VisionAnalysisModal';
 import { toast } from 'sonner';
-import { IMAGE_NODE_DEFAULT_SIZE, TEXT_NODE_DEFAULT_SIZE } from '@/lib/constants/node-sizes';
+import { IMAGE_NODE_DEFAULT_SIZE, TEXT_NODE_DEFAULT_SIZE, detectAspectRatio } from '@/lib/constants/node-sizes';
 import { useImageOperations } from '@/hooks/canvas';
 
 // 行级注释：图片节点组件
@@ -48,15 +48,13 @@ function ImageNode({ data, selected, id }: NodeProps) {
     : '';
   const autoGenerateTriggeredRef = useRef(false); // 行级注释：防止自动触发多次
 
-  // 行级注释：获取宽高比
-  const getAspectRatio = (): '16:9' | '9:16' | '1:1' => {
-    const width = imageData.size?.width || 320;
-    const height = imageData.size?.height || 180;
-    const ratio = width / height;
-    if (Math.abs(ratio - 16 / 9) < 0.1) return '16:9';
-    if (Math.abs(ratio - 9 / 16) < 0.1) return '9:16';
-    return '1:1';
-  };
+  // 行级注释：获取宽高比 - 使用统一的 detectAspectRatio 函数
+  const getAspectRatio = useCallback((): '16:9' | '9:16' | '1:1' => {
+    return detectAspectRatio(
+      imageData.size?.width || 320,
+      imageData.size?.height || 180
+    );
+  }, [imageData.size]);
 
   // 行级注释：处理图生图
   const handleImageToImage = useCallback(async () => {
