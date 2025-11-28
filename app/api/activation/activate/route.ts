@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     if (!code?.trim()) {
       return NextResponse.json({ error: '请输入邀请码' }, { status: 400 });
     }
-    // 转换为小写以忽略大小写差异
-    const normalizedCode = code.trim().toLowerCase();
+    // 转换为大写以忽略大小写差异（激活码存储为大写）
+    const normalizedCode = code.trim().toUpperCase();
 
     // 4. 查询邀请码 (分步查询以避免联表问题)
     console.log('正在查询邀请码:', normalizedCode);
