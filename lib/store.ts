@@ -113,7 +113,7 @@ const loadApiConfig = (): ApiConfig => {
       apiKey: '',
       bearerToken: '',
       cookie: '',
-      dashScopeApiKey: '',
+      dashScopeApiKey: 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
       proxy: '',
       projectId: '',
       workflowId: context.workflowId,
@@ -135,7 +135,7 @@ const loadApiConfig = (): ApiConfig => {
         apiKey: parsed?.apiKey || '',
         bearerToken: parsed?.bearerToken || '',
         cookie: parsed?.cookie || '',
-        dashScopeApiKey: parsed?.dashScopeApiKey || '',
+        dashScopeApiKey: parsed?.dashScopeApiKey || 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
         proxy: parsed?.proxy || '',
         projectId: parsed?.projectId || '',
         workflowId: parsed?.workflowId || context.workflowId,
@@ -157,7 +157,7 @@ const loadApiConfig = (): ApiConfig => {
     apiKey: '',
     bearerToken: '',
     cookie: '',
-    dashScopeApiKey: '',
+    dashScopeApiKey: 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
     proxy: '',
     projectId: '',
     workflowId: context.workflowId,
