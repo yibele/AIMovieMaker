@@ -92,25 +92,16 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     }
   }, [isLoading, searchQuery]);
 
-  // 打开时加载数据，关闭时清空内存
+  // 初始加载（只有首次打开且没数据时才请求）
   useEffect(() => {
-    if (isOpen) {
-      // 打开面板时加载数据
+    if (isOpen && prompts.length === 0) {
       fetchPrompts(1, true);
-    } else {
-      // 关闭面板时清空所有数据，释放内存
-      setPrompts([]);
-      setPage(1);
-      setHasMore(true);
-      setSearchQuery('');
-      setSelectedPrompt(null);
-      setCopiedId(null);
     }
   }, [isOpen]);
 
-  // 搜索变化时重新加载（仅在面板打开时）
+  // 搜索变化时重新加载
   useEffect(() => {
-    if (isOpen && searchQuery !== '') {
+    if (isOpen) {
       const timer = setTimeout(() => {
         fetchPrompts(1, true);
       }, 300);
