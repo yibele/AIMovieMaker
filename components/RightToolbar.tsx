@@ -1,19 +1,29 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen, Bot } from 'lucide-react';
+import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen, Bot, Lightbulb } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
 import PromptLibraryPanel from './PromptLibraryPanel';
 import GrokAssistantPanel from './GrokAssistantPanel';
+import AiwindPromptsPanel from './AiwindPromptsPanel';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
   const [isMaterialsPanelOpen, setIsMaterialsPanelOpen] = useState(false);
   const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
+  const [isAiwindPanelOpen, setIsAiwindPanelOpen] = useState(false);
   const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
   const isAssistantOpen = useCanvasStore((state) => state.isAssistantOpen);
   const setIsAssistantOpen = useCanvasStore((state) => state.setIsAssistantOpen);
   const isManaged = useCanvasStore((state) => state.apiConfig.isManaged); // 读取是否为托管模式
+
+  // 关闭所有面板的辅助函数
+  const closeAllPanels = () => {
+    setIsMaterialsPanelOpen(false);
+    setIsPromptLibraryOpen(false);
+    setIsAiwindPanelOpen(false);
+    setIsAssistantOpen(false);
+  };
 
   // 按钮配置
   const mainGroups = [
@@ -22,34 +32,53 @@ export default function RightToolbar() {
       id: 'assets',
       items: [
         {
-          icon: FolderOpen, // 替换为 FolderOpen
+          icon: FolderOpen,
           onClick: () => {
             setIsMaterialsPanelOpen(!isMaterialsPanelOpen);
-            if (!isMaterialsPanelOpen) setIsPromptLibraryOpen(false); // 互斥：打开素材库时关闭提示词库
+            if (!isMaterialsPanelOpen) {
+              setIsPromptLibraryOpen(false);
+              setIsAiwindPanelOpen(false);
+            }
           },
           title: '素材库',
           isActive: isMaterialsPanelOpen,
           dotColor: 'bg-blue-500',
-          // hidden: isManaged, // 托管模式下隐藏 - 现在对所有用户开放
         },
         {
           icon: Sparkles,
           onClick: () => {
-            setIsPromptLibraryOpen(!isPromptLibraryOpen); // 允许 toggle
-            if (!isPromptLibraryOpen) setIsMaterialsPanelOpen(false); // 互斥：打开提示词库时关闭素材库
+            setIsPromptLibraryOpen(!isPromptLibraryOpen);
+            if (!isPromptLibraryOpen) {
+              setIsMaterialsPanelOpen(false);
+              setIsAiwindPanelOpen(false);
+            }
           },
           title: prefixPrompt ? `风格库：${prefixPrompt.slice(0, 20)}...` : '风格库',
-          isActive: isPromptLibraryOpen || Boolean(prefixPrompt), // 当面板打开或有内容时高亮
+          isActive: isPromptLibraryOpen || Boolean(prefixPrompt),
           dotColor: 'bg-purple-500'
+        },
+        {
+          icon: Lightbulb,
+          onClick: () => {
+            setIsAiwindPanelOpen(!isAiwindPanelOpen);
+            if (!isAiwindPanelOpen) {
+              setIsMaterialsPanelOpen(false);
+              setIsPromptLibraryOpen(false);
+              setIsAssistantOpen(false);
+            }
+          },
+          title: '灵感库',
+          isActive: isAiwindPanelOpen,
+          dotColor: 'bg-amber-500'
         },
         {
           icon: Bot,
           onClick: () => {
             setIsAssistantOpen(!isAssistantOpen);
-            // 互斥：打开助手时关闭其他面板
             if (!isAssistantOpen) {
               setIsMaterialsPanelOpen(false);
               setIsPromptLibraryOpen(false);
+              setIsAiwindPanelOpen(false);
             }
           },
           title: 'Grok 助手',
@@ -168,6 +197,12 @@ export default function RightToolbar() {
 
       {/* Grok 助手面板 */}
       <GrokAssistantPanel />
+
+      {/* 灵感库面板 - aiwind.org */}
+      <AiwindPromptsPanel
+        isOpen={isAiwindPanelOpen}
+        onClose={() => setIsAiwindPanelOpen(false)}
+      />
     </>
   );
 }
