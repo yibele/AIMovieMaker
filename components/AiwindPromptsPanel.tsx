@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 
 // 数据源配置（通过 Cloudflare Worker 代理避免 CORS 问题）
-const DATA_SOURCE_URL = 'https://prompts-proxy.vienlinh.workers.dev';
+const DATA_SOURCE_URL = 'https://weathered-bonus-49d7.vienlinh.workers.dev';
 const IMAGE_BASE_URL = 'https://opennana.com/awesome-prompt-gallery/';
 
 // 简单的图片组件 - 带骨架屏
