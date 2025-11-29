@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // 缓存数据（内存缓存，避免重复请求）
 let cachedData: AiwindPrompt[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1小时缓存
+const CACHE_DURATION = 1000 * 60 * 30; // 30分钟缓存
 
 // 数据类型
 interface AiwindPrompt {
@@ -61,8 +61,14 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
       const id = match[1];
       const title = match[2];
       
-      // 从这个位置向后查找相关字段（扩大范围以确保能找到 prompts）
-      const chunk = jsContent.substring(startPos, startPos + 8000);
+      // 找到下一个数据块的位置，限制搜索范围在当前数据块内
+      const nextIdMatch = jsContent.substring(startPos + 10).match(/\{id:\d+,slug:/);
+      const endPos = (nextIdMatch && nextIdMatch.index !== undefined)
+        ? startPos + 10 + nextIdMatch.index 
+        : startPos + 10000;
+      
+      // 只在当前数据块范围内搜索
+      const chunk = jsContent.substring(startPos, endPos);
       
       // 提取 source
       const sourceMatch = chunk.match(/source:\{name:"([^"]*)",url:"([^"]*)"\}/);
@@ -77,25 +83,20 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
       const image = localImageMatch[1];
       
       // 提取 prompts - 真正的英文提示词
-      // 使用字符串方法提取，支持多种格式：
-      // 1. prompts:[`...`] - 直接是反引号
-      // 2. prompts:["",`...`] - 第一个是空字符串，第二个是反引号
       let promptText = '';
       let hasRealPrompt = false;
       
-      // 查找 prompts:[ 的位置
+      // 查找 prompts:[ 的位置（确保在当前数据块内）
       const promptsIndex = chunk.indexOf('prompts:[');
       if (promptsIndex > -1) {
-        // 从 prompts:[ 开始，找到反引号的位置
         const afterPrompts = chunk.substring(promptsIndex);
         const backtickStart = afterPrompts.indexOf('`');
         
         if (backtickStart > -1) {
-          // 找到反引号开始位置后，查找结束的反引号
           const contentStart = backtickStart + 1;
           let contentEnd = contentStart;
           
-          // 查找下一个反引号作为结束
+          // 查找结束的反引号
           for (let i = contentStart; i < afterPrompts.length; i++) {
             if (afterPrompts[i] === '`') {
               contentEnd = i;
@@ -105,7 +106,8 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
           
           if (contentEnd > contentStart) {
             const extractedPrompt = afterPrompts.substring(contentStart, contentEnd);
-            if (extractedPrompt.length > 10) {
+            // 验证提取的内容是有效的提示词（不是标题的重复）
+            if (extractedPrompt.length > 20 && extractedPrompt !== title) {
               promptText = extractedPrompt;
               hasRealPrompt = true;
             }
@@ -113,7 +115,7 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
         }
       }
       
-      // 如果没有找到提示词，使用标题
+      // 如果没有找到有效提示词，使用标题
       if (!hasRealPrompt) {
         promptText = title;
       }
@@ -165,6 +167,13 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = 10; // 减少每页数量，提升性能
   const search = searchParams.get('search') || '';
+  const refresh = searchParams.get('refresh') === 'true'; // 强制刷新缓存
+
+  // 如果需要强制刷新，清除缓存
+  if (refresh) {
+    cachedData = null;
+    cacheTimestamp = 0;
+  }
 
   try {
     let allPrompts = await fetchAiwindData();
