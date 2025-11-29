@@ -77,16 +77,44 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
       const image = localImageMatch[1];
       
       // 提取 prompts - 真正的英文提示词
-      const promptsMatch = chunk.match(/prompts:\[`([\s\S]*?)`\]/);
+      // 使用字符串方法提取，支持多种格式：
+      // 1. prompts:[`...`] - 直接是反引号
+      // 2. prompts:["",`...`] - 第一个是空字符串，第二个是反引号
       let promptText = '';
       let hasRealPrompt = false;
       
-      if (promptsMatch && promptsMatch[1].length > 10) {
-        // 有真正的英文提示词
-        promptText = promptsMatch[1];
-        hasRealPrompt = true;
-      } else {
-        // 没有提示词，使用标题
+      // 查找 prompts:[ 的位置
+      const promptsIndex = chunk.indexOf('prompts:[');
+      if (promptsIndex > -1) {
+        // 从 prompts:[ 开始，找到反引号的位置
+        const afterPrompts = chunk.substring(promptsIndex);
+        const backtickStart = afterPrompts.indexOf('`');
+        
+        if (backtickStart > -1) {
+          // 找到反引号开始位置后，查找结束的反引号
+          const contentStart = backtickStart + 1;
+          let contentEnd = contentStart;
+          
+          // 查找下一个反引号作为结束
+          for (let i = contentStart; i < afterPrompts.length; i++) {
+            if (afterPrompts[i] === '`') {
+              contentEnd = i;
+              break;
+            }
+          }
+          
+          if (contentEnd > contentStart) {
+            const extractedPrompt = afterPrompts.substring(contentStart, contentEnd);
+            if (extractedPrompt.length > 10) {
+              promptText = extractedPrompt;
+              hasRealPrompt = true;
+            }
+          }
+        }
+      }
+      
+      // 如果没有找到提示词，使用标题
+      if (!hasRealPrompt) {
         promptText = title;
       }
       
