@@ -82,7 +82,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
   // 防止重复请求的标记
   const hasFetchedRef = useRef(false);
 
-  // 从原始数据提取提示词文本
+  // 从原始数据提取提示词文本（确保返回字符串）
   const extractPromptText = (prompts: string[]): { text: string; hasReal: boolean } => {
     if (!prompts || prompts.length === 0) {
       return { text: '', hasReal: false };
@@ -92,19 +92,25 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     const firstPrompt = prompts[0];
     
     // 尝试解析 JSON 格式的提示词
-    if (firstPrompt.startsWith('{')) {
+    if (firstPrompt && firstPrompt.startsWith('{')) {
       try {
         const parsed = JSON.parse(firstPrompt);
         if (parsed.prompt) {
-          return { text: parsed.prompt, hasReal: true };
+          // 确保 prompt 是字符串，如果是对象则转为 JSON 字符串
+          const promptValue = typeof parsed.prompt === 'string' 
+            ? parsed.prompt 
+            : JSON.stringify(parsed.prompt, null, 2);
+          return { text: promptValue, hasReal: true };
         }
+        // 如果没有 prompt 字段，将整个对象转为格式化字符串
+        return { text: JSON.stringify(parsed, null, 2), hasReal: true };
       } catch {
         // 不是有效 JSON，直接使用原文
       }
     }
     
-    // 直接使用第一个提示词
-    if (firstPrompt && firstPrompt.length > 10) {
+    // 直接使用第一个提示词（确保是字符串）
+    if (firstPrompt && typeof firstPrompt === 'string' && firstPrompt.length > 10) {
       return { text: firstPrompt, hasReal: true };
     }
     
