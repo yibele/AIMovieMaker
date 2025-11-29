@@ -317,111 +317,136 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
         </div>
       </div>
 
-      {/* 详情弹窗 */}
+      {/* 详情弹窗 - 左图右文布局 */}
       {selectedPrompt && (
         <div 
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8"
           onClick={() => setSelectedPrompt(null)}
         >
           <div 
-            className="w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            className="w-full max-w-5xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 图片 */}
-            <div className="aspect-video bg-gray-100 dark:bg-slate-700 overflow-hidden">
+            {/* 左侧 - 图片 */}
+            <div className="md:w-1/2 flex-shrink-0 bg-gray-100 dark:bg-slate-800">
               <img
                 src={selectedPrompt.image.replace('w_500', 'w_1200')}
                 alt={selectedPrompt.title}
-                className="w-full h-full object-cover"
+                className="w-full h-64 md:h-full object-cover"
               />
             </div>
             
-            {/* 内容 */}
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                {selectedPrompt.title}
-              </h2>
-              
-              {selectedPrompt.source && (
-                <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-                  来源：
-                  {selectedPrompt.sourceUrl ? (
-                    <a 
-                      href={selectedPrompt.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-amber-600 hover:underline ml-1"
-                    >
-                      {selectedPrompt.source}
-                    </a>
-                  ) : (
-                    <span className="ml-1">{selectedPrompt.source}</span>
+            {/* 右侧 - 内容 */}
+            <div className="md:w-1/2 flex flex-col max-h-[60vh] md:max-h-[90vh]">
+              {/* 头部 - 标题和关闭按钮 */}
+              <div className="flex items-start justify-between p-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {selectedPrompt.title}
+                  </h2>
+                  {selectedPrompt.source && (
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                      来源：
+                      {selectedPrompt.sourceUrl ? (
+                        <a 
+                          href={selectedPrompt.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-600 hover:underline ml-1"
+                        >
+                          @{selectedPrompt.source}
+                        </a>
+                      ) : (
+                        <span className="ml-1">@{selectedPrompt.source}</span>
+                      )}
+                    </p>
                   )}
-                </p>
-              )}
-
-              {/* 标签 */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {selectedPrompt.tags.map((tag, i) => (
-                  <span 
-                    key={i}
-                    className="text-xs px-2 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* 提示词 */}
-              <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Prompt</span>
-                  <button
-                    onClick={() => handleCopy(selectedPrompt)}
-                    className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                  >
-                    {copiedId === selectedPrompt.id ? (
-                      <>
-                        <Check size={12} />
-                        <span>已复制</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} />
-                        <span>复制</span>
-                      </>
-                    )}
-                  </button>
                 </div>
-                <p className="text-sm text-gray-700 dark:text-slate-300 font-mono leading-relaxed">
-                  {selectedPrompt.prompt}
-                </p>
-              </div>
-
-              {/* 操作按钮 */}
-              <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedPrompt(null)}
-                  className="flex-1 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
                 >
-                  关闭
+                  <X size={20} className="text-gray-500" />
                 </button>
-                <button
-                  onClick={() => handleUsePrompt(selectedPrompt)}
-                  className="flex-1 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
-                >
-                  {copiedId === selectedPrompt.id ? (
-                    <>
-                      <Check size={16} />
-                      <span>已复制到剪贴板</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={16} />
-                      <span>复制提示词</span>
-                    </>
-                  )}
-                </button>
+              </div>
+              
+              {/* 内容区域 - 可滚动 */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* 英文提示词 */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                      Prompt (English)
+                    </span>
+                    <button
+                      onClick={() => handleCopy(selectedPrompt)}
+                      className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      {copiedId === selectedPrompt.id ? (
+                        <>
+                          <Check size={12} className="text-green-500" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {selectedPrompt.prompt}
+                  </p>
+                </div>
+
+                {/* 中文提示词（如果标题和 prompt 不同，显示标题作为中文参考） */}
+                {selectedPrompt.hasRealPrompt && selectedPrompt.title !== selectedPrompt.prompt && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                        Prompt (Chinese)
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedPrompt.title);
+                          setCopiedId(selectedPrompt.id + '-cn');
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        {copiedId === selectedPrompt.id + '-cn' ? (
+                          <>
+                            <Check size={12} className="text-green-500" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">
+                      {selectedPrompt.title}
+                    </p>
+                  </div>
+                )}
+
+                {/* 标签 */}
+                {selectedPrompt.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {selectedPrompt.tags.map((tag, i) => (
+                      <span 
+                        key={i}
+                        className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 rounded-full border border-gray-200 dark:border-slate-700"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
