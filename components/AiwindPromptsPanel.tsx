@@ -5,12 +5,24 @@ import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 
 // 懒加载图片组件 - 使用 IntersectionObserver 实现真正的懒加载
-function LazyImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+function LazyImage({ 
+  src, 
+  alt, 
+  className,
+  scrollContainer 
+}: { 
+  src: string; 
+  alt: string; 
+  className?: string;
+  scrollContainer?: HTMLElement | null;
+}) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!imgRef.current) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -18,15 +30,16 @@ function LazyImage({ src, alt, className }: { src: string; alt: string; classNam
           observer.disconnect();
         }
       },
-      { rootMargin: '100px' } // 提前 100px 开始加载
+      { 
+        root: scrollContainer || null, // 使用滚动容器作为 root
+        rootMargin: '200px' // 提前 200px 开始加载
+      }
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
+    observer.observe(imgRef.current);
 
     return () => observer.disconnect();
-  }, []);
+  }, [scrollContainer]);
 
   return (
     <div ref={imgRef} className={`relative ${className}`}>
@@ -249,6 +262,10 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                 key={prompt.id}
                 onClick={() => setSelectedPrompt(prompt)}
                 className="group relative bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-lg hover:border-amber-200 dark:hover:border-amber-700 transition-all duration-300"
+                style={{ 
+                  contentVisibility: 'auto',  // 让浏览器自动跳过不可见元素渲染
+                  containIntrinsicSize: '0 280px' // 预估高度，避免滚动跳动
+                }}
               >
                 {/* 图片 - 使用小尺寸缩略图 w_200 */}
                 <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-slate-700">
@@ -256,6 +273,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                     src={prompt.image.replace('w_500', 'w_200')}
                     alt={prompt.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    scrollContainer={scrollContainerRef.current}
                   />
                 </div>
                 
