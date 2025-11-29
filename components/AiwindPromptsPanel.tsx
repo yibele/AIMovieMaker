@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
-import { useCanvasStore } from '@/lib/store';
 
-// Cloudflare Worker 代理地址（免费，不走 Vercel）
-const AIWIND_API_URL = 'https://weathered-bonus-49d7.vienlinh.workers.dev';
+// 数据源配置
+const DATA_SOURCE_URL = 'https://opennana.com/awesome-prompt-gallery/data/prompts.json';
+const IMAGE_BASE_URL = 'https://opennana.com/awesome-prompt-gallery/';
 
 // 简单的图片组件 - 带骨架屏
 function PromptImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
@@ -32,8 +32,20 @@ function PromptImage({ src, alt, className }: { src: string; alt: string; classN
   );
 }
 
-// Aiwind 提示词数据类型
-interface AiwindPrompt {
+// 原始数据类型（来自 JSON）
+interface RawPromptItem {
+  id: number;
+  slug: string;
+  title: string;
+  source: { name: string; url: string } | null;
+  images: string[];
+  prompts: string[];
+  tags: string[];
+  coverImage: string;
+}
+
+// 处理后的提示词数据类型
+interface ProcessedPrompt {
   id: string;
   title: string;
   prompt: string;
@@ -41,7 +53,7 @@ interface AiwindPrompt {
   tags: string[];
   source?: string;
   sourceUrl?: string;
-  hasRealPrompt?: boolean; // 是否有真正的英文提示词
+  hasRealPrompt: boolean;
 }
 
 interface AiwindPromptsPanelProps {
@@ -51,63 +63,146 @@ interface AiwindPromptsPanelProps {
 
 export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPanelProps) {
   // 状态管理
-  const [prompts, setPrompts] = useState<AiwindPrompt[]>([]);
+  const [allPrompts, setAllPrompts] = useState<ProcessedPrompt[]>([]);
+  const [displayedPrompts, setDisplayedPrompts] = useState<ProcessedPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPrompt, setSelectedPrompt] = useState<AiwindPrompt | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<ProcessedPrompt | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const PAGE_SIZE = 20;
   
   // 滚动容器引用
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // 全局 Store - 用于设置前缀提示词
-  const setPrefixPrompt = useCanvasStore((state) => state.setPrefixPrompt);
+  // 从原始数据提取提示词文本
+  const extractPromptText = (prompts: string[]): { text: string; hasReal: boolean } => {
+    if (!prompts || prompts.length === 0) {
+      return { text: '', hasReal: false };
+    }
+    
+    // 第一个元素通常是英文提示词
+    const firstPrompt = prompts[0];
+    
+    // 尝试解析 JSON 格式的提示词
+    if (firstPrompt.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(firstPrompt);
+        if (parsed.prompt) {
+          return { text: parsed.prompt, hasReal: true };
+        }
+      } catch {
+        // 不是有效 JSON，直接使用原文
+      }
+    }
+    
+    // 直接使用第一个提示词
+    if (firstPrompt && firstPrompt.length > 10) {
+      return { text: firstPrompt, hasReal: true };
+    }
+    
+    return { text: '', hasReal: false };
+  };
 
-  // 加载数据
-  const fetchPrompts = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (isLoading) return;
+  // 处理原始数据
+  const processRawData = (items: RawPromptItem[]): ProcessedPrompt[] => {
+    return items.map(item => {
+      const { text, hasReal } = extractPromptText(item.prompts);
+      
+      return {
+        id: `prompt-${item.id}`,
+        title: item.title,
+        prompt: hasReal ? text : item.title,
+        image: item.coverImage ? `${IMAGE_BASE_URL}${item.coverImage}` : '',
+        tags: item.tags || [],
+        source: item.source?.name,
+        sourceUrl: item.source?.url,
+        hasRealPrompt: hasReal,
+      };
+    });
+  };
+
+  // 加载数据（只加载一次）
+  const fetchData = useCallback(async () => {
+    if (allPrompts.length > 0 || isLoading) return;
     
     setIsLoading(true);
     try {
-      const response = await fetch(`${AIWIND_API_URL}?page=${pageNum}&search=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(DATA_SOURCE_URL);
       const data = await response.json();
       
-      if (data.success) {
-        if (reset) {
-          setPrompts(data.prompts);
-        } else {
-          setPrompts(prev => [...prev, ...data.prompts]);
-        }
-        setHasMore(data.hasMore);
-        setPage(pageNum);
+      if (data.items && Array.isArray(data.items)) {
+        const processed = processRawData(data.items);
+        setAllPrompts(processed);
+        // 初始显示第一页
+        setDisplayedPrompts(processed.slice(0, PAGE_SIZE));
+        setHasMore(processed.length > PAGE_SIZE);
+        setPage(1);
       }
     } catch (error) {
       // 静默处理错误
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, searchQuery]);
+  }, [allPrompts.length, isLoading]);
 
-  // 初始加载（只有首次打开且没数据时才请求）
+  // 初始加载
   useEffect(() => {
-    if (isOpen && prompts.length === 0) {
-      fetchPrompts(1, true);
+    if (isOpen && allPrompts.length === 0) {
+      fetchData();
     }
-  }, [isOpen]);
+  }, [isOpen, fetchData]);
 
-  // 搜索变化时重新加载
+  // 搜索过滤
   useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        fetchPrompts(1, true);
-      }, 300);
-      return () => clearTimeout(timer);
+    if (allPrompts.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      let filtered = allPrompts;
+      
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = allPrompts.filter(p => 
+          p.title.toLowerCase().includes(query) ||
+          p.prompt.toLowerCase().includes(query) ||
+          p.tags.some(t => t.toLowerCase().includes(query))
+        );
+      }
+      
+      setDisplayedPrompts(filtered.slice(0, PAGE_SIZE));
+      setHasMore(filtered.length > PAGE_SIZE);
+      setPage(1);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery, allPrompts]);
+
+  // 加载更多
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore) return;
+    
+    const query = searchQuery.toLowerCase();
+    let filtered = allPrompts;
+    
+    if (query.trim()) {
+      filtered = allPrompts.filter(p => 
+        p.title.toLowerCase().includes(query) ||
+        p.prompt.toLowerCase().includes(query) ||
+        p.tags.some(t => t.toLowerCase().includes(query))
+      );
     }
-  }, [searchQuery]);
+    
+    const nextPage = page + 1;
+    const endIndex = nextPage * PAGE_SIZE;
+    
+    setDisplayedPrompts(filtered.slice(0, endIndex));
+    setHasMore(endIndex < filtered.length);
+    setPage(nextPage);
+  }, [allPrompts, searchQuery, page, hasMore, isLoading]);
 
   // 无限滚动监听
   useEffect(() => {
@@ -116,7 +211,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading) {
-          fetchPrompts(page + 1);
+          loadMore();
         }
       },
       { threshold: 0.1 }
@@ -129,10 +224,10 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, isLoading, page, fetchPrompts]);
+  }, [hasMore, isLoading, loadMore]);
 
   // 复制提示词
-  const handleCopy = async (prompt: AiwindPrompt) => {
+  const handleCopy = async (prompt: ProcessedPrompt) => {
     try {
       await navigator.clipboard.writeText(prompt.prompt);
       setCopiedId(prompt.id);
@@ -143,7 +238,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
   };
 
   // 使用提示词 - 直接复制到剪贴板
-  const handleUsePrompt = async (prompt: AiwindPrompt) => {
+  const handleUsePrompt = async (prompt: ProcessedPrompt) => {
     try {
       await navigator.clipboard.writeText(prompt.prompt);
       setCopiedId(prompt.id);
@@ -188,12 +283,12 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                 <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1">
                   <span>Powered by</span>
                   <a 
-                    href="https://www.aiwind.org" 
+                    href="https://opennana.com/awesome-prompt-gallery/" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-amber-600 dark:text-amber-400 hover:underline"
                   >
-                    aiwind.org
+                    OpenNana
                   </a>
                   <ExternalLink size={10} />
                 </p>
@@ -229,16 +324,16 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
         >
           {/* 提示词网格 */}
           <div className="grid grid-cols-2 gap-3">
-            {prompts.map((prompt) => (
+            {displayedPrompts.map((prompt) => (
               <div
                 key={prompt.id}
                 onClick={() => setSelectedPrompt(prompt)}
                 className="group relative bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-lg hover:border-amber-200 dark:hover:border-amber-700 transition-all duration-300"
               >
-                {/* 图片 - 使用小尺寸缩略图 w_150 */}
+                {/* 图片 */}
                 <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-slate-700">
                   <PromptImage
-                    src={prompt.image.replace('w_500', 'w_150')}
+                    src={prompt.image}
                     alt={prompt.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -302,13 +397,13 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                 <span className="text-sm">加载中...</span>
               </div>
             )}
-            {!hasMore && prompts.length > 0 && (
-              <span className="text-sm text-gray-400">已加载全部</span>
+            {!hasMore && displayedPrompts.length > 0 && (
+              <span className="text-sm text-gray-400">已加载全部 {displayedPrompts.length} 条</span>
             )}
           </div>
 
           {/* 空状态 */}
-          {!isLoading && prompts.length === 0 && (
+          {!isLoading && displayedPrompts.length === 0 && (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <Lightbulb size={48} className="mb-3 opacity-20" />
               <p className="text-sm">暂无提示词</p>
@@ -330,7 +425,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
             {/* 左侧 - 图片 */}
             <div className="md:w-1/2 flex-shrink-0 bg-gray-100 dark:bg-slate-800">
               <img
-                src={selectedPrompt.image.replace('w_500', 'w_1200')}
+                src={selectedPrompt.image}
                 alt={selectedPrompt.title}
                 className="w-full h-64 md:h-full object-cover"
               />
@@ -354,10 +449,10 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                           rel="noopener noreferrer"
                           className="text-amber-600 hover:underline ml-1"
                         >
-                          @{selectedPrompt.source}
+                          {selectedPrompt.source}
                         </a>
                       ) : (
-                        <span className="ml-1">@{selectedPrompt.source}</span>
+                        <span className="ml-1">{selectedPrompt.source}</span>
                       )}
                     </p>
                   )}
@@ -372,11 +467,11 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
               
               {/* 内容区域 - 可滚动 */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                {/* 英文提示词 */}
+                {/* 提示词 */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-                      Prompt (English)
+                      Prompt
                     </span>
                     <button
                       onClick={() => handleCopy(selectedPrompt)}
@@ -400,40 +495,6 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                   </p>
                 </div>
 
-                {/* 中文提示词（如果标题和 prompt 不同，显示标题作为中文参考） */}
-                {selectedPrompt.hasRealPrompt && selectedPrompt.title !== selectedPrompt.prompt && (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-                        Prompt (Chinese)
-                      </span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedPrompt.title);
-                          setCopiedId(selectedPrompt.id + '-cn');
-                          setTimeout(() => setCopiedId(null), 2000);
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1.5"
-                      >
-                        {copiedId === selectedPrompt.id + '-cn' ? (
-                          <>
-                            <Check size={12} className="text-green-500" />
-                            <span>Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={12} />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">
-                      {selectedPrompt.title}
-                    </p>
-                  </div>
-                )}
-
                 {/* 标签 */}
                 {selectedPrompt.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -448,6 +509,26 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                   </div>
                 )}
               </div>
+              
+              {/* 底部操作 */}
+              <div className="flex-shrink-0 p-6 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <button
+                  onClick={() => handleUsePrompt(selectedPrompt)}
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                >
+                  {copiedId === selectedPrompt.id ? (
+                    <>
+                      <Check size={18} />
+                      <span>已复制到剪贴板</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={18} />
+                      <span>复制提示词</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -455,4 +536,3 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     </>
   );
 }
-
