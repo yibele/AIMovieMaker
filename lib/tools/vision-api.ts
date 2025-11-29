@@ -137,24 +137,22 @@ Keep it concise, suitable for video generation prompt.`,
   // 单图视频提示词生成（8秒电影级视频）
   VIDEO_PROMPT_SINGLE: `Analyze this image and generate an 8-second cinematic video prompt.
 
-STRUCTURE: Design 2-3 shots (each 2-3 seconds):
-- Shot 1 (0-3s): Initial scene, subtle movement begins
-- Shot 2 (3-6s): Camera change or new action (cut to different angle, pan, or zoom)
-- Shot 3 (6-8s): Concluding motion or reveal
+STYLE OPTIONS (choose the best fit for this image):
+- Single continuous shot: Smooth camera movement (pan, zoom, dolly) with natural motion
+- Multi-shot sequence: 2-3 shots with cuts if the scene benefits from angle changes
 
-Include: character actions, camera movements (pan/zoom/cut), environmental motion.
-Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`,
+Focus on: subject movement, camera motion, environmental dynamics, mood/atmosphere.
+Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps.`,
 
   // 首尾帧视频提示词生成（8秒过渡视频）
   VIDEO_PROMPT_START_END: `Analyze these two images (start frame and end frame) and generate an 8-second video prompt.
 
-STRUCTURE: Design 2-3 shots (each 2-3 seconds) that transition from Frame A to Frame B:
-- Shot 1 (0-3s): Starting action/camera from Frame A
-- Shot 2 (3-6s): Transition movement, camera change, or mid-action
-- Shot 3 (6-8s): Arriving at Frame B's composition
+STYLE OPTIONS (choose the best fit):
+- Single continuous transition: One smooth camera movement from Frame A to Frame B
+- Multi-shot transition: 2-3 shots if the change requires cuts or complex motion
 
-Include: character movement, camera cuts/pans, environmental changes, mood shifts.
-Output ONLY the prompt text describing all shots in sequence. Under 80 words. English.`,
+Describe the journey from Frame A to Frame B: subject movement, camera motion, environmental changes.
+Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps.`,
 } as const;
 
 // ============================================================================
