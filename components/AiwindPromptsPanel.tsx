@@ -4,58 +4,27 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 
-// 懒加载图片组件 - 使用 IntersectionObserver 实现真正的懒加载
-function LazyImage({ 
-  src, 
-  alt, 
-  className,
-  scrollContainer 
-}: { 
-  src: string; 
-  alt: string; 
-  className?: string;
-  scrollContainer?: HTMLElement | null;
-}) {
+// 简单的图片组件 - 带骨架屏
+function PromptImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!imgRef.current) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      { 
-        root: scrollContainer || null, // 使用滚动容器作为 root
-        rootMargin: '200px' // 提前 200px 开始加载
-      }
-    );
-
-    observer.observe(imgRef.current);
-
-    return () => observer.disconnect();
-  }, [scrollContainer]);
+  const [hasError, setHasError] = useState(false);
 
   return (
-    <div ref={imgRef} className={`relative ${className}`}>
-      {/* 骨架屏占位 */}
-      {!isLoaded && (
+    <div className={`relative ${className}`}>
+      {/* 骨架屏占位 - 加载完成后隐藏 */}
+      {!isLoaded && !hasError && (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-slate-600 dark:to-slate-700 animate-pulse" />
       )}
-      {/* 实际图片 - 只有进入视口才加载 */}
-      {isInView && (
-        <img
-          src={src}
-          alt={alt}
-          className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-          onLoad={() => setIsLoaded(true)}
-        />
-      )}
+      {/* 图片 - 使用原生 loading="lazy" */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className={`${className} transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
+      />
     </div>
   );
 }
@@ -262,18 +231,13 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                 key={prompt.id}
                 onClick={() => setSelectedPrompt(prompt)}
                 className="group relative bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-lg hover:border-amber-200 dark:hover:border-amber-700 transition-all duration-300"
-                style={{ 
-                  contentVisibility: 'auto',  // 让浏览器自动跳过不可见元素渲染
-                  containIntrinsicSize: '0 280px' // 预估高度，避免滚动跳动
-                }}
               >
-                {/* 图片 - 使用小尺寸缩略图 w_200 */}
+                {/* 图片 - 使用小尺寸缩略图 w_150 */}
                 <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-slate-700">
-                  <LazyImage
-                    src={prompt.image.replace('w_500', 'w_200')}
+                  <PromptImage
+                    src={prompt.image.replace('w_500', 'w_150')}
                     alt={prompt.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    scrollContainer={scrollContainerRef.current}
                   />
                 </div>
                 

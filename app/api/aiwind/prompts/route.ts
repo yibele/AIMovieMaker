@@ -163,7 +163,7 @@ function decodeUnicodeEscapes(str: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = 20;
+  const pageSize = 10; // 减少每页数量，提升性能
   const search = searchParams.get('search') || '';
 
   try {
