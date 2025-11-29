@@ -603,7 +603,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
                 </button>
                 <div className="w-full bg-white dark:bg-slate-700 rounded-lg px-3 py-2 pt-2 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
                   <p
-                    className="text-[10px] font-light text-gray-900 dark:text-slate-200 leading-relaxed text-left whitespace-pre-wrap break-words line-clamp-5"
+                    className="text-[10px] font-light text-gray-900 dark:text-slate-200 leading-relaxed text-left whitespace-pre-wrap break-words"
                     title={promptDisplayText}
                   >
                     {promptDisplayText}
