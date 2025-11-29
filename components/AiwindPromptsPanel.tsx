@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 
+// Cloudflare Worker 代理地址（免费，不走 Vercel）
+const AIWIND_API_URL = 'https://weathered-bonus-49d7.vienlinh.workers.dev';
+
 // 简单的图片组件 - 带骨架屏
 function PromptImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -70,7 +73,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/aiwind/prompts?page=${pageNum}&search=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`${AIWIND_API_URL}?page=${pageNum}&search=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
       if (data.success) {
