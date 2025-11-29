@@ -56,7 +56,6 @@ export default function GrokAssistantPanel() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.log('📌 未登录，跳过从服务器加载 API Key');
         return;
       }
 
@@ -78,7 +77,6 @@ export default function GrokAssistantPanel() {
         if (!dashScopeApiKey || dashScopeApiKey !== data.dashScopeApiKey) {
           setApiConfig({ dashScopeApiKey: data.dashScopeApiKey });
           setIsLoadedFromServer(true);
-          console.log('✅ 从服务器加载 API Key 成功');
         }
       }
     } catch (error) {
@@ -91,7 +89,6 @@ export default function GrokAssistantPanel() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.log('📌 未登录，API Key 仅保存到本地');
         return false;
       }
 
@@ -111,7 +108,6 @@ export default function GrokAssistantPanel() {
       }
 
       setIsLoadedFromServer(true);
-      console.log('✅ API Key 已同步到服务器');
       return true;
     } catch (error) {
       console.error('保存 API Key 到服务器失败:', error);

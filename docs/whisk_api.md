@@ -642,7 +642,6 @@ async function generateImage(prompt, bearerToken) {
 
     // 保存图片
     fs.writeFileSync('generated.jpg', Buffer.from(imageBase64, 'base64'));
-    console.log('图片已生成并保存');
   } catch (error) {
     console.error('错误:', error.message);
   }

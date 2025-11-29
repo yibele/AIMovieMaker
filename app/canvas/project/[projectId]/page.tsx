@@ -47,7 +47,6 @@ export default function ProjectCanvasPage() {
       
       if (!projectsData) {
         // 没有项目列表缓存，重定向到首页
-        console.log('❌ 没有找到项目列表缓存，请先访问 Dashboard');
         setIsAuthorized(false);
         setTimeout(() => {
           router.push('/');
@@ -60,10 +59,8 @@ export default function ProjectCanvasPage() {
         
         // 3. 检查当前 projectId 是否在用户的项目列表中
         if (userProjectIds.includes(projectId)) {
-          console.log('✅ 项目权限验证通过:', projectId);
           setIsAuthorized(true);
         } else {
-          console.log('❌ 您没有权限访问此项目:', projectId);
           setIsAuthorized(false);
           setTimeout(() => {
             router.push('/');

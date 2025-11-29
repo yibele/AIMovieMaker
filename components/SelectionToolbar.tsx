@@ -129,13 +129,11 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
       if (!img?.src) continue;
 
       try {
-        console.log('🚀 开始下载图片:', img.id);
 
         let blob: Blob;
 
         // 行级注释：优先使用 base64（AI 生成的图片都有 base64）
         if (img.base64) {
-          console.log('✅ 使用 base64 直接下载（瞬时，0 流量）');
 
           // 行级注释：处理 base64 格式
           const dataUrl = img.base64.startsWith('data:')
@@ -154,7 +152,6 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
 
         } else if (img.src.startsWith('data:')) {
           // 行级注释：src 是 base64（用户上传的图片）
-          console.log('✅ 使用 src (base64) 直接下载（瞬时，0 流量）');
 
           const base64Data = img.src.split(',')[1];
           const byteCharacters = atob(base64Data);
@@ -167,8 +164,6 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
 
         } else {
           // 行级注释：兜底方案 - fetch Google URL
-          console.log('⚠️ 无 base64，从 URL 下载:', img.src);
-
           const response = await fetch(img.src);
           if (!response.ok) {
             throw new Error(`下载失败: ${response.status}`);
@@ -176,7 +171,6 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
           blob = await response.blob();
         }
 
-        console.log('✅ 图片准备完成，大小:', blob.size, 'bytes');
 
         // 行级注释：创建下载链接
         const url = window.URL.createObjectURL(blob);
@@ -288,10 +282,6 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
     const startImage = sortedImages[0];
     const endImage = sortedImages[1];
 
-    console.log('🎬 首尾帧生成视频:', {
-      startImage: startImage.id,
-      endImage: endImage.id,
-    });
 
     // 行级注释：使用节点管理服务计算视频位置（尾帧图片右侧）
     const videoPosition = getRightSidePosition(

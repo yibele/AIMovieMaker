@@ -82,7 +82,6 @@ export async function pollVideoOperation(
   const { checkVideoStatusDirectly } = await import('../direct-google-api');
 
   for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
-    console.log(`🔁 视频生成轮询第 ${attempt} 次`);
 
     try {
       // 行级注释：直接调用 Google API 查询状态
@@ -93,7 +92,6 @@ export async function pollVideoOperation(
       );
 
       const status = result.status;
-      console.log('📦 Flow 视频状态:', status);
 
       // 行级注释：失败状态 - 立即抛出错误
       if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
@@ -103,7 +101,6 @@ export async function pollVideoOperation(
 
       // 行级注释：成功状态 - 直接返回视频数据
       if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
-        console.log('🎉 视频生成成功！');
 
         if (!result.videoUrl) {
           throw new Error('Flow 返回缺少视频地址');
@@ -112,15 +109,9 @@ export async function pollVideoOperation(
         // 行级注释：更新积分到 store
         if (typeof result.remainingCredits === 'number') {
           useCanvasStore.getState().setCredits(result.remainingCredits);
-          console.log('💎 积分已更新:', result.remainingCredits);
         }
 
-        console.log('✅ 视频数据解析成功:', {
-          videoUrl: result.videoUrl,
-          thumbnailUrl: result.thumbnailUrl,
-          duration: result.duration,
-          mediaGenerationId: result.mediaGenerationId,
-        });
+
 
         return {
           videoUrl: result.videoUrl,
@@ -131,7 +122,6 @@ export async function pollVideoOperation(
       }
 
       // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
-      console.log('⏳ 视频还在生成中，等待下次轮询...');
 
     } catch (error: any) {
       console.error(`❌ 轮询第 ${attempt} 次出错:`, error);

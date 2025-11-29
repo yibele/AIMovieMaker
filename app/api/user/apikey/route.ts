@@ -107,7 +107,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '保存失败' }, { status: 500 });
     }
 
-    console.log('✅ 用户 API Key 已保存:', user.id.substring(0, 8) + '...');
 
     return NextResponse.json({
       success: true,
@@ -159,7 +158,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: '删除失败' }, { status: 500 });
     }
 
-    console.log('🗑️ 用户 API Key 已删除:', user.id.substring(0, 8) + '...');
 
     return NextResponse.json({
       success: true,

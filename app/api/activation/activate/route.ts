@@ -42,7 +42,6 @@ export async function POST(request: Request) {
     const normalizedCode = code.trim().toUpperCase();
 
     // 4. 查询邀请码 (分步查询以避免联表问题)
-    console.log('正在查询邀请码:', normalizedCode);
     const { data: invitation, error: inviteError } = await supabaseAdmin
       .from('invitation_codes')
       .select('*')

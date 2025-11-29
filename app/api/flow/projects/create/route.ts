@@ -29,10 +29,6 @@ export async function POST(request: NextRequest) {
       return validation.error!;
     }
 
-    console.log('🆕 调用 Flow 创建项目接口', {
-      projectTitle,
-      proxy: proxy ? '已配置' : '未配置',
-    });
 
     const payload = {
       json: {
@@ -63,7 +59,6 @@ export async function POST(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 创建项目响应状态:', response.status);
 
     const result = response.data?.result?.data?.json?.result;
 

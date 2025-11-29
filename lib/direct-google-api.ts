@@ -45,7 +45,6 @@ export async function getVideoCreditStatus(
   }
 
   const data = await response.json();
-  console.log('✅ 积分状态:', data);
   return data;
 }
 
@@ -97,7 +96,6 @@ export async function uploadImageDirectly(
     },
   };
 
-  console.log('📤 直接上传图片到 Google Flow API...');
 
   try {
     const response = await fetch('https://aisandbox-pa.googleapis.com/v1:uploadUserImage', {
@@ -115,8 +113,6 @@ export async function uploadImageDirectly(
     }
 
     const data = await response.json();
-
-    console.log('✅ 图片上传成功（直接调用）');
 
     return {
       mediaGenerationId: data?.mediaGenerationId?.mediaGenerationId,
@@ -215,9 +211,6 @@ export async function generateImageDirectly(
 
   const payload = { requests };
 
-  console.log('🎨 直接调用 Google Flow Generate API...');
-  console.log('📤 请求参数 (requests):', JSON.stringify(requests, null, 2));
-
   try {
     const response = await fetch(
       `https://aisandbox-pa.googleapis.com/v1/projects/${projectId.trim()}/flowMedia:batchGenerateImages`,
@@ -238,7 +231,6 @@ export async function generateImageDirectly(
     }
 
     const rawData = await response.json();
-    console.log('✅ 图片生成成功（直接调用）');
 
     // 解析响应
     const mediaArray = Array.isArray(rawData)
@@ -363,14 +355,7 @@ export async function generateVideoTextDirectly(
     ],
   };
 
-  console.log('🎬 直接调用 Google Flow API 生成视频（文生视频）...', {
-    accountTier,
-    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
-    aspectRatio: config.aspectRatioEnum,
-    videoModelKey: config.videoModelKey,
-    userPaygateTier: config.userPaygateTier,
-    sceneId: generatedSceneId,
-  });
+
 
   try {
     const response = await fetch(
@@ -394,7 +379,6 @@ export async function generateVideoTextDirectly(
     }
 
     const data = await response.json();
-    console.log('✅ 文生视频任务已提交（直接调用）');
 
     const operations = data.operations || [];
     if (operations.length === 0) {
@@ -491,15 +475,7 @@ export async function generateVideoImageDirectly(
     ? 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage'
     : 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage';
 
-  console.log('🎬 直接调用 Google Flow API 生成视频（图生视频）...', {
-    accountTier,
-    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
-    mode: hasEndImage ? '首尾帧' : '仅首帧',
-    aspectRatio: config.aspectRatioEnum,
-    videoModelKey: config.videoModelKey,
-    userPaygateTier: config.userPaygateTier,
-    sceneId: generatedSceneId,
-  });
+
 
   try {
     const response = await fetch(apiEndpoint, {
@@ -520,7 +496,6 @@ export async function generateVideoImageDirectly(
     }
 
     const data = await response.json();
-    console.log('✅ 图生视频任务已提交（直接调用）');
 
     const operations = data.operations || [];
     if (operations.length === 0) {
@@ -667,13 +642,7 @@ export async function generateVideoUpsampleDirectly(
     },
   };
 
-  console.log('🎬 发起视频超清请求:', {
-    url,
-    originalMediaId: originalMediaId.substring(0, 30) + '...',
-    aspectRatio: videoAspectRatio,
-    seed: finalSeed,
-    sceneId: finalSceneId,
-  });
+
 
   const response = await fetch(url, {
     method: 'POST',
@@ -695,7 +664,6 @@ export async function generateVideoUpsampleDirectly(
   }
 
   const data = await response.json();
-  console.log('✅ 视频超清请求成功:', data);
 
   const operation = data.operations?.[0];
   if (!operation) {
@@ -703,12 +671,7 @@ export async function generateVideoUpsampleDirectly(
   }
 
   // 行级注释：详细日志，调试 operationName 提取
-  console.log('🔍 超清 operation 详情:', {
-    operation,
-    operationName: operation.operation?.name,
-    sceneId: operation.sceneId,
-    status: operation.status,
-  });
+
 
   const extractedOperationName = operation.operation?.name || '';
 
@@ -781,12 +744,7 @@ export async function generateVideoReshootDirectly(
     ],
   };
 
-  console.log('🎬 直接调用 Google API 镜头控制重拍:', {
-    mediaId: mediaId.substring(0, 20) + '...',
-    reshootMotionType,
-    videoModelKey: config.videoModelKey,
-    sceneId: generatedSceneId,
-  });
+
 
   try {
     const response = await fetch(url, {
@@ -807,7 +765,6 @@ export async function generateVideoReshootDirectly(
     }
 
     const data = await response.json();
-    console.log('✅ 镜头控制重拍任务已提交');
 
     const operations = data.operations || [];
     if (operations.length === 0) {
@@ -896,14 +853,7 @@ export async function generateVideoExtendDirectly(
     ],
   };
 
-  console.log('🎬 直接调用 Google API 延长视频:', {
-    mediaId: mediaId.substring(0, 20) + '...',
-    prompt,
-    videoModelKey: config.videoModelKey,
-    videoMode: config.effectiveVideoMode,  // 行级注释：显示实际使用的视频模式
-    frames: `${finalStartFrameIndex}-${finalEndFrameIndex}`,
-    sceneId: generatedSceneId,
-  });
+
 
   try {
     const response = await fetch(url, {
@@ -924,7 +874,6 @@ export async function generateVideoExtendDirectly(
     }
 
     const data = await response.json();
-    console.log('✅ 视频延长任务已提交');
 
     const operations = data.operations || [];
     if (operations.length === 0) {

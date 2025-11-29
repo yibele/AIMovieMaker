@@ -47,12 +47,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log('📤 调用 Flow 上传接口', {
-      mimeType,
-      sessionId: trimmedSessionId,
-      aspectRatio: payload.imageInput.aspectRatio,
-      proxy: proxy ? '已配置' : '未配置',
-    });
+ 
 
     const headers = {
       'Content-Type': 'application/json',
@@ -74,7 +69,6 @@ export async function POST(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 上传响应状态:', response.status);
 
     const mediaGenerationId =
       response.data?.mediaGenerationId?.mediaGenerationId;

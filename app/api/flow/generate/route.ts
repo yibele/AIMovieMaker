@@ -83,22 +83,9 @@ export async function POST(request: NextRequest) {
 
     const payload = { requests };
 
-    console.log('🎨 调用 Flow 生成接口', {
-      prompt: prompt.substring(0, 50),
-      aspectRatio: normalizedAspect,
-      sessionId: trimmedSessionId,
-      proxy: proxy ? '已配置' : '未配置',
-      referenceCount: imageInputs.length,
-      generationCount,
-    });
+
     
-    // 打印完整的 payload 用于调试
-    console.log('📤 Flow API 完整 Payload:', JSON.stringify(payload, null, 2));
-    console.log('📤 Payload 结构检查:', {
-      hasRequestsKey: 'requests' in payload,
-      requestsIsArray: Array.isArray(payload.requests),
-      requestsLength: payload.requests?.length,
-    });
+
 
     const axiosConfig: any = {
       method: 'POST',
@@ -122,18 +109,12 @@ export async function POST(request: NextRequest) {
     if (agent) {
       axiosConfig.httpsAgent = agent;
       axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理调用 Flow 生成接口', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
     }
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 生成响应状态:', response.status);
 
     const rawData = response.data;
-    console.log('Flow 生成响应数据:', rawData);
 
     // Flow API 返回的数据结构是 { media: [...] }
     const mediaArray = Array.isArray(rawData)

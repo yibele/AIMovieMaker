@@ -102,23 +102,11 @@ export async function POST(request: NextRequest) {
       requests: [requestObject],
     };
 
-    console.log('🎬 调用 Flow 图生视频接口', {
-      aspectRatio: normalizedAspect,
-      modelKey,
-      sceneId: resolvedSceneId,
-      sessionId: trimmedSessionId,
-      projectId: trimmedProjectId,
-      proxy: proxy ? '已配置' : '未配置',
-    });
-
-    console.log('📤 Flow 图生视频 Payload:', JSON.stringify(payload, null, 2));
-
-    // 行级注释：根据是否有尾帧选择不同的端点
+     // 行级注释：根据是否有尾帧选择不同的端点
     const apiEndpoint = hasEndImage
       ? 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartAndEndImage'
       : 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoStartImage';
 
-    console.log('🎯 使用端点:', hasEndImage ? '首尾帧' : '仅首帧', apiEndpoint);
 
     const headers = {
       'Content-Type': 'text/plain;charset=UTF-8',
@@ -139,10 +127,6 @@ export async function POST(request: NextRequest) {
     axiosConfig.timeout = 60000;
 
     const response = await axios(axiosConfig);
-
-    console.log('📥 Flow 图生视频响应状态:', response.status);
-    console.log('📥 Flow 图生视频响应数据:', JSON.stringify(response.data, null, 2));
-
     const data = response.data;
     const operations = data.operations || [];
     if (operations.length === 0) {
@@ -161,11 +145,7 @@ export async function POST(request: NextRequest) {
     // 行级注释：首尾帧模式下 Flow 不返回 sceneId，使用我们发送的
     const operationSceneId = operation?.sceneId || resolvedSceneId;
 
-    console.log('✅ 视频生成任务已提交', {
-      operationName,
-      sceneId: operationSceneId,
-      status: operationStatus,
-    });
+  
 
     return NextResponse.json({
       operationName,

@@ -511,23 +511,18 @@ export function debugPrintAllVideoModels(): void {
   const aspects: AspectRatio[] = ['16:9', '9:16', '1:1'];
   const modes: VideoMode[] = ['quality', 'fast'];
 
-  console.log('=== 视频模型配置一览 ===');
   
   for (const type of types) {
-    console.log(`\n【${type}】`);
+   
     for (const tier of tiers) {
       for (const mode of modes) {
         for (const aspect of aspects) {
           try {
             const modelKey = getVideoModelKey(type, tier, aspect, mode);
             const effectiveMode = getEffectiveVideoMode(tier, mode);
-            console.log(
-              `  ${tier.padEnd(5)} | ${mode.padEnd(7)} (实际:${effectiveMode.padEnd(7)}) | ${aspect} => ${modelKey}`
-            );
+
           } catch (e) {
-            console.log(
-              `  ${tier.padEnd(5)} | ${mode.padEnd(7)} | ${aspect} => ❌ 不支持`
-            );
+
           }
         }
       }

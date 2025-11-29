@@ -457,7 +457,6 @@ export async function generateImage(
   // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
   const finalPrompt = buildFinalPrompt(prompt);
 
-  console.log('🚀 直接调用 Google API 生成图片（绕过 Vercel）:', finalPrompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 行级注释：调用层 - 调用纯 API 函数
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -528,7 +527,6 @@ export async function registerUploadedImage(
     sessionId = context.sessionId;
   }
 
-  console.log('📝 直接上传用户图片到 Google API（绕过 Vercel）');
 
   // 直接调用 Google API，不通过 Vercel 服务器
   const { uploadImageDirectly } = await import('./direct-google-api');
@@ -621,15 +619,7 @@ export async function runImageRecipe(
   }
 
   // 行级注释：业务层 - 多图融合不使用前置提示词（风格已由参考图确定）
-  console.log(
-    '🧩 直接调用 Google API 进行多图融合编辑（绕过 Vercel）:',
-    instruction,
-    aspectRatio,
-    accountTier,
-    imageModel,
-    `参考图数量: ${validReferences.length}`,
-    `生成数量: ${count || apiConfig.generationCount || 1}`
-  );
+
 
   // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -717,7 +707,6 @@ export async function imageToImage(
   }
 
   // 行级注释：业务层 - 图生图不使用前置提示词（风格已由参考图确定）
-  console.log('🖼️ 直接调用 Google API 图生图（绕过 Vercel）:', prompt, aspectRatio, accountTier, imageModel, `数量: ${count || apiConfig.generationCount || 1}`);
 
   // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateImageDirectly } = await import('./direct-google-api');
@@ -772,7 +761,6 @@ export async function editImage(
   imageUrl: string;
   promptId: string;
 }> {
-  console.log(`🔄 ${variationType === 'regenerate' ? '再次生成' : '生成类似图片'}:`, prompt, imageId);
   await delay(MOCK_LATENCY);
 
   return {
@@ -813,7 +801,6 @@ export async function generateVideoFromText(
   // 行级注释：业务层 - 拼接完整提示词（附加前置提示词）
   const finalPrompt = buildFinalPrompt(prompt);
 
-  console.log('🎬 直接调用 Google API 文生视频:', { prompt: finalPrompt, aspectRatio, accountTier, sceneId });
 
   // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoTextDirectly } = await import('./direct-google-api');
@@ -830,8 +817,6 @@ export async function generateVideoFromText(
     sceneId
   );
 
-  console.log('✅ 文生视频任务已提交（直接调用）:', generationTask);
-
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
@@ -839,7 +824,6 @@ export async function generateVideoFromText(
     apiConfig.proxy
   );
 
-  console.log('🎞️ 文生视频生成完成:', videoResult);
 
   return {
     videoUrl: videoResult.videoUrl,
@@ -860,7 +844,6 @@ export async function generateVideoFromImage(
   duration: number;
   promptId: string;
 }> {
-  console.log('🎬 图生视频:', imageId, prompt);
   await delay(MOCK_LATENCY * 2);
 
   const video = getRandomVideo();
@@ -939,15 +922,7 @@ export async function generateVideoFromImages(
       ? crypto.randomUUID()
       : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  console.log('🎬 直接调用 Google API 图生视频:', {
-    startImageId,
-    endImageId: endImageId || '无尾帧',
-    hasEndImage: !!endMediaId,
-    prompt: promptText,
-    aspectRatio,
-    accountTier,
-    sceneId,
-  });
+
 
   // 行级注释：调用层 - 调用纯 API 函数（不使用前置提示词）
   const { generateVideoImageDirectly } = await import('./direct-google-api');
@@ -966,16 +941,12 @@ export async function generateVideoFromImages(
     sceneId
   );
 
-  console.log('✅ 图生视频任务已提交（直接调用）:', generationTask);
-
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
     apiConfig.bearerToken,
     generationTask.sceneId,
     apiConfig.proxy
   );
-
-  console.log('🎞️ 图生视频生成完成:', videoResult);
 
   return {
     videoUrl: videoResult.videoUrl,
@@ -1007,7 +978,6 @@ export async function generateVideoUpsample(
     throw new Error('缺少原始视频的 mediaId');
   }
 
-  console.log('🎬 直接调用 Google API 视频超清（绕过 Vercel）:', originalMediaId, aspectRatio);
 
   // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoUpsampleDirectly } = await import('./direct-google-api');
@@ -1025,7 +995,6 @@ export async function generateVideoUpsample(
     useCanvasStore.getState().setCredits(result.remainingCredits);
   }
 
-  console.log('✅ 视频超清请求成功:', result);
 
   return result;
 }
@@ -1057,9 +1026,6 @@ export async function generateVideoReshoot(
   if (!originalMediaId?.trim()) {
     throw new Error('缺少原始视频的 mediaId');
   }
-
-  console.log('🎬 直接调用 Google API 镜头控制重拍（绕过 Vercel）:', originalMediaId, reshootMotionType);
-
   // 行级注释：调用层 - 调用纯 API 函数
   const { generateVideoReshootDirectly } = await import('./direct-google-api');
 
@@ -1074,7 +1040,6 @@ export async function generateVideoReshoot(
     seed
   );
 
-  console.log('✅ 镜头控制重拍任务已提交:', generationTask);
 
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
@@ -1083,7 +1048,6 @@ export async function generateVideoReshoot(
     apiConfig.proxy
   );
 
-  console.log('🎞️ 镜头控制重拍生成完成:', videoResult);
 
   return {
     videoUrl: videoResult.videoUrl,
@@ -1151,7 +1115,6 @@ export async function generateVideoExtend(
     seed
   );
 
-  console.log('✅ 视频延长任务已提交:', generationTask);
 
   const videoResult = await pollFlowVideoOperation(
     generationTask.operationName,
@@ -1160,7 +1123,6 @@ export async function generateVideoExtend(
     apiConfig.proxy
   );
 
-  console.log('🎞️ 视频延长生成完成:', videoResult);
 
   return {
     videoUrl: videoResult.videoUrl,

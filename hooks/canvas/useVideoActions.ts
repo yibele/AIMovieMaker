@@ -138,7 +138,6 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
           )
         );
 
-        console.log('✅ 从文本节点生成视频:', sourceNode.text);
       } catch (error) {
         console.error('❌ 生成视频失败:', error);
         setEdges((eds: any[]) =>
@@ -167,7 +166,6 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
       };
 
       createVideoNodeFromImage(sourceNode, flowPosition, 'start-image', 'right');
-      console.log('✅ 从图片节点创建视频节点:', sourceNode.id);
     },
     [createVideoNodeFromImage, resetConnectionMenu]
   );
@@ -193,7 +191,6 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
       sourceNode.size?.height || 180
     );
 
-    console.log('🎬 根据图片比例自动生成视频:', aspectRatio);
     handleImageToVideo(sourceNode, aspectRatio);
   }, [connectionMenu.sourceNodeId, elements, handleImageToVideo, resetConnectionMenu]);
 
@@ -288,7 +285,6 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
           )
         );
 
-        console.log('✅ 镜头控制视频生成成功');
       } catch (error) {
         console.error('❌ 镜头控制视频生成失败:', error);
         updateElement(newVideoId, { status: 'error' } as Partial<VideoElement>);
@@ -357,7 +353,6 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
       },
     ]);
 
-    console.log('✅ 延长视频节点已创建，等待用户输入提示词');
   }, [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, reactFlowInstance, resetConnectionMenu]);
 
   return {

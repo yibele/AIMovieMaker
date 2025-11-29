@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
 
     // 方式1: 从 DataURL 解析
     if (imageDataUrl) {
-      console.log('📤 从 DataURL 上传图片到 Vercel Blob...');
       const matches = imageDataUrl.match(/^data:(.+);base64,(.+)$/);
       if (!matches) {
         return NextResponse.json(
@@ -46,7 +45,6 @@ export async function POST(request: NextRequest) {
     } 
     // 方式2: 从远程 URL 下载（后端下载，避免前端跨域）
     else if (imageUrl) {
-      console.log('📤 从远程 URL 下载并上传到 Vercel Blob:', imageUrl);
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`下载图片失败: HTTP ${response.status}`);
@@ -71,7 +69,6 @@ export async function POST(request: NextRequest) {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
-    console.log('✅ 图片上传成功:', blob.url);
 
     return NextResponse.json({
       url: blob.url,

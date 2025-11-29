@@ -61,7 +61,6 @@ export const useMaterialsStore = create<MaterialsStore>()(
       loadProjectHistory: async (projectId) => {
         // This action is mainly a placeholder. The actual loading logic resides in lib/project-materials.ts
         // which calls setProjectHistory.
-        console.log('Initiating project history load for projectId:', projectId);
         // Will be updated by loadMaterialsFromProject
       },
 
@@ -99,7 +98,6 @@ export const useMaterialsStore = create<MaterialsStore>()(
         });
 
         if (existingMaterial) {
-          console.log('Material already exists in library:', existingMaterial.id);
           // 可以选择抛出特定错误让 UI 提示 "已存在"，或者直接返回成功
           // 这里直接返回现有对象，视为成功
           return existingMaterial;
@@ -165,7 +163,6 @@ export const useMaterialsStore = create<MaterialsStore>()(
         });
 
         if (existingInTrash) {
-          console.log('Item already in trash, skipping duplicate:', existingInTrash.id);
           return;
         }
 
@@ -339,29 +336,19 @@ export const useMaterialsStore = create<MaterialsStore>()(
           const calculateVideoSize = () => {
             const aspectRatio = material.metadata?.aspectRatio;
 
-            // 调试信息
-            console.log('视频素材信息:', {
-              name: material.name,
-              metadata: material.metadata,
-              aspectRatio: aspectRatio,
-            });
+
 
             // 根据宽高比设置合适的尺寸
             switch (aspectRatio) {
               case '16:9':
-                console.log('使用 16:9 比例');
                 return { width: 480, height: 270 }; // 横屏视频 (16:9)
               case '9:16':
-                console.log('使用 9:16 比例');
                 return { width: 270, height: 480 }; // 竖屏视频 (9:16)
               case '1:1':
-                console.log('使用 1:1 比例');
                 return { width: 320, height: 320 }; // 方形视频
               case '4:3':
-                console.log('使用 4:3 比例');
                 return { width: 400, height: 300 }; // 传统比例
               default:
-                console.log('使用默认 16:9 比例，因为 aspectRatio 为:', aspectRatio);
                 // 如果没有宽高比信息，使用默认的 16:9
                 return { width: 480, height: 270 };
             }
@@ -380,7 +367,6 @@ export const useMaterialsStore = create<MaterialsStore>()(
             promptText: material.metadata?.prompt,
             readyForGeneration: false, // 从素材库添加的视频无需生成
           };
-          console.log('创建视频节点，尺寸:', calculateVideoSize());
           canvasStore.addElement(videoElement);
         }
       },

@@ -69,7 +69,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
     if (promptDisplayText) {
       try {
         await navigator.clipboard.writeText(promptDisplayText);
-        console.log('✅ 视频提示词已复制到剪贴板');
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       } catch (err) {
@@ -102,9 +101,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
         videoRef.current.pause();
         setIsPlaying(false);
       } else {
-        console.log('🎬 尝试播放视频:', videoData.src);
         videoRef.current.play().then(() => {
-          console.log('✅ 视频播放成功');
           setIsPlaying(true);
         }).catch((err) => {
           console.error('❌ 视频播放失败:', err);
@@ -124,12 +121,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       return;
     }
 
-    console.log('🎬 VideoNode: 开始生成视频', {
-      promptInput: promptInput.trim() || '(AI 自动分析)',
-      hasFrame,
-      generationCount,
-      videoData
-    });
+
 
     // 行级注释：生成时同步 promptText 和 generationCount 到 store，并设置状态为 queued
     // 如果没有提示词但有图片，promptText 留空，让 Canvas 的 maybeStartVideo 使用 VL 分析
@@ -214,7 +206,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
 
     try {
-      console.log('🎬 开始超清放大:', { mediaGenerationId: videoData.mediaGenerationId });
 
       // 行级注释：使用节点管理服务创建超清视频 placeholder
       const newVideo = createUpsampleVideoPlaceholder(videoData);
@@ -235,7 +226,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
         },
       ]);
 
-      console.log('✅ 创建超清视频 placeholder 和连线:', newVideo.id);
 
       // 行级注释：调用超清 API
       const { generateVideoUpsample, pollFlowVideoOperation } = await import('@/lib/api-mock');
@@ -246,7 +236,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
         '16:9' // 超清只支持 16:9
       );
 
-      console.log('✅ 超清请求已发起:', result);
 
       // 行级注释：更新节点状态为 queued
       updateElement(newVideo.id, { status: 'queued' } as any);
@@ -259,7 +248,6 @@ function VideoNode({ data, selected, id }: NodeProps) {
         apiConfig.proxy
       )
         .then((videoResult) => {
-          console.log('✅ 超清视频生成完成:', videoResult);
 
           // 行级注释：使用节点管理服务更新 placeholder 为实际视频
           updateVideoPlaceholders([newVideo.id], [{

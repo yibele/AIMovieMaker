@@ -56,19 +56,15 @@ async function extractCookies() {
             }
 
             if (tabs.length > 0) {
-                console.log(`发现 ${tabs.length} 个 grok.com 标签页`);
 
                 for (const tab of tabs) {
                     try {
-                        console.log(`尝试从标签页获取 Cookie: ${tab.url}`);
 
                         const response = await chrome.tabs.sendMessage(tab.id, { action: 'getCookies' });
 
                         if (response && response.success && response.cookies) {
                             cookieString = response.cookies;
                             fromContentScript = true;
-                            console.log(`✅ 从 content script 获取成功！`);
-                            console.log(`Cookie 长度: ${cookieString.length} 字符`);
                             break;
                         }
                     } catch (e) {
@@ -84,8 +80,6 @@ async function extractCookies() {
 
         // 方法2: 如果 content script 失败，使用 Chrome Cookie API（备用）
         if (!cookieString) {
-            console.log('使用备用方法：Chrome Cookie API');
-
             const cookieMap = {};
             const allCookies = [];
 
@@ -114,7 +108,6 @@ async function extractCookies() {
                 .map(([name, value]) => `${name}=${value}`)
                 .join('; ');
 
-            console.log(`备用方法获取到 ${Object.keys(cookieMap).length} 个 Cookie`);
         }
 
         if (!cookieString) {
@@ -131,8 +124,7 @@ async function extractCookies() {
             }
         });
 
-        console.log(`最终获取到 ${Object.keys(cookieMap).length} 个不重复的 Cookie`);
-        console.log('Cookie 列表:', Object.keys(cookieMap).join(', '));
+  
 
         // Check required cookies
         const missingRequired = REQUIRED_COOKIES.filter(name => !cookieMap[name]);
@@ -150,7 +142,6 @@ async function extractCookies() {
         // Ensure we have the final cookie string
         currentCookieString = cookieString;
 
-        console.log(`最终 Cookie 字符串长度: ${currentCookieString.length} 字符`);
 
         // Display cookies
         displayCookies(currentCookieString, cookieMap);

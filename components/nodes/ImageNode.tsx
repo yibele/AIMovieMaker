@@ -131,9 +131,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         pendingConnectionGeneration: false,
       } as Partial<ImageElement>);
 
-      console.log('✅ 图生图完成:', prompt);
     } catch (error: any) {
-      console.error('❌ 图生图失败:', error);
       alert(error?.message || '图生图失败，请重试');
       deleteElement(id);
     } finally {
@@ -175,7 +173,6 @@ function ImageNode({ data, selected, id }: NodeProps) {
     if (promptDisplayText) {
       try {
         await navigator.clipboard.writeText(promptDisplayText);
-        console.log('✅ 提示词已复制到剪贴板');
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 1500); // 1.5秒后恢复
       } catch (error) {

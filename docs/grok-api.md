@@ -294,11 +294,9 @@ while (true) {
       // 监听视频生成进度
       if (data.result?.response?.streamingVideoGenerationResponse) {
         const video = data.result.response.streamingVideoGenerationResponse;
-        console.log(`进度: ${video.progress}%`);
         
         if (video.progress === 100) {
           const videoUrl = `https://assets.grok.com/${video.videoUrl}`;
-          console.log('视频完成:', videoUrl);
         }
       }
     } catch (e) {

@@ -218,7 +218,6 @@ export default function ImageAnnotatorModal({
         });
         setCurrentReferenceImages(newReferenceImages);
         
-        console.log('✅ 主图已切换 (使用 base64):', newMainImage.id);
         setSwitchingImage(false);
         return;
       }
@@ -248,7 +247,6 @@ export default function ImageAnnotatorModal({
         setCurrentMainImage(newMainImage);
         setCurrentReferenceImages(newReferenceImages);
         
-        console.log('✅ 主图已切换 (使用原始 src):', newMainImage.id);
         setSwitchingImage(false);
         return;
       }
@@ -293,7 +291,6 @@ export default function ImageAnnotatorModal({
       });
       setCurrentReferenceImages(newReferenceImages);
       
-      console.log('✅ 主图已切换 (加载 base64):', newMainImage.id);
       
     } catch (error) {
       console.error('❌ 切换主图失败:', error);
@@ -577,7 +574,6 @@ export default function ImageAnnotatorModal({
 
     try {
       // 生成合成图片（原图 + 标注），直接传递 DataURL
-      console.log('🎨 生成标注合成图...');
       const annotatedImageDataUrl = await generateAnnotatedImage();
 
       // 直接将 DataURL 传递给回调，不需要上传到 Blob
@@ -617,7 +613,6 @@ export default function ImageAnnotatorModal({
 
     // 直接通过 fetch 加载图片，避免 CORS 污染问题
     try {
-      console.log('🔄 正在加载图片...');
       const response = await fetch(imageSrc);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -625,7 +620,6 @@ export default function ImageAnnotatorModal({
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
       ctx.drawImage(bitmap, 0, 0);
-      console.log('✅ 图片加载成功');
     } catch (fetchError) {
       console.error('❌ 加载图片失败:', fetchError);
       throw new Error(`无法加载图片: ${fetchError instanceof Error ? fetchError.message : '未知错误'}`);

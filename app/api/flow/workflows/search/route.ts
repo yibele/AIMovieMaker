@@ -74,13 +74,7 @@ export async function GET(request: NextRequest) {
 
     const queryString = encodeURIComponent(JSON.stringify(queryParams));
 
-    console.log('🔍 调用 Flow 搜索工作流接口', {
-      projectId,
-      mediaType: normalizedMediaType,
-      pageSize,
-      cursor: cursor || '无',
-      proxy: proxy ? '已配置' : '未配置',
-    });
+
 
     const headers = {
       'Content-Type': 'application/json',
@@ -103,7 +97,6 @@ export async function GET(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 搜索工作流响应状态:', response.status);
 
     const data = response.data;
 
@@ -149,13 +142,7 @@ export async function GET(request: NextRequest) {
 
       // 行级注释：调试日志 - 查看提取结果
       if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {
-        console.log('视频 mediaGenerationId 提取:', {
-          workflowId: workflow.workflowId,
-          最终值: mediaGenerationId,
-          来源: mediaGeneration?.mediaData?.videoData?.generatedVideo?.mediaGenerationId ? '来自generatedVideo' :
-            mediaGeneration?.mediaGenerationId?.mediaKey ? '来自mediaKey' :
-              mediaGeneration?.mediaId ? '来自mediaId' : '使用workflowId',
-        });
+      
       }
 
       if (normalizedMediaType === 'MEDIA_TYPE_VIDEO') {

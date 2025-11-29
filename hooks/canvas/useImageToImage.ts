@@ -70,7 +70,6 @@ export function useImageToImage({
         },
       ]);
 
-      console.log('✅ 已创建图生图占位符节点，比例:', aspectRatio, '提示词:', trimmedPrompt);
     },
     [addElement, setEdges, resetConnectionMenu]
   );

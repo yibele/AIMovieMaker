@@ -46,14 +46,12 @@ const saveUserProjectIds = async (projectIds: string[]) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.email) {
-      console.log('⚠️ 无法保存项目列表：未获取到用户 email');
       return;
     }
     
     const userEmail = session.user.email;
     const storageKey = `user_projects_${userEmail}`;
     localStorage.setItem(storageKey, JSON.stringify(projectIds));
-    console.log('✅ 已保存用户项目列表到 localStorage:', { email: userEmail, count: projectIds.length });
   } catch (error) {
     console.error('❌ 保存项目列表失败:', error);
   }
@@ -64,7 +62,6 @@ const addProjectIdToCache = async (projectId: string) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.email) {
-      console.log('⚠️ 无法添加项目ID：未获取到用户 email');
       return;
     }
     
@@ -77,7 +74,6 @@ const addProjectIdToCache = async (projectId: string) => {
     if (!existingIds.includes(projectId)) {
       existingIds.unshift(projectId); // 添加到列表开头
       localStorage.setItem(storageKey, JSON.stringify(existingIds));
-      console.log('✅ 已添加新项目到缓存:', { email: userEmail, projectId });
     }
   } catch (error) {
     console.error('❌ 添加项目ID失败:', error);
@@ -89,7 +85,6 @@ const removeProjectIdFromCache = async (projectId: string) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.email) {
-      console.log('⚠️ 无法移除项目ID：未获取到用户 email');
       return;
     }
     
@@ -100,7 +95,6 @@ const removeProjectIdFromCache = async (projectId: string) => {
     
     const filteredIds = existingIds.filter(id => id !== projectId);
     localStorage.setItem(storageKey, JSON.stringify(filteredIds));
-    console.log('✅ 已从缓存移除项目:', { email: userEmail, projectId });
   } catch (error) {
     console.error('❌ 移除项目ID失败:', error);
   }
@@ -395,7 +389,6 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
       } else if (forceRefresh) {
         toast.success('项目列表已刷新');
       } else {
-        console.log('首次加载完成');
       }
     } catch (error) {
       // 如果是后台刷新失败，不显示错误，保持缓存数据
@@ -554,7 +547,6 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
       // 🔥 立即将新项目ID添加到缓存，确保用户可以马上访问
       if (data?.project?.projectId) {
         await addProjectIdToCache(data.project.projectId);
-        console.log('🎉 新项目已添加到缓存，用户可以立即访问:', data.project.projectId);
       }
 
       await fetchProjects(true); // 创建成功后强制刷新列表

@@ -68,17 +68,6 @@ export async function POST(request: NextRequest) {
         sessionId: generatedSessionId,
       },
     };
-
-    console.log('📺 调用 Flow 视频超清接口', {
-      mediaId: mediaId.substring(0, 30) + '...',
-      sceneId,
-      aspectRatio: normalizedAspect,
-      sessionId: generatedSessionId,
-      proxy: proxy ? '已配置' : '未配置',
-    });
-
-    console.log('📤 完整 Payload:', JSON.stringify(payload, null, 2));
-
     const headers = {
       'Content-Type': 'text/plain;charset=UTF-8',
       Authorization: `Bearer ${bearerToken}`,
@@ -100,10 +89,6 @@ export async function POST(request: NextRequest) {
     axiosConfig.timeout = 60000;
 
     const response = await axios(axiosConfig);
-
-    console.log('📥 Flow 视频超清响应状态:', response.status);
-    console.log('📥 Flow 视频超清响应数据:', JSON.stringify(response.data, null, 2));
-
     const data = response.data;
 
     // 解析返回的 operations

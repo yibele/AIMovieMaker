@@ -88,7 +88,6 @@ export function useTextToImage({
           )
         );
 
-        console.log('✅ 从文本节点生成图片:', sourceNode.text, '比例:', aspectRatio);
       } catch (error: any) {
         console.error('❌ 生成图片失败:', error);
         // 行级注释：删除失败的占位符和连线

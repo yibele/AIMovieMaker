@@ -81,7 +81,6 @@ export async function GET(
     // 调用 Google API
     const response = await axios(axiosConfig);
 
-    console.log('📥 Media API 响应状态:', response.status);
 
     // 返回数据
     return NextResponse.json(response.data);

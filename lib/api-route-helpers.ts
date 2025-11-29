@@ -76,7 +76,6 @@ export function createProxiedAxiosConfig(
   if (agent) {
     axiosConfig.httpsAgent = agent as any;
     axiosConfig.httpAgent = agent as any;
-    console.log(`📡 使用${proxyType.toUpperCase()}代理: ${proxyUrl}`);
   }
 
   return axiosConfig;

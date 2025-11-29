@@ -35,10 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🗑️ 调用 Flow 删除项目接口', {
-      projectId,
-      proxy: proxy ? '已配置' : '未配置',
-    });
 
     const payload = {
       json: {
@@ -68,7 +64,6 @@ export async function POST(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 删除项目响应状态:', response.status);
 
     const data = response.data;
 

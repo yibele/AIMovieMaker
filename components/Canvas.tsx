@@ -888,7 +888,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       if (hasReferenceImages) {
         // 行级注释：多图编辑 - 使用 runImageRecipe（不使用前置提示词）
-        console.log('🧩 多图融合模式，参考图数量:', referenceImages.length);
 
         const { runImageRecipe } = await import('@/lib/api-mock');
 
@@ -925,7 +924,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
       } else {
         // 行级注释：单图编辑 - 使用 imageToImage（不使用前置提示词）
-        console.log('🎨 单图编辑模式');
 
         imageResult = await imageToImage(
           result.promptText,
@@ -957,7 +955,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         )
       );
 
-      console.log('✅ 图片编辑完成！');
 
     } catch (error) {
       console.error('❌ 图片编辑失败:', error);

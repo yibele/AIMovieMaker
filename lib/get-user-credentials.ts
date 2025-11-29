@@ -48,12 +48,7 @@ export async function getUserCredentials(userId?: string): Promise<UserCredentia
       const remainingMinutes = Math.round((cached.expiresAt - now) / (1000 * 60));
       const cacheAge = Math.round((now - cached.cachedAt) / (1000 * 60));
       
-      console.log('✅ 使用缓存的用户凭证:', {
-        userId: userId.substring(0, 8) + '...',
-        cacheAge: `${cacheAge} 分钟前`,
-        remainingMinutes: `${remainingMinutes} 分钟`,
-        source: '内存缓存',
-      });
+
       
       return {
         bearerToken: cached.bearerToken,
@@ -93,14 +88,7 @@ export async function getUserCredentials(userId?: string): Promise<UserCredentia
           });
           
           const remainingHours = Math.round((expiresAtTimestamp - nowTimestamp) / (1000 * 60 * 60));
-          
-          console.log('✅ 使用用户专属凭证（已缓存）:', {
-            userId: userId.substring(0, 8) + '...',
-            phone: profile.phone?.substring(0, 3) + '****',
-            expiresAt: expiresAt.toISOString(),
-            remainingHours: `${remainingHours} 小时`,
-            source: '数据库查询 + 缓存更新',
-          });
+
 
           return {
             bearerToken: profile.google_bearer_token,
@@ -112,11 +100,7 @@ export async function getUserCredentials(userId?: string): Promise<UserCredentia
           // 过期了，删除缓存
           credentialsCache.delete(userId);
           
-          console.log('⚠️ 用户凭证已过期:', {
-            userId: userId.substring(0, 8) + '...',
-            phone: profile.phone?.substring(0, 3) + '****',
-            expiredAt: expiresAt.toISOString(),
-          });
+
         }
       }
     } catch (error) {
@@ -131,11 +115,6 @@ export async function getUserCredentials(userId?: string): Promise<UserCredentia
   if (!globalBearerToken) {
     throw new Error('未配置全局 Google Bearer Token，且用户未激活');
   }
-
-  console.log('📌 使用全局凭证（环境变量）', {
-    hasToken: !!globalBearerToken,
-    hasCookie: !!globalCookie,
-  });
 
   return {
     bearerToken: globalBearerToken,
@@ -160,7 +139,6 @@ export function clearExpiredCache(): number {
   }
   
   if (cleared > 0) {
-    console.log(`🧹 清理了 ${cleared} 个过期缓存条目`);
   }
   
   return cleared;
@@ -175,7 +153,6 @@ export function clearExpiredCache(): number {
 export function clearUserCache(userId: string): void {
   const deleted = credentialsCache.delete(userId);
   if (deleted) {
-    console.log(`🧹 清除用户缓存: ${userId.substring(0, 8)}...`);
   }
 }
 

@@ -48,11 +48,6 @@ export async function GET(request: NextRequest) {
 
     const queryString = encodeURIComponent(JSON.stringify(queryParams));
 
-    console.log('🔍 调用 Flow 搜索项目接口', {
-      pageSize,
-      cursor: cursor || '无',
-      proxy: proxy ? '已配置' : '未配置',
-    });
 
     const headers = {
       'Content-Type': 'application/json',
@@ -75,7 +70,6 @@ export async function GET(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 搜索项目响应状态:', response.status);
 
     const data = response.data;
 

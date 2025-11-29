@@ -107,7 +107,6 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             progress: 5,
           } as Partial<VideoElement>);
 
-          console.log('🔍 使用 VL 分析图片生成视频提示词...');
           
           // 行级注释：准备图片数据
           let startImageData = actualStartImage.src;
@@ -129,7 +128,6 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           }
 
           promptText = await analyzeImageForVideoPrompt(startImageData, endImageData, dashScopeApiKey);
-          console.log('✅ VL 分析完成，生成提示词:', promptText);
           
           updateElement(videoId, {
             promptText: promptText,
@@ -156,7 +154,6 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
         return;
       }
 
-      console.log('🎬 maybeStartVideo: 开始生成视频', { videoId, generationCount, promptText });
 
       // 行级注释：如果需要生成多个视频，创建额外的节点
       if (generationCount > 1) {
@@ -296,7 +293,6 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             ? detectAspectRatio(videoElement.size.width, videoElement.size.height)
             : '9:16';
 
-          console.log('🎬 调用文生视频:', { promptText, aspectRatio });
           result = await generateVideoFromText(promptText || '', aspectRatio as '16:9' | '9:16' | '1:1');
           generationType = 'text-to-video';
         }

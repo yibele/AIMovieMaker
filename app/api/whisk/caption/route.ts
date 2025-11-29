@@ -55,11 +55,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log('📝 发起 Whisk Caption API 请求', {
-      workflowId: clientWorkflowId,
-      sessionId: clientSessionId,
-      proxy: proxy ? '已配置' : '未配置',
-    });
+ 
 
     const axiosConfig: any = {
       method: 'POST',
@@ -83,17 +79,12 @@ export async function POST(request: NextRequest) {
     if (agent) {
       axiosConfig.httpsAgent = agent;
       axiosConfig.httpAgent = agent;
-      console.log('📡 使用代理访问 Caption API', {
-        proxyType: proxyType.toUpperCase(),
-        proxyUrl: resolvedProxyUrl,
-      });
+     
     } else {
-      console.log('🌐 未使用代理访问 Caption API');
     }
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Caption API 响应状态:', response.status);
 
     const caption =
       response.data?.result?.data?.json?.result?.candidates?.[0]?.output ??

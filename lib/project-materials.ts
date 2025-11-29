@@ -177,7 +177,6 @@ async function loadImagesFromProject(
 
   if (validImages.length > 0) {
     setMessage?.(`已加载 ${validImages.length} 个图片素材`);
-    console.log('加载的图片素材:', validImages);
   }
 
   return validImages;
@@ -215,12 +214,7 @@ async function loadVideosFromProject(
   // 转换并添加到素材库
   const videoMaterials = workflows.map((workflow: FlowWorkflow) => {
     const mappedAspectRatio = mapFlowAspectRatio(workflow.videoData?.aspectRatio);
-    console.log('视频宽高比映射:', {
-      原始值: workflow.videoData?.aspectRatio,
-      映射后: mappedAspectRatio,
-      工作流ID: workflow.workflowId,
-      标题: workflow.title,
-    });
+
 
     return {
       id: `project-video-${workflow.workflowId}`,
@@ -249,7 +243,6 @@ async function loadVideosFromProject(
 
   if (validVideos.length > 0) {
     setMessage?.(`已加载 ${validVideos.length} 个视频素材`);
-    console.log('加载的视频素材:', validVideos);
   }
 
   return validVideos;

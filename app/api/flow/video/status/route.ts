@@ -31,10 +31,7 @@ export async function POST(request: NextRequest) {
       operations,
     };
 
-    console.log('🔍 查询 Flow 视频生成状态', {
-      operationsCount: operations.length,
-      proxy: proxy ? '已配置' : '未配置',
-    });
+   
 
     const headers = {
       'Content-Type': 'text/plain;charset=UTF-8',
@@ -56,7 +53,6 @@ export async function POST(request: NextRequest) {
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Flow 视频状态响应:', response.status);
 
     const data = response.data;
 

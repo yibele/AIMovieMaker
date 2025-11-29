@@ -88,7 +88,6 @@ export async function generateTextToVideo(options: TextToVideoOptions): Promise<
   // 行级注释：生成场景 ID
   const sceneId = crypto.randomUUID();
 
-  console.log('🎬 视频生成服务：文生视频', { prompt: finalPrompt, aspectRatio, accountTier, videoModel });
 
   // 行级注释：调用工具层 API
   const task = await generateVideoTextDirectly(
@@ -102,8 +101,6 @@ export async function generateTextToVideo(options: TextToVideoOptions): Promise<
     seed,
     sceneId
   );
-
-  console.log('✅ 文生视频任务已提交:', task.operationName);
 
   // 行级注释：轮询等待结果
   const result = await pollVideoOperation(
@@ -175,15 +172,6 @@ export async function generateImageToVideo(options: ImageToVideoOptions): Promis
 
   const sceneId = crypto.randomUUID();
 
-  console.log('🎬 视频生成服务：图生视频', {
-    startImageId,
-    endImageId: endImageId || '无尾帧',
-    hasEndImage: !!endMediaId,
-    prompt: finalPrompt,
-    aspectRatio,
-    accountTier,
-  });
-
   // 行级注释：调用工具层 API
   const task = await generateVideoImageDirectly(
     finalPrompt,
@@ -199,7 +187,6 @@ export async function generateImageToVideo(options: ImageToVideoOptions): Promis
     sceneId
   );
 
-  console.log('✅ 图生视频任务已提交:', task.operationName);
 
   // 行级注释：轮询等待结果
   const result = await pollVideoOperation(
@@ -235,7 +222,6 @@ export async function upsampleVideo(videoElement: VideoElement): Promise<VideoGe
     throw new Error('超清放大仅支持 16:9 横屏视频');
   }
 
-  console.log('🎬 视频生成服务：超清放大', { mediaId: videoElement.mediaGenerationId });
 
   const task = await generateVideoUpsampleDirectly(
     videoElement.mediaGenerationId,
@@ -277,7 +263,6 @@ export async function reshootVideo(
 
   const aspectRatio = inferVideoAspectRatio(videoElement);
 
-  console.log('🎬 视频生成服务：镜头控制重拍', { motionType, aspectRatio });
 
   const task = await generateVideoReshootDirectly(
     videoElement.mediaGenerationId,
@@ -322,7 +307,6 @@ export async function extendVideo(
 
   const aspectRatio = inferVideoAspectRatio(videoElement);
 
-  console.log('🎬 视频生成服务：视频延长', { prompt, aspectRatio });
 
   const task = await generateVideoExtendDirectly(
     videoElement.mediaGenerationId,

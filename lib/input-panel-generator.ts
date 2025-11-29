@@ -156,7 +156,6 @@ export async function imageToImageFromInput(
     let effectiveMediaId = selectedImage.mediaId || selectedImage.mediaGenerationId;
     
     if (!effectiveMediaId) {
-      console.log('⚠️ 图片缺少 mediaId，需要先上传...');
       
       let imageDataToUpload = selectedImage.base64 || selectedImage.src;
       if (imageDataToUpload.startsWith('data:')) {
@@ -171,7 +170,6 @@ export async function imageToImageFromInput(
       }
       
       effectiveMediaId = uploadResult.mediaGenerationId;
-      console.log('✅ 图片上传成功:', effectiveMediaId);
     }
     
     const result = await imageToImage(
