@@ -4,6 +4,49 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 
+// 懒加载图片组件 - 使用 IntersectionObserver 实现真正的懒加载
+function LazyImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const imgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' } // 提前 100px 开始加载
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={imgRef} className={`relative ${className}`}>
+      {/* 骨架屏占位 */}
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-slate-600 dark:to-slate-700 animate-pulse" />
+      )}
+      {/* 实际图片 - 只有进入视口才加载 */}
+      {isInView && (
+        <img
+          src={src}
+          alt={alt}
+          className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+          onLoad={() => setIsLoaded(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 // Aiwind 提示词数据类型
 interface AiwindPrompt {
   id: string;
@@ -207,13 +250,12 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                 onClick={() => setSelectedPrompt(prompt)}
                 className="group relative bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-lg hover:border-amber-200 dark:hover:border-amber-700 transition-all duration-300"
               >
-                {/* 图片 */}
+                {/* 图片 - 使用小尺寸缩略图 w_200 */}
                 <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-slate-700">
-                  <img
-                    src={prompt.image}
+                  <LazyImage
+                    src={prompt.image.replace('w_500', 'w_200')}
                     alt={prompt.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    loading="lazy"
                   />
                 </div>
                 
