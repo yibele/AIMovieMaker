@@ -294,18 +294,6 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">灵感库</h2>
-                <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                  <span>Powered by</span>
-                  <a 
-                    href="https://opennana.com/awesome-prompt-gallery/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-amber-600 dark:text-amber-400 hover:underline"
-                  >
-                    OpenNana
-                  </a>
-                  <ExternalLink size={10} />
-                </p>
               </div>
             </div>
             <button
