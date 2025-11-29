@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ExternalLink, Copy, Check, Loader2, Lightbulb } from 'lucide-react';
 
-// 数据源配置
-const DATA_SOURCE_URL = 'https://opennana.com/awesome-prompt-gallery/data/prompts.json';
+// 数据源配置（通过 API 代理避免 CORS 问题）
+const DATA_SOURCE_URL = '/api/prompts';
 const IMAGE_BASE_URL = 'https://opennana.com/awesome-prompt-gallery/';
 
 // 简单的图片组件 - 带骨架屏
@@ -78,6 +78,9 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  
+  // 防止重复请求的标记
+  const hasFetchedRef = useRef(false);
 
   // 从原始数据提取提示词文本
   const extractPromptText = (prompts: string[]): { text: string; hasReal: boolean } => {
@@ -126,36 +129,34 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     });
   };
 
-  // 加载数据（只加载一次）
-  const fetchData = useCallback(async () => {
-    if (allPrompts.length > 0 || isLoading) return;
-    
-    setIsLoading(true);
-    try {
-      const response = await fetch(DATA_SOURCE_URL);
-      const data = await response.json();
-      
-      if (data.items && Array.isArray(data.items)) {
-        const processed = processRawData(data.items);
-        setAllPrompts(processed);
-        // 初始显示第一页
-        setDisplayedPrompts(processed.slice(0, PAGE_SIZE));
-        setHasMore(processed.length > PAGE_SIZE);
-        setPage(1);
-      }
-    } catch (error) {
-      // 静默处理错误
-    } finally {
-      setIsLoading(false);
-    }
-  }, [allPrompts.length, isLoading]);
-
-  // 初始加载
+  // 初始加载（只执行一次）
   useEffect(() => {
-    if (isOpen && allPrompts.length === 0) {
-      fetchData();
-    }
-  }, [isOpen, fetchData]);
+    if (!isOpen || hasFetchedRef.current) return;
+    
+    const fetchData = async () => {
+      hasFetchedRef.current = true;
+      setIsLoading(true);
+      
+      try {
+        const response = await fetch(DATA_SOURCE_URL);
+        const data = await response.json();
+        
+        if (data.items && Array.isArray(data.items)) {
+          const processed = processRawData(data.items);
+          setAllPrompts(processed);
+          setDisplayedPrompts(processed.slice(0, PAGE_SIZE));
+          setHasMore(processed.length > PAGE_SIZE);
+          setPage(1);
+        }
+      } catch {
+        // 静默处理错误
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [isOpen]);
 
   // 搜索过滤
   useEffect(() => {
@@ -181,28 +182,41 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
     return () => clearTimeout(timer);
   }, [searchQuery, allPrompts]);
 
-  // 加载更多
+  // 加载更多（使用 ref 获取最新值，避免依赖问题）
+  const allPromptsRef = useRef(allPrompts);
+  const searchQueryRef = useRef(searchQuery);
+  const pageRef = useRef(page);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingRef = useRef(isLoading);
+  
+  // 同步 ref
+  useEffect(() => { allPromptsRef.current = allPrompts; }, [allPrompts]);
+  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+
   const loadMore = useCallback(() => {
-    if (isLoading || !hasMore) return;
+    if (isLoadingRef.current || !hasMoreRef.current) return;
     
-    const query = searchQuery.toLowerCase();
-    let filtered = allPrompts;
+    const query = searchQueryRef.current.toLowerCase();
+    let filtered = allPromptsRef.current;
     
     if (query.trim()) {
-      filtered = allPrompts.filter(p => 
+      filtered = filtered.filter(p => 
         p.title.toLowerCase().includes(query) ||
         p.prompt.toLowerCase().includes(query) ||
         p.tags.some(t => t.toLowerCase().includes(query))
       );
     }
     
-    const nextPage = page + 1;
+    const nextPage = pageRef.current + 1;
     const endIndex = nextPage * PAGE_SIZE;
     
     setDisplayedPrompts(filtered.slice(0, endIndex));
     setHasMore(endIndex < filtered.length);
     setPage(nextPage);
-  }, [allPrompts, searchQuery, page, hasMore, isLoading]);
+  }, []);
 
   // 无限滚动监听
   useEffect(() => {
@@ -210,7 +224,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
+        if (entries[0].isIntersecting && hasMoreRef.current && !isLoadingRef.current) {
           loadMore();
         }
       },
@@ -224,7 +238,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, isLoading, loadMore]);
+  }, [hasMore, loadMore]);
 
   // 复制提示词
   const handleCopy = async (prompt: ProcessedPrompt) => {
