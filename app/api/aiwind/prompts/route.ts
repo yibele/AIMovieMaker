@@ -21,11 +21,8 @@ interface AiwindPrompt {
 async function fetchAiwindData(): Promise<AiwindPrompt[]> {
   // 检查缓存
   if (cachedData && cachedData.length > 0 && Date.now() - cacheTimestamp < CACHE_DURATION) {
-    console.log('[Aiwind] Using cached data:', cachedData.length, 'items');
     return cachedData;
   }
-
-  console.log('[Aiwind] Fetching fresh data from aiwind.org...');
 
   try {
     // 1. 先获取 HTML 找到 JS 文件路径
@@ -39,13 +36,11 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
     // 提取 JS 文件路径
     const jsMatch = html.match(/src="(\/assets\/index-[a-z0-9]+\.js)"/);
     if (!jsMatch) {
-      console.error('[Aiwind] Could not find JS file path');
       return cachedData || [];
     }
     
     // 2. 获取 JS 文件内容
     const jsUrl = `https://www.aiwind.org${jsMatch[1]}`;
-    console.log('[Aiwind] Fetching JS:', jsUrl);
     
     const jsResponse = await fetch(jsUrl, {
       headers: {
@@ -53,7 +48,6 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
       },
     });
     const jsContent = await jsResponse.text();
-    console.log('[Aiwind] JS file size:', jsContent.length);
     
     // 3. 解析数据
     const prompts: AiwindPrompt[] = [];
@@ -114,9 +108,6 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
       });
     }
     
-    console.log('[Aiwind] Parsed prompts:', prompts.length);
-    console.log('[Aiwind] With real prompts:', prompts.filter(p => p.hasRealPrompt).length);
-    
     // 更新缓存
     if (prompts.length > 0) {
       cachedData = prompts;
@@ -125,7 +116,6 @@ async function fetchAiwindData(): Promise<AiwindPrompt[]> {
     
     return prompts.length > 0 ? prompts : (cachedData || []);
   } catch (error) {
-    console.error('[Aiwind] Error fetching data:', error);
     return cachedData || [];
   }
 }
@@ -175,7 +165,6 @@ export async function GET(request: NextRequest) {
       hasMore: endIndex < allPrompts.length,
     });
   } catch (error) {
-    console.error('[Aiwind] API Error:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch prompts',

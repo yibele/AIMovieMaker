@@ -58,7 +58,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
         setPage(pageNum);
       }
     } catch (error) {
-      console.error('Failed to fetch aiwind prompts:', error);
+      // 静默处理错误
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +110,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
       setCopiedId(prompt.id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      // 静默处理错误
     }
   };
 
@@ -122,7 +122,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
       setTimeout(() => setCopiedId(null), 2000);
       setSelectedPrompt(null);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      // 静默处理错误
     }
   };
 
