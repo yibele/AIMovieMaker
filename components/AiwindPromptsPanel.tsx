@@ -483,7 +483,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                     </span>
                     <button
                       onClick={() => handleCopy(selectedPrompt)}
-                      className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-1.5"
                     >
                       {copiedId === selectedPrompt.id ? (
                         <>
@@ -492,7 +492,7 @@ export default function AiwindPromptsPanel({ isOpen, onClose }: AiwindPromptsPan
                         </>
                       ) : (
                         <>
-                          <Copy size={12} />
+                          <Copy size={12} className="text-gray-500 dark:text-slate-300" />
                           <span>Copy</span>
                         </>
                       )}
