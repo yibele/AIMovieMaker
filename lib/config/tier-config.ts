@@ -76,13 +76,15 @@ export interface TierCapabilities {
 // 套餐能力配置（单一数据源）
 // ============================================================================
 
+// 行级注释：强制所有账号使用 Ultra 模式配置
 const TIER_CAPABILITIES: Record<AccountTier, TierCapabilities> = {
   pro: {
-    supportedVideoModes: ['fast'],
+    // 行级注释：Pro 现在使用 Ultra 配置
+    supportedVideoModes: ['quality', 'fast'],
     defaultVideoMode: 'fast',
-    paygateTier: 'PAYGATE_TIER_ONE',
+    paygateTier: 'PAYGATE_TIER_TWO', // 行级注释：强制使用 Ultra tier
     supportsUpsample: true,
-    supportsQualityMode: false,
+    supportsQualityMode: true,
     maxImageGenerationCount: 4,
   },
   ultra: {
@@ -116,47 +118,47 @@ interface VideoModelMapping {
 }
 
 // 文生视频模型映射
+// 行级注释：Pro 和 Ultra 统一使用 Ultra 模型
 const TEXT_TO_VIDEO_MODELS: VideoModelMapping = {
   pro: {
     fast: {
-      '16:9': 'veo_3_1_t2v_fast',
-      '9:16': 'veo_3_1_t2v_fast_portrait',
-      '1:1': 'veo_3_1_t2v_fast',  // 方形使用横屏模型（如果API不支持方形）
+      '16:9': 'veo_3_1_t2v_fast_ultra',
+      '9:16': 'veo_3_1_t2v_fast_ultra',
+      '1:1': 'veo_3_1_t2v_fast_ultra',
     },
     quality: {
-      // Pro 不支持 quality，但为了代码健壮性提供 fallback
-      '16:9': 'veo_3_1_t2v_fast',
-      '9:16': 'veo_3_1_t2v_fast_portrait',
-      '1:1': 'veo_3_1_t2v_fast',
+      '16:9': 'veo_3_1_t2v',
+      '9:16': 'veo_3_1_t2v',
+      '1:1': 'veo_3_1_t2v',
     },
   },
   ultra: {
     fast: {
       '16:9': 'veo_3_1_t2v_fast_ultra',
-      '9:16': 'veo_3_1_t2v_fast_ultra',  // 根据代码注释，portrait 也用同样的 key
+      '9:16': 'veo_3_1_t2v_fast_ultra',
       '1:1': 'veo_3_1_t2v_fast_ultra',
     },
     quality: {
       '16:9': 'veo_3_1_t2v',
-      '9:16': 'veo_3_1_t2v',  // quality portrait 也用同样的 key
+      '9:16': 'veo_3_1_t2v',
       '1:1': 'veo_3_1_t2v',
     },
   },
 };
 
 // 图生视频模型映射（仅首帧）
+// 行级注释：Pro 和 Ultra 统一使用 Ultra 模型
 const IMAGE_TO_VIDEO_MODELS: VideoModelMapping = {
   pro: {
     fast: {
-      '16:9': 'veo_3_1_i2v_s_fast',
-      '9:16': 'veo_3_1_i2v_s_fast_portrait',
-      '1:1': 'veo_3_1_i2v_s_fast',
+      '16:9': 'veo_3_1_i2v_s_fast_ultra',
+      '9:16': 'veo_3_1_i2v_s_fast_portrait_ultra',
+      '1:1': 'veo_3_1_i2v_s_fast_ultra',
     },
     quality: {
-      // Pro 不支持 quality，fallback 到 fast
-      '16:9': 'veo_3_1_i2v_s_fast',
-      '9:16': 'veo_3_1_i2v_s_fast_portrait',
-      '1:1': 'veo_3_1_i2v_s_fast',
+      '16:9': 'veo_3_1_i2v_s',
+      '9:16': 'veo_3_1_i2v_s_portrait',
+      '1:1': 'veo_3_1_i2v_s',
     },
   },
   ultra: {
@@ -174,18 +176,18 @@ const IMAGE_TO_VIDEO_MODELS: VideoModelMapping = {
 };
 
 // 图生视频模型映射（首尾帧）
+// 行级注释：Pro 和 Ultra 统一使用 Ultra 模型
 const IMAGE_TO_VIDEO_FL_MODELS: VideoModelMapping = {
   pro: {
     fast: {
-      '16:9': 'veo_3_1_i2v_s_fast_fl',
-      '9:16': 'veo_3_1_i2v_s_fast_portrait_fl',
-      '1:1': 'veo_3_1_i2v_s_fast_fl',
+      '16:9': 'veo_3_1_i2v_s_fast_ultra_fl',
+      '9:16': 'veo_3_1_i2v_s_fast_portrait_ultra_fl',
+      '1:1': 'veo_3_1_i2v_s_fast_ultra_fl',
     },
     quality: {
-      // Pro 不支持 quality，fallback 到 fast
-      '16:9': 'veo_3_1_i2v_s_fast_fl',
-      '9:16': 'veo_3_1_i2v_s_fast_portrait_fl',
-      '1:1': 'veo_3_1_i2v_s_fast_fl',
+      '16:9': 'veo_3_1_i2v_s_fl',
+      '9:16': 'veo_3_1_i2v_s_portrait_fl',
+      '1:1': 'veo_3_1_i2v_s_fl',
     },
   },
   ultra: {
@@ -203,17 +205,18 @@ const IMAGE_TO_VIDEO_FL_MODELS: VideoModelMapping = {
 };
 
 // 视频延长模型映射
+// 行级注释：Pro 和 Ultra 统一使用 Ultra 模型
 const EXTEND_VIDEO_MODELS: VideoModelMapping = {
   pro: {
     fast: {
-      '16:9': 'veo_3_1_extend_fast_landscape',
-      '9:16': 'veo_3_1_extend_fast_portrait',
-      '1:1': 'veo_3_1_extend_fast_square',
+      '16:9': 'veo_3_1_extend_fast_landscape_ultra',
+      '9:16': 'veo_3_1_extend_fast_portrait_ultra',
+      '1:1': 'veo_3_1_extend_fast_square_ultra',
     },
     quality: {
-      '16:9': 'veo_3_1_extend_landscape',
-      '9:16': 'veo_3_1_extend_portrait',
-      '1:1': 'veo_3_1_extend_square',
+      '16:9': 'veo_3_1_extend_landscape_ultra',
+      '9:16': 'veo_3_1_extend_portrait_ultra',
+      '1:1': 'veo_3_1_extend_square_ultra',
     },
   },
   ultra: {

@@ -612,9 +612,11 @@ export async function generateSmartStoryboard(
           const pureBase64 = extractBase64FromDataUrl(slicedBase64);
           const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
 
+          // 行级注释：同时保存 mediaId 和 mediaGenerationId，确保首尾帧生成可用
           updateElement(nodeId, {
             src: slicedBase64,
             base64: pureBase64,
+            mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
             mediaGenerationId: uploadResult.mediaGenerationId || undefined,
             caption: uploadResult.caption,
             uploadState: 'synced',

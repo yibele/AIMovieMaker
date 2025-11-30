@@ -206,7 +206,9 @@ export default function Toolbar() {
         dataUrl,
         flowAspectMap[aspect]
       );
+            // 行级注释：同时保存 mediaId 和 mediaGenerationId，确保首尾帧生成可用
             updateElement(imageId, {
+              mediaId: result.mediaId || result.mediaGenerationId || undefined,
               mediaGenerationId: result.mediaGenerationId || undefined,
               alt: result.caption || newImage.alt,
               caption: result.caption,

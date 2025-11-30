@@ -59,6 +59,7 @@ export async function uploadImageDirectly(
   aspectRatio?: '16:9' | '9:16' | '1:1'
 ): Promise<{
   mediaGenerationId?: string;
+  mediaId?: string; // 行级注释：与 mediaGenerationId 相同，用于兼容首尾帧生成
   width?: number;
   height?: number;
   workflowId?: string;
@@ -114,8 +115,16 @@ export async function uploadImageDirectly(
 
     const data = await response.json();
 
+    // 行级注释：调试日志，查看 API 返回的完整数据结构
+    console.log('📤 uploadImageDirectly 响应:', JSON.stringify(data, null, 2));
+
+    // 行级注释：提取 mediaGenerationId，API 返回格式为 { mediaGenerationId: { mediaGenerationId: "xxx" } }
+    const mediaGenId = data?.mediaGenerationId?.mediaGenerationId;
+
     return {
-      mediaGenerationId: data?.mediaGenerationId?.mediaGenerationId,
+      mediaGenerationId: mediaGenId,
+      // 行级注释：mediaId 和 mediaGenerationId 使用相同值，因为上传 API 只返回 mediaGenerationId
+      mediaId: mediaGenId,
       width: data?.width,
       height: data?.height,
       workflowId: data?.workflowId,

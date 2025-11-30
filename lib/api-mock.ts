@@ -509,6 +509,7 @@ export async function registerUploadedImage(
 ): Promise<{
   caption: string;
   mediaGenerationId?: string | null;
+  mediaId?: string | null; // 行级注释：与 mediaGenerationId 相同，用于兼容首尾帧生成
   workflowId: string;
   sessionId: string;
 }> {
@@ -560,6 +561,7 @@ export async function registerUploadedImage(
   return {
     caption: 'Flow Uploaded Image',
     mediaGenerationId: uploadResult.mediaGenerationId,
+    mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId, // 行级注释：兼容首尾帧生成
     workflowId: finalWorkflowId,
     sessionId: finalSessionId,
   };
