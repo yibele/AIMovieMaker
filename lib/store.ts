@@ -89,6 +89,13 @@ interface CanvasStore {
     count: number,
     panelRef: HTMLDivElement | null
   ) => void;
+  // 行级注释：智能分镜生成的回调（由 Canvas 注入）
+  onGenerateSmartStoryboard?: (
+    prompt: string,
+    aspectRatio: '16:9' | '9:16' | '1:1',
+    gridPreset: '2x2' | '1x4' | '2x3',
+    panelRef: HTMLDivElement | null
+  ) => void;
   // 图片编辑器状态
   annotatorTarget: ImageElement | null;
   isLoadingAnnotatorImage: boolean;
@@ -235,6 +242,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     prefixPromptEnabled: true, // 行级注释：默认启用前置提示词
     triggerVideoGeneration: undefined,
     onGenerateFromInput: undefined,
+    onGenerateSmartStoryboard: undefined, // 行级注释：智能分镜回调，由 Canvas 注入
 
     addElement: (element) =>
       set((state) => ({

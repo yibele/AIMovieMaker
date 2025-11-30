@@ -12,22 +12,30 @@ import {
   Zap,
   Type,
   Image as ImageIcon,
-  Video
+  Video,
+  LayoutGrid,
+  ChevronDown,
 } from 'lucide-react';
+
+// 行级注释：智能分镜网格预设
+type GridPresetKey = '2x2' | '1x4' | '2x3';
 
 // 行级注释：AIInputPanel 现在只负责 UI 和用户输入，业务逻辑由外部处理
 export default function AIInputPanel() {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
   const [isExpanded, setIsExpanded] = useState(false); // 控制设置面板展开
+  const [showStoryboardMenu, setShowStoryboardMenu] = useState(false); // 行级注释：智能分镜下拉菜单
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const storyboardMenuRef = useRef<HTMLDivElement>(null);
 
   const selection = useCanvasStore((state) => state.selection);
   const elements = useCanvasStore((state) => state.elements);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
   const setApiConfig = useCanvasStore((state) => state.setApiConfig);
   const onGenerateFromInput = useCanvasStore((state) => state.onGenerateFromInput);
+  const onGenerateSmartStoryboard = useCanvasStore((state) => state.onGenerateSmartStoryboard);
   const prefixPromptEnabled = useCanvasStore((state) => state.prefixPromptEnabled);
   const setPrefixPromptEnabled = useCanvasStore((state) => state.setPrefixPromptEnabled);
 
@@ -62,6 +70,18 @@ export default function AIInputPanel() {
     }
   };
 
+  // 行级注释：处理智能分镜生成
+  const handleSmartStoryboard = (gridPreset: GridPresetKey) => {
+    if (!prompt.trim()) return;
+
+    if (onGenerateSmartStoryboard) {
+      onGenerateSmartStoryboard(prompt, aspectRatio, gridPreset, panelRef.current);
+      setPrompt(''); // 清空输入框
+      setIsExpanded(false); // 生成后收起面板
+      setShowStoryboardMenu(false); // 关闭菜单
+    }
+  };
+
   // 行级注释：按 Enter 提交
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -80,6 +100,10 @@ export default function AIInputPanel() {
     const handleClickOutside = (event: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         setIsExpanded(false);
+      }
+      // 行级注释：点击智能分镜菜单外部时关闭菜单
+      if (storyboardMenuRef.current && !storyboardMenuRef.current.contains(event.target as Node)) {
+        setShowStoryboardMenu(false);
       }
     };
 
@@ -103,7 +127,7 @@ export default function AIInputPanel() {
     >
       <div className={`
         bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.4)]
-        border border-white/60 dark:border-slate-700/60 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+        border border-white/60 dark:border-slate-700/60 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
         ${isExpanded || showSelectedThumbnails ? 'p-5' : 'p-3'}
         ring-1 ring-black/5 dark:ring-white/5
       `}>
@@ -181,6 +205,52 @@ export default function AIInputPanel() {
             />
 
 
+          </div>
+
+          {/* 智能分镜按钮 - 带下拉菜单 */}
+          <div ref={storyboardMenuRef} className="relative">
+            <button
+              onClick={() => prompt.trim() && setShowStoryboardMenu(!showStoryboardMenu)}
+              disabled={!prompt.trim()}
+              title="智能分镜：生成多角度/多镜头的连续画面"
+              className={`
+                flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-300 shadow-sm whitespace-nowrap
+                ${prompt.trim()
+                  ? 'bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed'}
+              `}
+            >
+              <LayoutGrid size={16} />
+              <span>分镜</span>
+              <ChevronDown size={12} className={`transition-transform ${showStoryboardMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* 智能分镜下拉菜单 */}
+            {showStoryboardMenu && (
+              <div className="absolute bottom-full mb-2 right-0 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden min-w-[140px] z-50">
+                <div className="px-3 py-2 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-700">
+                  智能分镜
+                </div>
+                {[
+                  { key: '2x2' as GridPresetKey, label: '2×2 网格', desc: '4 张图' },
+                  { key: '1x4' as GridPresetKey, label: '1×4 横排', desc: '4 张图' },
+                  { key: '2x3' as GridPresetKey, label: '2×3 网格', desc: '6 张图' },
+                ].map((preset) => (
+                  <button
+                    key={preset.key}
+                    onClick={() => handleSmartStoryboard(preset.key)}
+                    className="w-full px-3 py-2.5 text-left hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center justify-between group"
+                  >
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                      {preset.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-500">
+                      {preset.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 生成按钮 */}

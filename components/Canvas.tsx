@@ -42,7 +42,9 @@ import {
   generateFromInput,
   imageToImageFromInput,
   multiImageRecipeFromInput,
+  generateSmartStoryboard,
 } from '@/lib/input-panel-generator';
+import type { GridPresetKey } from '@/lib/smart-storyboard';
 import { useConnectionMenu } from '@/hooks/canvas/useConnectionMenu';
 import { useVideoGeneration } from '@/hooks/canvas/useVideoGeneration';
 import { useNextShot } from '@/hooks/canvas/useNextShot';
@@ -311,6 +313,54 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       useCanvasStore.setState({ onGenerateFromInput: undefined });
     };
   }, [handleGenerateFromInput]);
+
+  // 行级注释：注册智能分镜生成的回调
+  const handleGenerateSmartStoryboard = useCallback(
+    async (
+      prompt: string,
+      aspectRatio: '16:9' | '9:16' | '1:1',
+      gridPreset: GridPresetKey,
+      panelRef: HTMLDivElement | null
+    ) => {
+      const { elements: storeElements, selection, addPromptHistory } = useCanvasStore.getState();
+      const position = getPositionAboveInput(panelRef, reactFlowInstance.screenToFlowPosition);
+
+      // 行级注释：获取选中的图片（作为参考图）
+      const selectedImages = storeElements
+        .filter((el) => selection.includes(el.id) && el.type === 'image')
+        .map((el) => el as ImageElement);
+
+      try {
+        toast.info(`开始智能分镜生成（${gridPreset}）...`);
+        await generateSmartStoryboard(
+          prompt,
+          aspectRatio,
+          gridPreset,
+          position,
+          selectedImages,
+          addElement,
+          updateElement,
+          useCanvasStore.getState().deleteElement,
+          addPromptHistory,
+          setEdges
+        );
+        toast.success('智能分镜生成完成！');
+      } catch (error: any) {
+        console.error('智能分镜生成失败:', error);
+        toast.error(`智能分镜生成失败: ${error.message || '未知错误'}`);
+      }
+    },
+    [addElement, updateElement, setEdges, reactFlowInstance]
+  );
+
+  useEffect(() => {
+    useCanvasStore.setState({
+      onGenerateSmartStoryboard: handleGenerateSmartStoryboard,
+    });
+    return () => {
+      useCanvasStore.setState({ onGenerateSmartStoryboard: undefined });
+    };
+  }, [handleGenerateSmartStoryboard]);
 
   // 行级注释：使用节点管理服务创建视频节点（从图片派生）
   const createVideoNodeFromImage = useCallback(
