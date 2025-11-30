@@ -320,6 +320,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       prompt: string,
       aspectRatio: '16:9' | '9:16' | '1:1',
       gridPreset: GridPresetKey,
+      count: number, // 行级注释：生成多少张网格图
       panelRef: HTMLDivElement | null
     ) => {
       const { elements: storeElements, selection, addPromptHistory } = useCanvasStore.getState();
@@ -335,6 +336,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           prompt,
           aspectRatio,
           gridPreset,
+          count, // 行级注释：传入生成数量
           position,
           selectedImages,
           addElement,

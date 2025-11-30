@@ -94,6 +94,7 @@ interface CanvasStore {
     prompt: string,
     aspectRatio: '16:9' | '9:16' | '1:1',
     gridPreset: '2x2' | '1x4' | '2x3',
+    count: number, // 行级注释：生成多少张网格图，每张切成 2×2，总共 count×4 张分镜
     panelRef: HTMLDivElement | null
   ) => void;
   // 图片编辑器状态

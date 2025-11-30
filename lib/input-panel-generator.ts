@@ -412,19 +412,19 @@ export async function multiImageRecipeFromInput(
 // ============================================================================
 
 /**
- * 智能分镜生成
+ * 智能分镜生成（增强版）
  * 
  * 流程：
  * 1. 构造网格 Prompt
- * 2. 创建 N 个 placeholder 节点
- * 3. 调用生成接口获取网格大图
- * 4. 切割大图为 N 张小图
- * 5. 上传每张小图获取 mediaId
- * 6. 更新 placeholder 显示
+ * 2. 生成 count 张网格图（每张 2×2）
+ * 3. 每张网格图切割成 4 张 = count × 4 张分镜
+ * 4. 并行上传（每次 2 张）
+ * 5. 更新 placeholder 显示
  * 
  * @param prompt 用户输入的提示词
  * @param aspectRatio 宽高比
  * @param gridPreset 网格预设（默认 2x2）
+ * @param count 生成多少张网格图（1-4），总分镜数 = count × 4
  * @param position 生成位置
  * @param selectedImages 选中的参考图（可选）
  * @param addElement 添加元素回调
@@ -437,6 +437,7 @@ export async function generateSmartStoryboard(
   prompt: string,
   aspectRatio: '16:9' | '9:16' | '1:1',
   gridPreset: GridPresetKey,
+  count: number, // 行级注释：生成多少张网格图
   position: { x: number; y: number },
   selectedImages: ImageElement[],
   addElement: (el: ImageElement) => void,
@@ -447,50 +448,53 @@ export async function generateSmartStoryboard(
 ) {
   // 行级注释：获取网格配置
   const gridConfig = GRID_PRESETS[gridPreset];
-  const { rows, cols, total } = gridConfig;
+  const { rows, cols } = gridConfig;
+  const slicesPerGrid = rows * cols; // 每张网格图切割出的小图数量
+  const totalSlices = count * slicesPerGrid; // 总分镜数量
 
   // 行级注释：构造网格 Prompt
   const gridPrompt = buildGridPrompt(prompt, { rows, cols });
 
-  // 行级注释：计算 placeholder 节点的位置（横向排列）
+  // 行级注释：计算 placeholder 节点的尺寸
   const nodeSize = getImageNodeSize(aspectRatio);
-  // 行级注释：切割后的单张图片尺寸（基于原图尺寸除以网格）
-  const slicedWidth = Math.floor(nodeSize.width / cols) * cols; // 保持整数
-  const slicedHeight = Math.floor(nodeSize.height / rows) * rows;
   const slicedNodeSize = {
-    width: Math.floor(slicedWidth / cols),
-    height: Math.floor(slicedHeight / rows),
+    width: Math.floor(nodeSize.width / cols),
+    height: Math.floor(nodeSize.height / rows),
   };
 
-  // 行级注释：创建 placeholder 节点（按网格排列）
+  // 行级注释：创建所有 placeholder 节点（count × slicesPerGrid 个）
   const placeholderIds: string[] = [];
   const gap = 20; // 节点间距
+  const gridGap = 40; // 网格组之间的间距
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const nodeId = `image-${Date.now()}-${r}-${c}`;
-      const nodePosition = {
-        x: position.x + c * (slicedNodeSize.width + gap),
-        y: position.y + r * (slicedNodeSize.height + gap),
-      };
+  for (let g = 0; g < count; g++) { // 每张网格图
+    for (let r = 0; r < rows; r++) { // 行
+      for (let c = 0; c < cols; c++) { // 列
+        const nodeId = `image-${Date.now()}-${g}-${r}-${c}`;
+        const nodePosition = {
+          // 行级注释：每组网格图水平排列，组内按 2×2 排列
+          x: position.x + g * (cols * (slicedNodeSize.width + gap) + gridGap) + c * (slicedNodeSize.width + gap),
+          y: position.y + r * (slicedNodeSize.height + gap),
+        };
 
-      const placeholder: ImageElement = {
-        id: nodeId,
-        type: 'image',
-        position: nodePosition,
-        size: slicedNodeSize,
-        src: '',
-        uploadState: 'syncing',
-        uploadMessage: `正在生成智能分镜 (${r * cols + c + 1}/${total})...`,
-        generatedFrom: {
-          type: selectedImages.length > 0 ? 'image-to-image' : 'input',
-          prompt: prompt,
-          sourceIds: selectedImages.map(img => img.id),
-        },
-      };
+        const placeholder: ImageElement = {
+          id: nodeId,
+          type: 'image',
+          position: nodePosition,
+          size: slicedNodeSize,
+          src: '',
+          uploadState: 'syncing',
+          uploadMessage: `正在生成分镜...`,
+          generatedFrom: {
+            type: selectedImages.length > 0 ? 'image-to-image' : 'input',
+            prompt: prompt,
+            sourceIds: selectedImages.map(img => img.id),
+          },
+        };
 
-      addElement(placeholder);
-      placeholderIds.push(nodeId);
+        addElement(placeholder);
+        placeholderIds.push(nodeId);
+      }
     }
   }
 
@@ -505,7 +509,7 @@ export async function generateSmartStoryboard(
           target: nodeId,
           type: 'default',
           animated: true,
-          style: { stroke: '#10b981', strokeWidth: 1 }, // 行级注释：绿色表示智能分镜
+          style: { stroke: '#10b981', strokeWidth: 1 },
         });
       });
     });
@@ -513,16 +517,14 @@ export async function generateSmartStoryboard(
   }
 
   try {
-    let gridImageUrl: string;
-    let gridImageBase64: string | undefined;
+    // 行级注释：生成 count 张网格图
+    let gridImages: Array<{ url: string; base64?: string }> = [];
 
-    // 行级注释：根据是否有参考图选择不同的生成方式
     if (selectedImages.length > 0) {
       // 行级注释：有参考图 - 使用图生图
       const sourceImage = selectedImages[0];
       let effectiveMediaId = sourceImage.mediaId || sourceImage.mediaGenerationId;
 
-      // 行级注释：如果参考图没有 mediaId，先上传
       if (!effectiveMediaId) {
         let imageDataToUpload = sourceImage.base64 || sourceImage.src;
         if (imageDataToUpload.startsWith('data:')) {
@@ -530,7 +532,7 @@ export async function generateSmartStoryboard(
         }
         const uploadResult = await registerUploadedImage(imageDataToUpload);
         if (!uploadResult.mediaGenerationId) {
-          throw new Error('上传参考图失败：未获取到 mediaGenerationId');
+          throw new Error('上传参考图失败');
         }
         effectiveMediaId = uploadResult.mediaGenerationId;
       }
@@ -541,36 +543,50 @@ export async function generateSmartStoryboard(
         aspectRatio,
         '',
         effectiveMediaId,
-        1 // 行级注释：只生成一张网格图
+        count // 行级注释：生成 count 张网格图
       );
 
-      gridImageUrl = result.imageUrl;
-      gridImageBase64 = result.base64;
+      // 行级注释：收集所有生成的网格图
+      if (result.images && result.images.length > 0) {
+        gridImages = result.images.map(img => ({
+          url: img.imageUrl,
+          base64: img.base64,
+        }));
+      } else {
+        gridImages = [{ url: result.imageUrl, base64: result.base64 }];
+      }
     } else {
       // 行级注释：无参考图 - 使用文生图
-      const result = await generateImage(gridPrompt, aspectRatio, 1);
-      gridImageUrl = result.imageUrl;
-      gridImageBase64 = result.images?.[0]?.base64;
+      const result = await generateImage(gridPrompt, aspectRatio, count);
+
+      if (result.images && result.images.length > 0) {
+        gridImages = result.images.map(img => ({
+          url: img.imageUrl,
+          base64: img.base64,
+        }));
+      } else {
+        gridImages = [{ url: result.imageUrl }];
+      }
     }
 
-    // 行级注释：更新状态 - 正在切割
-    placeholderIds.forEach((id, index) => {
-      updateElement(id, {
-        uploadMessage: `正在切割分镜 (${index + 1}/${total})...`,
-      } as Partial<ImageElement>);
-    });
+    // 行级注释：对每张网格图进行切割
+    const allSlicedImages: string[] = [];
 
-    // 行级注释：准备图片源用于切割
-    let imageSourceForSlicing = gridImageUrl;
-    if (gridImageBase64) {
-      // 行级注释：优先使用 base64，避免跨域问题
-      imageSourceForSlicing = gridImageBase64.startsWith('data:')
-        ? gridImageBase64
-        : `data:image/png;base64,${gridImageBase64}`;
+    for (let g = 0; g < gridImages.length; g++) {
+      const gridImage = gridImages[g];
+      
+      // 行级注释：准备图片源用于切割
+      let imageSourceForSlicing = gridImage.url;
+      if (gridImage.base64) {
+        imageSourceForSlicing = gridImage.base64.startsWith('data:')
+          ? gridImage.base64
+          : `data:image/png;base64,${gridImage.base64}`;
+      }
+
+      // 行级注释：切割当前网格图
+      const slicedImages = await sliceImageGrid(imageSourceForSlicing, rows, cols);
+      allSlicedImages.push(...slicedImages);
     }
-
-    // 行级注释：切割网格图
-    const slicedImages = await sliceImageGrid(imageSourceForSlicing, rows, cols);
 
     // 行级注释：根据宽高比转换为 Flow API 需要的格式
     const flowAspectRatioMap: Record<'16:9' | '9:16' | '1:1', 'IMAGE_ASPECT_RATIO_LANDSCAPE' | 'IMAGE_ASPECT_RATIO_PORTRAIT' | 'IMAGE_ASPECT_RATIO_SQUARE'> = {
@@ -580,40 +596,39 @@ export async function generateSmartStoryboard(
     };
     const flowAspectRatio = flowAspectRatioMap[aspectRatio];
 
-    // 行级注释：上传每张切割后的小图并更新节点
-    for (let i = 0; i < slicedImages.length && i < placeholderIds.length; i++) {
-      const nodeId = placeholderIds[i];
-      const slicedBase64 = slicedImages[i];
+    // 行级注释：并行上传（每次 2 张）
+    const BATCH_SIZE = 2;
+    for (let i = 0; i < allSlicedImages.length; i += BATCH_SIZE) {
+      const batch = allSlicedImages.slice(i, Math.min(i + BATCH_SIZE, allSlicedImages.length));
+      
+      // 行级注释：并行处理当前批次
+      await Promise.all(batch.map(async (slicedBase64, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        if (globalIndex >= placeholderIds.length) return;
 
-      updateElement(nodeId, {
-        uploadMessage: `正在上传分镜 (${i + 1}/${total})...`,
-      } as Partial<ImageElement>);
+        const nodeId = placeholderIds[globalIndex];
 
-      try {
-        // 行级注释：提取纯 base64 数据（去掉 data:image/png;base64, 前缀）
-        const pureBase64 = extractBase64FromDataUrl(slicedBase64);
+        try {
+          const pureBase64 = extractBase64FromDataUrl(slicedBase64);
+          const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
 
-        // 行级注释：上传切割后的图片获取 mediaId（传入 aspectRatio 参数）
-        const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
-
-        // 行级注释：更新节点显示（与 Toolbar.tsx 上传逻辑保持一致）
-        updateElement(nodeId, {
-          src: slicedBase64, // 行级注释：直接使用本地 base64 显示，减少网络请求
-          base64: pureBase64,
-          mediaGenerationId: uploadResult.mediaGenerationId || undefined,
-          caption: uploadResult.caption,
-          uploadState: 'synced',
-          uploadMessage: undefined,
-        } as Partial<ImageElement>);
-      } catch (uploadError) {
-        console.error(`上传分镜 ${i + 1} 失败:`, uploadError);
-        // 行级注释：上传失败时仍然显示图片，但标记状态
-        updateElement(nodeId, {
-          src: slicedBase64,
-          uploadState: 'error',
-          uploadMessage: '上传失败，无法用于后续生成',
-        } as Partial<ImageElement>);
-      }
+          updateElement(nodeId, {
+            src: slicedBase64,
+            base64: pureBase64,
+            mediaGenerationId: uploadResult.mediaGenerationId || undefined,
+            caption: uploadResult.caption,
+            uploadState: 'synced',
+            uploadMessage: undefined,
+          } as Partial<ImageElement>);
+        } catch (uploadError) {
+          console.error(`上传分镜 ${globalIndex + 1} 失败:`, uploadError);
+          updateElement(nodeId, {
+            src: slicedBase64,
+            uploadState: 'error',
+            uploadMessage: '上传失败',
+          } as Partial<ImageElement>);
+        }
+      }));
     }
 
     // 行级注释：停止连线动画
@@ -637,7 +652,6 @@ export async function generateSmartStoryboard(
     });
 
   } catch (error) {
-    // 行级注释：出错时删除所有 placeholder 和连线
     deletePlaceholders(placeholderIds);
     if (allEdges.length > 0) {
       setEdges((eds: any) =>

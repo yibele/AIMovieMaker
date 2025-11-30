@@ -64,12 +64,13 @@ export default function AIInputPanel() {
     }
   };
 
-  // 行级注释：处理智能分镜生成（固定 2×2 网格）
+  // 行级注释：处理智能分镜生成（根据 generationCount 生成多张网格图，每张切成 2×2）
   const handleSmartStoryboard = () => {
     if (!prompt.trim()) return;
 
     if (onGenerateSmartStoryboard) {
-      onGenerateSmartStoryboard(prompt, aspectRatio, '2x2', panelRef.current);
+      // 行级注释：传入 generationCount，生成 N 张网格图 × 4 = N×4 张分镜
+      onGenerateSmartStoryboard(prompt, aspectRatio, '2x2', generationCount, panelRef.current);
       setPrompt(''); // 清空输入框
       setIsExpanded(false); // 生成后收起面板
     }

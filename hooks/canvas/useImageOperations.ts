@@ -139,8 +139,22 @@ export function useImageOperations(imageId: string): UseImageOperationsReturn {
       toast.error('图片未生成，无法下载');
       return;
     }
-    window.open(imageData.src, '_blank');
-  }, [imageData?.src]);
+
+    // 行级注释：如果是 Data URL（base64），使用 <a download> 强制下载
+    if (imageData.src.startsWith('data:')) {
+      const link = document.createElement('a');
+      link.href = imageData.src;
+      // 行级注释：生成文件名，使用 prompt 前几个字或默认名称
+      const promptPrefix = imageData.generatedFrom?.prompt?.slice(0, 20)?.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_') || 'image';
+      link.download = `${promptPrefix}_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // 行级注释：普通 URL，新窗口打开
+      window.open(imageData.src, '_blank');
+    }
+  }, [imageData?.src, imageData?.generatedFrom?.prompt]);
 
   // 再次生成
   const handleRegenerate = useCallback(async () => {
