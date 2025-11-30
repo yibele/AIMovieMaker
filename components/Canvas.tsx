@@ -331,12 +331,21 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         .filter((el) => selection.includes(el.id) && el.type === 'image')
         .map((el) => el as ImageElement);
 
+      // 行级注释：如果有选中图片，使用第一张图片的比例；否则使用传入的比例
+      let effectiveAspectRatio = aspectRatio;
+      if (selectedImages.length > 0 && selectedImages[0].size) {
+        effectiveAspectRatio = detectAspectRatio(
+          selectedImages[0].size.width,
+          selectedImages[0].size.height
+        );
+      }
+
       try {
         await generateSmartStoryboard(
           prompt,
-          aspectRatio,
+          effectiveAspectRatio, // 行级注释：使用检测到的比例
           gridPreset,
-          count, // 行级注释：传入生成数量
+          count,
           position,
           selectedImages,
           addElement,
