@@ -331,7 +331,6 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         .map((el) => el as ImageElement);
 
       try {
-        toast.info(`开始智能分镜生成（${gridPreset}）...`);
         await generateSmartStoryboard(
           prompt,
           aspectRatio,
@@ -344,10 +343,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           addPromptHistory,
           setEdges
         );
-        toast.success('智能分镜生成完成！');
       } catch (error: any) {
-        console.error('智能分镜生成失败:', error);
-        toast.error(`智能分镜生成失败: ${error.message || '未知错误'}`);
+        console.error('分镜生成失败:', error);
+        toast.error(`生成失败: ${error.message || '未知错误'}`);
       }
     },
     [addElement, updateElement, setEdges, reactFlowInstance]
