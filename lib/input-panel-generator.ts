@@ -17,6 +17,8 @@ import {
   GRID_PRESETS,
   GridPresetKey,
 } from './smart-storyboard';
+import { upscaleImage, isUpscaleEnabled } from './services/fal-upscale';
+import { STORYBOARD_UPSCALE_RESOLUTION, DEBUG_MODE } from './config/features';
 
 // 行级注释：优先使用 Flow 返回的 mediaId，若缺失则降级为 mediaGenerationId
 const resolveMediaId = (mediaId?: string, fallback?: string) =>
@@ -518,7 +520,8 @@ export async function generateSmartStoryboard(
 
   try {
     // 行级注释：生成 count 张网格图
-    let gridImages: Array<{ url: string; base64?: string }> = [];
+    // 行级注释：fifeUrl 是 Google 返回的 HTTP URL，用于 fal.ai 放大
+    let gridImages: Array<{ url: string; fifeUrl?: string; base64?: string }> = [];
 
     if (selectedImages.length > 0) {
       // 行级注释：有参考图 - 使用图生图
@@ -546,14 +549,15 @@ export async function generateSmartStoryboard(
         count // 行级注释：生成 count 张网格图
       );
 
-      // 行级注释：收集所有生成的网格图
+      // 行级注释：收集所有生成的网格图，保存 fifeUrl 用于高清放大
       if (result.images && result.images.length > 0) {
         gridImages = result.images.map(img => ({
           url: img.imageUrl,
+          fifeUrl: img.fifeUrl,  // 行级注释：单独保存 fifeUrl，用于高清放大
           base64: img.base64,
         }));
       } else {
-        gridImages = [{ url: result.imageUrl, base64: result.base64 }];
+        gridImages = [{ url: result.imageUrl, fifeUrl: (result as any).fifeUrl, base64: result.base64 }];
       }
     } else {
       // 行级注释：无参考图 - 使用文生图
@@ -562,29 +566,58 @@ export async function generateSmartStoryboard(
       if (result.images && result.images.length > 0) {
         gridImages = result.images.map(img => ({
           url: img.imageUrl,
+          fifeUrl: img.fifeUrl,  // 行级注释：单独保存 fifeUrl，用于高清放大
           base64: img.base64,
         }));
       } else {
-        gridImages = [{ url: result.imageUrl }];
+        gridImages = [{ url: result.imageUrl, fifeUrl: (result as any).fifeUrl }];
       }
     }
 
-    // 行级注释：对每张网格图进行切割
+    // 行级注释：对每张网格图进行高清放大（如果启用）和切割
     const allSlicedImages: string[] = [];
+
+    // 行级注释：检查是否启用高清放大
+    const upscaleEnabled = isUpscaleEnabled();
+    if (upscaleEnabled && DEBUG_MODE) {
+      console.log(`🔍 高清放大已启用，将放大到 ${STORYBOARD_UPSCALE_RESOLUTION}`);
+    }
 
     for (let g = 0; g < gridImages.length; g++) {
       const gridImage = gridImages[g];
       
-      // 行级注释：准备图片源用于切割
-      let imageSourceForSlicing = gridImage.url;
-      if (gridImage.base64) {
-        imageSourceForSlicing = gridImage.base64.startsWith('data:')
+      // 行级注释：获取图片源（fifeUrl 或 base64 都可以传给 fal.ai）
+      let imageSource = gridImage.fifeUrl || gridImage.url;
+      if (!imageSource || !imageSource.startsWith('http')) {
+        // 行级注释：没有 URL，使用 base64 Data URI
+        imageSource = gridImage.base64?.startsWith('data:')
           ? gridImage.base64
           : `data:image/png;base64,${gridImage.base64}`;
       }
 
-      // 行级注释：切割当前网格图
-      const slicedImages = await sliceImageGrid(imageSourceForSlicing, rows, cols);
+      // 行级注释：如果启用高清放大，调用 fal.ai 放大
+      if (upscaleEnabled) {
+        // 行级注释：更新 placeholder 状态
+        placeholderIds.slice(g * slicesPerGrid, (g + 1) * slicesPerGrid).forEach(nodeId => {
+          updateElement(nodeId, {
+            uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
+          } as Partial<ImageElement>);
+        });
+
+        console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}`);
+
+        // 行级注释：调用 fal.ai 放大 API（支持 URL 和 base64 Data URI）
+        const upscaleResult = await upscaleImage(imageSource, STORYBOARD_UPSCALE_RESOLUTION);
+        if (upscaleResult.success && upscaleResult.imageUrl) {
+          imageSource = upscaleResult.imageUrl;  // 行级注释：使用放大后的图片
+          console.log(`✅ 网格图 ${g + 1} 放大完成`);
+        } else {
+          console.error(`❌ 网格图 ${g + 1} 放大失败: ${upscaleResult.error}，使用原图`);
+        }
+      }
+
+      // 行级注释：切割网格图
+      const slicedImages = await sliceImageGrid(imageSource, rows, cols);
       allSlicedImages.push(...slicedImages);
     }
 
