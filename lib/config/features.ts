@@ -21,7 +21,7 @@
  *
  * @default false - 默认关闭，发布时根据需要启用
  */
-export const ENABLE_STORYBOARD_UPSCALE = true;
+export const ENABLE_STORYBOARD_UPSCALE = false;
 
 /**
  * 分镜放大的目标分辨率

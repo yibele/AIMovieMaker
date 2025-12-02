@@ -129,8 +129,9 @@ const loadApiConfig = (): ApiConfig => {
       generationCount: 1, // 默认生成 1 张图片
       accountTier: 'pro', // 行级注释：默认 Pro 账号
       imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
-      videoModel: 'quality',
-      credentialMode: 'cloud', // 行级注释：默认云端模式
+      videoModel: 'fast', // 行级注释：邀请码用户只能使用 fast 模式
+      credentialMode: 'cloud', // 行级注释：只支持云端模式
+      isManaged: true, // 行级注释：始终为托管模式
     };
   }
 
@@ -151,9 +152,9 @@ const loadApiConfig = (): ApiConfig => {
         generationCount: parsed?.generationCount ?? 1, // 默认生成 1 张图片
         accountTier: parsed?.accountTier || 'pro', // 行级注释：兼容旧配置，默认 pro
         imageModel: parsed?.imageModel || 'nanobanana', // 行级注释：兼容旧配置，默认 Banana (Preview)
-        videoModel: parsed?.videoModel || 'quality', // 行级注释：兼容旧配置，默认 quality
-        isManaged: parsed?.isManaged || false,
-        credentialMode: parsed?.credentialMode || 'cloud', // 行级注释：兼容旧配置，默认云端模式
+        videoModel: 'fast', // 行级注释：邀请码用户强制使用 fast 模式
+        isManaged: true, // 行级注释：始终为托管模式
+        credentialMode: 'cloud', // 行级注释：只支持云端模式
       };
     }
   } catch (error) {
@@ -173,9 +174,9 @@ const loadApiConfig = (): ApiConfig => {
     generationCount: 1, // 默认生成 1 张图片
     accountTier: 'pro', // 行级注释：默认 Pro 账号
     imageModel: 'nanobanana', // 行级注释：默认 Banana (Preview)
-    videoModel: 'quality', // 行级注释：视频生成模型 quality 或 fast
-    isManaged: false,
-    credentialMode: 'cloud', // 行级注释：默认云端模式
+    videoModel: 'fast', // 行级注释：邀请码用户只能使用 fast 模式
+    isManaged: true, // 行级注释：始终为托管模式
+    credentialMode: 'cloud', // 行级注释：只支持云端模式
   };
 };
 

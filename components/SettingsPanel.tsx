@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Code, Loader2 } from 'lucide-react';
+import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
@@ -24,7 +24,6 @@ export default function SettingsPanel() {
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
   const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
-  const [credentialMode, setCredentialMode] = useState<'cloud' | 'local'>(apiConfig.credentialMode || 'cloud');
   const [isSyncingCredentials, setIsSyncingCredentials] = useState(false);
 
   // 同步本地状态 - 当面板打开或 apiConfig 变化时同步
@@ -39,7 +38,6 @@ export default function SettingsPanel() {
       setWorkflowId(apiConfig.workflowId || '');
       setSessionId(apiConfig.sessionId || '');
       setAccountTier(apiConfig.accountTier || 'pro');
-      setCredentialMode(apiConfig.credentialMode || 'cloud');
     }
   }, [apiConfig, isOpen]);
 
@@ -98,16 +96,6 @@ export default function SettingsPanel() {
     toast.success('New session context generated');
   };
 
-  // 行级注释：切换凭证模式并立即保存到 localStorage
-  const handleCredentialModeChange = (mode: 'cloud' | 'local') => {
-    setCredentialMode(mode);
-    setApiConfig({
-      credentialMode: mode,
-      isManaged: mode === 'cloud',
-    });
-    toast.success(mode === 'cloud' ? '已切换到 Cloud Mode' : '已切换到 Developer Mode');
-  };
-
   // 行级注释：切换账号类型并立即保存到 localStorage
   const handleAccountTierChange = (tier: 'pro' | 'ultra') => {
     setAccountTier(tier);
@@ -129,9 +117,9 @@ export default function SettingsPanel() {
       workflowId: workflowId.trim(),
       sessionId: sessionId.trim(),
       accountTier,
-      credentialMode, // 行级注释：保存凭证模式选择
-      // 行级注释：保留 generationCount 和 imageModel，不在设置面板中修改它们
-      isManaged: credentialMode === 'cloud', // 云端模式为托管模式
+      credentialMode: 'cloud',  // 行级注释：始终使用云端模式
+      isManaged: true,  // 行级注释：始终为托管模式
+      videoModel: 'fast',  // 行级注释：邀请码用户只能使用 fast 模式
     });
     setIsOpen(false);
     toast.success('Configuration saved successfully');
@@ -172,67 +160,36 @@ export default function SettingsPanel() {
             {/* 表单内容 */}
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
 
-              {/* API 授权模式 */}
+              {/* API 授权同步 */}
               <div className="space-y-4">
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
                   <Cloud className="w-4 h-4 text-sky-500" />
-                  API Mode
+                  API Authorization
                 </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => handleCredentialModeChange('cloud')}
-                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
-                      credentialMode === 'cloud'
-                        ? 'bg-gradient-to-br from-sky-500 to-blue-600 border-transparent text-white shadow-lg shadow-sky-500/30'
-                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Cloud className="w-4 h-4" />
-                      <span className="font-bold">Cloud Mode</span>
-                    </div>
-                    <div className={`text-xs ${credentialMode === 'cloud' ? 'text-sky-100' : 'text-slate-400'}`}>
-                      Auto-sync API from invitation code
-                    </div>
-                    {credentialMode === 'cloud' && <div className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full animate-pulse" />}
-                  </button>
-                  <button
-                    onClick={() => handleCredentialModeChange('local')}
-                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
-                      credentialMode === 'local'
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20'
-                        : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Code className="w-4 h-4" />
-                      <span className="font-bold">Developer Mode</span>
-                    </div>
-                    <div className={`text-xs ${credentialMode === 'local' ? 'text-slate-300' : 'text-slate-400'}`}>
-                      Use custom API configuration
-                    </div>
-                    {credentialMode === 'local' && <div className="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse" />}
-                  </button>
+                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Cloud className="w-4 h-4" />
+                    <span className="font-bold">Cloud Mode</span>
+                  </div>
+                  <div className="text-xs text-sky-100">
+                    API settings synced from your invitation code
+                  </div>
+                  <div className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full animate-pulse" />
                 </div>
-                {/* 云端模式下显示同步按钮 */}
-                {credentialMode === 'cloud' && (
-                  <button
-                    onClick={handleSyncCloudCredentials}
-                    disabled={isSyncingCredentials}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-sm rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSyncingCredentials ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    {isSyncingCredentials ? 'Syncing...' : 'Sync API Authorization'}
-                  </button>
-                )}
+                <button
+                  onClick={handleSyncCloudCredentials}
+                  disabled={isSyncingCredentials}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-sm rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSyncingCredentials ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  {isSyncingCredentials ? 'Syncing...' : 'Sync API Authorization'}
+                </button>
                 <p className="text-xs text-slate-400 font-medium">
-                  {credentialMode === 'cloud' 
-                    ? 'Cloud mode syncs API settings from your invitation code. Click the button above to refresh.' 
-                    : 'Developer mode uses your local settings. API will not be overwritten by cloud sync.'}
+                  Click the button above to refresh your API credentials from the cloud.
                 </p>
               </div>
               

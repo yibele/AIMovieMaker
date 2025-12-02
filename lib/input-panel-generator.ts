@@ -524,36 +524,60 @@ export async function generateSmartStoryboard(
     let gridImages: Array<{ url: string; fifeUrl?: string; base64?: string }> = [];
 
     if (selectedImages.length > 0) {
-      // 行级注释：有参考图 - 使用图生图
-      const sourceImage = selectedImages[0];
-      let effectiveMediaId = sourceImage.mediaId || sourceImage.mediaGenerationId;
+      // 行级注释：有参考图 - 收集所有参考图的 mediaId 用于多图融合
+      const references: Array<{ mediaId?: string; mediaGenerationId?: string }> = [];
+      
+      for (const sourceImage of selectedImages) {
+        let effectiveMediaId = sourceImage.mediaId || sourceImage.mediaGenerationId;
 
-      if (!effectiveMediaId) {
-        let imageDataToUpload = sourceImage.base64 || sourceImage.src;
-        if (imageDataToUpload.startsWith('data:')) {
-          imageDataToUpload = imageDataToUpload.split(',')[1];
+        if (!effectiveMediaId) {
+          let imageDataToUpload = sourceImage.base64 || sourceImage.src;
+          if (imageDataToUpload.startsWith('data:')) {
+            imageDataToUpload = imageDataToUpload.split(',')[1];
+          }
+          const uploadResult = await registerUploadedImage(imageDataToUpload);
+          if (!uploadResult.mediaGenerationId) {
+            console.error(`上传参考图失败，跳过该图片`);
+            continue;
+          }
+          effectiveMediaId = uploadResult.mediaGenerationId;
         }
-        const uploadResult = await registerUploadedImage(imageDataToUpload);
-        if (!uploadResult.mediaGenerationId) {
-          throw new Error('上传参考图失败');
-        }
-        effectiveMediaId = uploadResult.mediaGenerationId;
+        
+        references.push({ mediaId: effectiveMediaId });
       }
 
-      const result = await imageToImage(
-        gridPrompt,
-        sourceImage.src,
-        aspectRatio,
-        '',
-        effectiveMediaId,
-        count // 行级注释：生成 count 张网格图
-      );
+      if (references.length === 0) {
+        throw new Error('没有有效的参考图');
+      }
 
-      // 行级注释：收集所有生成的网格图，保存 fifeUrl 用于高清放大
+      // 行级注释：根据参考图数量选择 API
+      let result;
+      if (references.length === 1) {
+        // 行级注释：单张参考图使用 imageToImage
+        result = await imageToImage(
+          gridPrompt,
+          selectedImages[0].src,
+          aspectRatio,
+          '',
+          references[0].mediaId,
+          count
+        );
+      } else {
+        // 行级注释：多张参考图使用 runImageRecipe 进行融合
+        result = await runImageRecipe(
+          gridPrompt,
+          references,
+          aspectRatio,
+          undefined,
+          count
+        );
+      }
+
+      // 行级注释：收集所有生成的网格图
       if (result.images && result.images.length > 0) {
         gridImages = result.images.map(img => ({
           url: img.imageUrl,
-          fifeUrl: img.fifeUrl,  // 行级注释：单独保存 fifeUrl，用于高清放大
+          fifeUrl: img.fifeUrl,
           base64: img.base64,
         }));
       } else {
