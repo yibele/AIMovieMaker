@@ -713,9 +713,9 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       return;
     }
     
-    // 行级注释：检查文件大小（最大 10MB）
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('图片大小不能超过 10MB');
+    // 行级注释：检查文件大小（最大 5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('图片大小不能超过 5MB');
       return;
     }
     
