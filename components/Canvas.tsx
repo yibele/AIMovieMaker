@@ -89,6 +89,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const setSelection = useCanvasStore((state) => state.setSelection);
   const uiState = useCanvasStore((state) => state.uiState);
   const loadProjectPrefixPrompt = useCanvasStore((state) => state.loadProjectPrefixPrompt);
+  const apiConfig = useCanvasStore((state) => state.apiConfig); // 行级注释：拖拽上传需要
   
   // 主题状态
   const theme = useThemeStore((state) => state.theme);
