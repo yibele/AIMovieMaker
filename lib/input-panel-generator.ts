@@ -610,38 +610,40 @@ export async function generateSmartStoryboard(
     for (let g = 0; g < gridImages.length; g++) {
       const gridImage = gridImages[g];
       
-      // 行级注释：获取图片源（fifeUrl 或 base64 都可以传给 fal.ai）
-      let imageSource = gridImage.fifeUrl || gridImage.url;
-      if (!imageSource || !imageSource.startsWith('http')) {
-        // 行级注释：没有 URL，使用 base64 Data URI
-        imageSource = gridImage.base64?.startsWith('data:')
+      // 行级注释：切割必须用 base64（fifeUrl 有 CORS 限制，canvas 无法加载）
+      let imageSourceForSlicing = gridImage.url;
+      if (gridImage.base64) {
+        imageSourceForSlicing = gridImage.base64.startsWith('data:')
           ? gridImage.base64
           : `data:image/png;base64,${gridImage.base64}`;
       }
 
-      // 行级注释：如果启用高清放大，调用 fal.ai 放大
+      // 行级注释：如果启用高清放大，用 fifeUrl 放大后再切割
       if (upscaleEnabled) {
-        // 行级注释：更新 placeholder 状态
-        placeholderIds.slice(g * slicesPerGrid, (g + 1) * slicesPerGrid).forEach(nodeId => {
-          updateElement(nodeId, {
-            uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
-          } as Partial<ImageElement>);
-        });
+        const imageUrlForUpscale = gridImage.fifeUrl || gridImage.url;
+        
+        if (imageUrlForUpscale && imageUrlForUpscale.startsWith('http')) {
+          placeholderIds.slice(g * slicesPerGrid, (g + 1) * slicesPerGrid).forEach(nodeId => {
+            updateElement(nodeId, {
+              uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
+            } as Partial<ImageElement>);
+          });
 
-        console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}`);
+          console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}`);
 
-        // 行级注释：调用 fal.ai 放大 API（支持 URL 和 base64 Data URI）
-        const upscaleResult = await upscaleImage(imageSource, STORYBOARD_UPSCALE_RESOLUTION);
-        if (upscaleResult.success && upscaleResult.imageUrl) {
-          imageSource = upscaleResult.imageUrl;  // 行级注释：使用放大后的图片
-          console.log(`✅ 网格图 ${g + 1} 放大完成`);
-        } else {
-          console.error(`❌ 网格图 ${g + 1} 放大失败: ${upscaleResult.error}，使用原图`);
+          const upscaleResult = await upscaleImage(imageUrlForUpscale, STORYBOARD_UPSCALE_RESOLUTION);
+          if (upscaleResult.success && upscaleResult.imageUrl) {
+            // 行级注释：fal.ai 返回的 URL 可以跨域访问
+            imageSourceForSlicing = upscaleResult.imageUrl;
+            console.log(`✅ 网格图 ${g + 1} 放大完成`);
+          } else {
+            console.error(`❌ 网格图 ${g + 1} 放大失败: ${upscaleResult.error}，使用原图 base64`);
+          }
         }
       }
 
       // 行级注释：切割网格图
-      const slicedImages = await sliceImageGrid(imageSource, rows, cols);
+      const slicedImages = await sliceImageGrid(imageSourceForSlicing, rows, cols);
       allSlicedImages.push(...slicedImages);
     }
 
