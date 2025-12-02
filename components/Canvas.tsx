@@ -32,10 +32,12 @@ import Toolbar from './Toolbar';
 import SelectionToolbar from './SelectionToolbar';
 import ConnectionMenuRoot from './canvas/connection-menu/ConnectionMenuRoot';
 import ImageAnnotatorModal, { ImageAnnotatorResult } from './ImageAnnotatorModal';
+import ImageCropperModal, { AspectRatioOption, CroppedImageResult } from './ImageCropperModal';
 import ThemeToggle from './ThemeToggle';
 import { useThemeStore } from '@/lib/theme-store';
 import { CanvasElement, VideoElement, ImageElement, TextElement, NoteElement } from '@/lib/types';
 import { imageToImage, registerUploadedImage } from '@/lib/api-mock';
+import type { FlowAspectRatioEnum } from '@/lib/api-mock';
 import { loadMaterialsFromProject } from '@/lib/project-materials';
 import {
   getPositionAboveInput,
@@ -100,6 +102,20 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   // 行级注释：多图编辑 - 主图和参考图
   const [mainImageForEdit, setMainImageForEdit] = useState<ImageElement | null>(null);
   const [referenceImages, setReferenceImages] = useState<ImageElement[]>([]);
+
+  // 行级注释：拖拽上传图片 - 裁剪器状态
+  type CropperState = {
+    open: boolean;
+    imageSrc: string | null;
+    aspect: AspectRatioOption;
+    dropPosition: { x: number; y: number } | null; // 拖拽位置
+  };
+  const [cropperState, setCropperState] = useState<CropperState>({
+    open: false,
+    imageSrc: null,
+    aspect: '16:9',
+    dropPosition: null,
+  });
 
   // 行级注释：React Flow 节点和边缘状态（需要在 Hooks 之前声明）
   const [reactFlowNodes, setNodes, onNodesChange] = useNodesState(elements.map(el => ({
@@ -669,6 +685,160 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     [setSelection]
   );
 
+  // 行级注释：拖拽上传图片 - aspectRatio 映射
+  const flowAspectMap: Record<AspectRatioOption, FlowAspectRatioEnum> = {
+    '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE',
+    '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT',
+  };
+
+  // 行级注释：拖拽上传图片 - onDragOver 处理
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  // 行级注释：拖拽上传图片 - onDrop 处理
+  const handleDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    
+    const files = event.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // 行级注释：只接受图片文件
+    if (!file.type.startsWith('image/')) {
+      toast.error('只支持上传图片文件');
+      return;
+    }
+    
+    // 行级注释：检查文件大小（最大 10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('图片大小不能超过 10MB');
+      return;
+    }
+    
+    // 行级注释：记录拖拽位置
+    const dropPosition = reactFlowInstance.screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+    
+    // 行级注释：读取文件
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      if (!imageUrl) {
+        toast.error('读取图片失败，请重试');
+        return;
+      }
+      
+      // 行级注释：加载图片获取尺寸，自动选择合适的宽高比
+      const img = new Image();
+      img.onload = () => {
+        const preferAspect: AspectRatioOption = img.width >= img.height ? '16:9' : '9:16';
+        setCropperState({
+          open: true,
+          imageSrc: imageUrl,
+          aspect: preferAspect,
+          dropPosition,
+        });
+      };
+      img.onerror = () => {
+        toast.error('加载图片失败，请重试');
+      };
+      img.src = imageUrl;
+    };
+    reader.readAsDataURL(file);
+  }, [reactFlowInstance]);
+
+  // 行级注释：拖拽上传图片 - 裁剪确认后放置到画布
+  const handleCropConfirm = useCallback(async (result: CroppedImageResult) => {
+    const { dataUrl, aspect } = result;
+    const dropPosition = cropperState.dropPosition;
+    
+    // 关闭裁剪器
+    setCropperState({
+      open: false,
+      imageSrc: null,
+      aspect: '16:9',
+      dropPosition: null,
+    });
+    
+    const imageId = `image-${Date.now()}`;
+    const hasFlowCredential =
+      Boolean(apiConfig.bearerToken && apiConfig.bearerToken.trim()) &&
+      Boolean(apiConfig.projectId && apiConfig.projectId.trim());
+
+    // 行级注释：使用拖拽位置或屏幕中心
+    const nodeSize = getImageNodeSize(aspect);
+    const imageWidth = nodeSize.width;
+    const imageHeight = nodeSize.height;
+    
+    const position = dropPosition
+      ? { x: dropPosition.x - imageWidth / 2, y: dropPosition.y - imageHeight / 2 }
+      : (() => {
+          const screenCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+          const flowPosition = reactFlowInstance.screenToFlowPosition(screenCenter);
+          return { x: flowPosition.x - imageWidth / 2, y: flowPosition.y - imageHeight / 2 };
+        })();
+
+    const newImage: ImageElement = {
+      id: imageId,
+      type: 'image',
+      src: dataUrl,
+      position,
+      size: {
+        width: imageWidth,
+        height: imageHeight,
+      },
+      generatedFrom: {
+        type: 'input',
+      },
+      uploadState: hasFlowCredential ? 'syncing' : 'local',
+    };
+
+    addElement(newImage);
+
+    if (!hasFlowCredential) {
+      console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
+      toast.warning('图片已添加，但未配置 API 凭证，无法进行图生图');
+      return;
+    }
+
+    try {
+      const uploadResult = await registerUploadedImage(dataUrl, flowAspectMap[aspect]);
+      // 行级注释：同时保存 mediaId 和 mediaGenerationId，确保首尾帧生成可用
+      updateElement(imageId, {
+        mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
+        mediaGenerationId: uploadResult.mediaGenerationId || undefined,
+        alt: uploadResult.caption || newImage.alt,
+        caption: uploadResult.caption,
+        uploadState: 'synced',
+        uploadMessage: undefined,
+      } as Partial<ImageElement>);
+      toast.success('图片上传成功');
+    } catch (error: any) {
+      console.error('上传图片注册 Flow 失败:', error);
+      const message = error?.message || '上传图片注册 Flow 失败，请检查网络或凭证配置';
+      updateElement(imageId, {
+        uploadState: 'error',
+        uploadMessage: message,
+      } as Partial<ImageElement>);
+      toast.error(message);
+    }
+  }, [cropperState.dropPosition, apiConfig.bearerToken, apiConfig.projectId, addElement, updateElement, reactFlowInstance, flowAspectMap]);
+
+  // 行级注释：拖拽上传图片 - 关闭裁剪器
+  const handleCropCancel = useCallback(() => {
+    setCropperState({
+      open: false,
+      imageSrc: null,
+      aspect: '16:9',
+      dropPosition: null,
+    });
+  }, []);
+
   // 处理选择生成图片（带比例参数）
   const handleGenerateImage = useCallback(
     async (aspectRatio: ImageAspectRatio) => {
@@ -1047,7 +1217,12 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   }, [connectionMenu.sourceNodeId, connectionMenu.pendingImageConfig, handleNextShotGeneration]);
 
   return (
-    <div ref={reactFlowWrapperRef} className="w-full h-full bg-gray-50 relative">
+    <div 
+      ref={reactFlowWrapperRef} 
+      className="w-full h-full bg-gray-50 relative"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {/* 顶部导航 */}
       <CanvasNavigation />
 
@@ -1151,6 +1326,15 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         referenceImages={referenceImages}
         onClose={handleAnnotatorClose}
         onConfirm={handleAnnotatorConfirm}
+      />
+
+      {/* 行级注释：拖拽上传图片裁剪器 Modal */}
+      <ImageCropperModal
+        open={cropperState.open}
+        imageSrc={cropperState.imageSrc}
+        initialAspect={cropperState.aspect}
+        onCancel={handleCropCancel}
+        onConfirm={handleCropConfirm}
       />
     </div>
   );
