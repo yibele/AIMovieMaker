@@ -581,7 +581,7 @@ export async function generateSmartStoryboard(
           base64: img.base64,
         }));
       } else {
-        gridImages = [{ url: result.imageUrl, fifeUrl: (result as any).fifeUrl, base64: result.base64 }];
+        gridImages = [{ url: result.imageUrl, fifeUrl: (result as any).fifeUrl, base64: (result as any).base64 }];
       }
     } else {
       // 行级注释：无参考图 - 使用文生图
