@@ -269,6 +269,36 @@ export function createStartEndVideoNode(
 }
 
 /**
+ * 创建多图参考视频节点
+ * 固定使用横屏（16:9）尺寸，最多支持 3 张参考图片
+ */
+export function createReferenceImagesVideoNode(
+  position: NodePosition
+): VideoElement {
+  // 行级注释：多图参考视频固定使用 16:9 横屏
+  const size = getVideoNodeSize('16:9');
+
+  return {
+    id: generateNodeId('video'),
+    type: 'video',
+    src: '',
+    thumbnail: '',
+    duration: 0,
+    status: 'pending',
+    position: getCenteredPosition(position, size),
+    size,
+    promptText: '',
+    referenceImageIds: [], // 行级注释：初始为空，用户通过连线添加参考图片
+    generationCount: 1,
+    readyForGeneration: false,
+    generatedFrom: {
+      type: 'reference-images',
+      sourceIds: [],
+    },
+  };
+}
+
+/**
  * 创建超清放大视频节点（占位符）
  */
 export function createUpsampleVideoPlaceholder(

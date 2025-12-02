@@ -795,6 +795,129 @@ export async function generateVideoReshootDirectly(
 }
 
 /**
+ * 直接调用 Google Flow API 生成视频（多图参考）
+ * 最多支持 3 张参考图片作为视频生成的视觉参考
+ * 
+ * @param prompt 视频描述提示词
+ * @param referenceMediaIds 参考图片的 mediaId 数组（最多 3 张）
+ * @param bearerToken 认证令牌
+ * @param projectId 项目 ID
+ * @param sessionId 会话 ID
+ * @param aspectRatio 视频宽高比
+ * @param accountTier 账号套餐
+ * @param seed 随机种子（可选）
+ * @param sceneId 场景 ID（可选）
+ */
+export async function generateVideoReferenceImagesDirectly(
+  prompt: string,
+  referenceMediaIds: string[],
+  bearerToken: string,
+  projectId: string,
+  sessionId: string,
+  aspectRatio: AspectRatio,
+  accountTier: AccountTier,
+  seed?: number,
+  sceneId?: string
+): Promise<{
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 行级注释：验证参考图片数量（1-3 张）
+  if (!referenceMediaIds || referenceMediaIds.length === 0) {
+    throw new Error('多图参考视频至少需要 1 张参考图片');
+  }
+  if (referenceMediaIds.length > 3) {
+    throw new Error('多图参考视频最多支持 3 张参考图片');
+  }
+
+  const url = 'https://aisandbox-pa.googleapis.com/v1/video:batchAsyncGenerateVideoReferenceImages';
+
+  // 行级注释：使用 tier-config 获取配置
+  const config = getVideoApiConfig('reference-images', accountTier, aspectRatio);
+
+  const requestSeed = typeof seed === 'number'
+    ? seed
+    : Math.floor(Math.random() * 100_000);
+
+  const generatedSceneId = sceneId && sceneId.trim()
+    ? sceneId.trim()
+    : (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  // 行级注释：构建参考图片数组，每张图片的 imageUsageType 为 IMAGE_USAGE_TYPE_ASSET
+  const referenceImages = referenceMediaIds
+    .filter(id => id && id.trim())
+    .map(mediaId => ({
+      imageUsageType: 'IMAGE_USAGE_TYPE_ASSET',
+      mediaId: mediaId.trim(),
+    }));
+
+  const payload = {
+    clientContext: {
+      sessionId: sessionId.trim(),
+      projectId: projectId.trim(),
+      tool: 'PINHOLE',
+      userPaygateTier: config.userPaygateTier,  // 行级注释：使用 tier-config 获取的配置
+    },
+    requests: [
+      {
+        aspectRatio: config.aspectRatioEnum,  // 行级注释：使用 tier-config 获取的配置
+        metadata: {
+          sceneId: generatedSceneId,
+        },
+        referenceImages,  // 行级注释：参考图片数组
+        seed: requestSeed,
+        textInput: {
+          prompt: prompt.trim(),
+        },
+        videoModelKey: config.videoModelKey,  // 行级注释：使用 tier-config 获取的配置
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        'Authorization': `Bearer ${bearerToken}`,
+        'Origin': 'https://labs.google',
+        'Referer': 'https://labs.google/',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ 多图参考视频生成失败:', errorData);
+      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    const operations = data.operations || [];
+    if (operations.length === 0) {
+      throw new Error('No operations in response');
+    }
+
+    const operation = operations[0];
+
+    return {
+      operationName: operation?.operation?.name || '',
+      sceneId: operation?.sceneId || generatedSceneId,
+      status: operation?.status || 'MEDIA_GENERATION_STATUS_PENDING',
+      remainingCredits: data.remainingCredits,
+    };
+  } catch (error) {
+    console.error('❌ 直接生成视频（多图参考）失败:', error);
+    throw error;
+  }
+}
+
+/**
  * 直接调用 Google Flow API 延长视频
  */
 export async function generateVideoExtendDirectly(

@@ -429,6 +429,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     handleGenerateVideoFromImage,
     handleGenerateReshoot,
     handleShowExtendVideo,
+    handleCreateReferenceImagesVideo,
   } = useVideoActions({
     setEdges: setEdges as any,
     resetConnectionMenu,
@@ -1308,6 +1309,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
           onCustomNextShot: handleCustomNextShot,
           onConfirmCustomNextShot: handleConfirmCustomNextShot,
           onShowAutoNextShotCountSubmenu: showAutoNextShotCountSubmenu,
+          onCreateReferenceImagesVideo: handleCreateReferenceImagesVideo,
         }}
         promptInputRef={promptMenuInputRef}
       />

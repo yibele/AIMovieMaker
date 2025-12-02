@@ -4,7 +4,7 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft, Images } from 'lucide-react';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -86,6 +86,15 @@ export default function ConnectionMenuRoot({
                     }
                   }}
                 />
+                {/* 行级注释：多图参考视频 - 仅从图片节点连出时显示 */}
+                {state.sourceNodeType === 'image' && (
+                  <MenuButton
+                    icon={Images}
+                    label="多图参考视频"
+                    color="green"
+                    onClick={callbacks.onCreateReferenceImagesVideo}
+                  />
+                )}
                 <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
                 <MenuButton
                   icon={Clapperboard}

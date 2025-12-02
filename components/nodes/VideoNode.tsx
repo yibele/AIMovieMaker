@@ -40,6 +40,21 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const generationStatusText = useMemo(() => {
     const hasPrompt = Boolean(videoData.promptText?.trim() || promptInput.trim());
     const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
+    const isReferenceImages = videoData.generatedFrom?.type === 'reference-images';
+    const hasReferenceImages = (videoData.referenceImageIds?.length || 0) > 0;
+    
+    // 行级注释：多图参考视频的提示文本
+    if (isReferenceImages) {
+      const refCount = videoData.referenceImageIds?.length || 0;
+      if (refCount === 0) {
+        return '请连接 1-3 张参考图片';
+      }
+      if (!hasPrompt) {
+        return `已连接 ${refCount} 张参考图，输入提示词`;
+      }
+      return `已就绪：${refCount} 张参考图`;
+    }
+    
     if (hasPrompt && !hasFrame) {
       return '可选：连接首/尾帧图片';
     }
@@ -47,14 +62,22 @@ function VideoNode({ data, selected, id }: NodeProps) {
       return '可直接发送，AI 自动分析动作';
     }
     return '输入提示词 或 连接图片';
-  }, [videoData.promptText, videoData.startImageId, videoData.endImageId, promptInput]);
+  }, [videoData.promptText, videoData.startImageId, videoData.endImageId, videoData.generatedFrom?.type, videoData.referenceImageIds, promptInput]);
   
   // 行级注释：判断是否可以发送（有提示词 或 有图片连接）
   const canSend = useMemo(() => {
     const hasPrompt = Boolean(promptInput.trim());
     const hasFrame = Boolean(videoData.startImageId || videoData.endImageId);
+    const isReferenceImages = videoData.generatedFrom?.type === 'reference-images';
+    const hasReferenceImages = (videoData.referenceImageIds?.length || 0) > 0;
+    
+    // 行级注释：多图参考视频需要有参考图片和提示词
+    if (isReferenceImages) {
+      return hasReferenceImages && hasPrompt;
+    }
+    
     return hasPrompt || hasFrame;
-  }, [promptInput, videoData.startImageId, videoData.endImageId]);
+  }, [promptInput, videoData.startImageId, videoData.endImageId, videoData.generatedFrom?.type, videoData.referenceImageIds]);
 
   // 行级注释：提示词显示逻辑（类似 ImageNode）
   const promptDisplayText = videoData.promptText?.trim() || '';
@@ -403,6 +426,43 @@ function VideoNode({ data, selected, id }: NodeProps) {
             isConnectable={true}
             title="原始视频"
           />
+        ) : videoData.generatedFrom?.type === 'reference-images' ? (
+          // 行级注释：多图参考视频 - 显示 3 个参考图片输入点
+          <>
+            <Handle
+              id="ref-image-1"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-emerald-400 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+              style={{ left: '-6px', top: '30%', zIndex: '30' }}
+              isConnectable={true}
+              title="参考图片 1"
+            >
+              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+            </Handle>
+            <Handle
+              id="ref-image-2"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-emerald-500 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+              style={{ left: '-6px', top: '50%', zIndex: '30' }}
+              isConnectable={true}
+              title="参考图片 2"
+            >
+              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+            </Handle>
+            <Handle
+              id="ref-image-3"
+              type="target"
+              position={Position.Left}
+              className="!flex !items-center !justify-center !w-5 !h-5 !bg-emerald-600 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+              style={{ left: '-6px', top: '70%', zIndex: '30' }}
+              isConnectable={true}
+              title="参考图片 3"
+            >
+              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+            </Handle>
+          </>
         ) : (
           // 行级注释：普通视频 - 显示首帧和尾帧输入点
           <>

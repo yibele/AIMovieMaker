@@ -5,7 +5,7 @@ import { useCanvasStore } from '@/lib/store';
 import { VideoElement, ImageElement } from '@/lib/types';
 import { VIDEO_NODE_DEFAULT_SIZE, detectAspectRatio } from '@/lib/constants/node-sizes';
 import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
-import { generateVideoFromText, generateVideoFromImages } from '@/lib/api-mock';
+import { generateVideoFromText, generateVideoFromImages, generateVideoFromReferenceImages } from '@/lib/api-mock';
 import { generateNodeId } from '@/lib/services/node-management.service';
 
 // 行级注释：边缘样式常量
@@ -246,7 +246,7 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
 
       try {
         let result;
-        let generationType: 'text-to-video' | 'image-to-image' | 'extend' | 'reshoot' = 'text-to-video';
+        let generationType: 'text-to-video' | 'image-to-image' | 'extend' | 'reshoot' | 'reference-images' = 'text-to-video';
         const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
 
         // 行级注释：判断视频类型并调用对应 API
@@ -277,6 +277,40 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
         } else if (videoElement.generatedFrom?.type === 'reshoot') {
           console.warn('⚠️ Reshoot 视频不应该通过 maybeStartVideo 生成');
           return;
+        } else if (videoElement.generatedFrom?.type === 'reference-images') {
+          // 行级注释：多图参考视频生成
+          const referenceImageIds = videoElement.referenceImageIds || [];
+          
+          if (referenceImageIds.length === 0) {
+            throw new Error('多图参考视频需要至少 1 张参考图片');
+          }
+          
+          // 行级注释：获取参考图片的 mediaId
+          const referenceImages: Array<{ mediaId?: string; mediaGenerationId?: string }> = [];
+          
+          for (const refId of referenceImageIds) {
+            if (!refId) continue;
+            const imageElement = storeElements.find(el => el.id === refId) as ImageElement | undefined;
+            if (imageElement) {
+              referenceImages.push({
+                mediaId: imageElement.mediaId,
+                mediaGenerationId: imageElement.mediaGenerationId,
+              });
+            }
+          }
+          
+          if (referenceImages.length === 0) {
+            throw new Error('参考图片缺少 mediaId，请确保图片已同步');
+          }
+          
+          result = await generateVideoFromReferenceImages(
+            promptText || '',
+            referenceImages
+          );
+          
+          // 行级注释：更新 sourceIds
+          referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
+          generationType = 'reference-images'; // 行级注释：多图参考视频类型
         } else if (hasAtLeastOneImage) {
           // 行级注释：图生视频 - 使用首尾帧
           const actualStartId = startImageId || endImageId!;

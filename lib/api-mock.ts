@@ -1063,6 +1063,99 @@ export async function generateVideoReshoot(
 }
 
 /**
+ * 多图参考视频生成 - 使用多张图片作为视觉参考生成视频
+ * 最多支持 3 张参考图片，固定生成横屏（16:9）视频
+ * 
+ * @param prompt 视频描述提示词
+ * @param referenceImages 参考图片数组，每个包含 mediaId 或 mediaGenerationId（最多 3 张）
+ * @param seed 随机种子（可选）
+ */
+export async function generateVideoFromReferenceImages(
+  prompt: string,
+  referenceImages: Array<{
+    mediaId?: string;
+    mediaGenerationId?: string;
+  }>,
+  seed?: number
+): Promise<{
+  videoUrl: string;
+  thumbnail: string;
+  duration: number;
+  promptId: string;
+  mediaGenerationId?: string;
+  operationName: string;
+  sceneId: string;
+  status: string;
+  remainingCredits?: number;
+}> {
+  // 行级注释：业务层 - 获取上下文和配置
+  const { apiConfig, sessionId, accountTier } = getApiContext();
+
+  // 行级注释：业务层 - 验证必要配置
+  if (!apiConfig.bearerToken?.trim()) {
+    throw new Error('多图参考视频需要配置 Bearer Token，请在右上角设置中配置');
+  }
+  if (!apiConfig.projectId?.trim()) {
+    throw new Error('多图参考视频需要配置 Flow Project ID，请在右上角设置中配置');
+  }
+
+  // 行级注释：业务层 - 提取有效的 mediaId 列表（最多 3 张）
+  const validMediaIds = referenceImages
+    .map(ref => ref.mediaId?.trim() || ref.mediaGenerationId?.trim())
+    .filter((id): id is string => Boolean(id))
+    .slice(0, 3);  // 行级注释：最多取 3 张
+
+  if (validMediaIds.length === 0) {
+    throw new Error('至少需要 1 张包含 mediaId 的参考图片');
+  }
+
+  // 行级注释：业务层 - 生成场景 ID
+  const sceneId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  // 行级注释：多图参考视频不使用前置提示词（风格已由参考图确定）
+  const promptText = (prompt ?? '').trim() || 'Generate a video based on reference images';
+
+  // 行级注释：调用层 - 调用纯 API 函数
+  const { generateVideoReferenceImagesDirectly } = await import('./direct-google-api');
+
+  // 行级注释：多图参考视频固定使用横屏（16:9）
+  const generationTask = await generateVideoReferenceImagesDirectly(
+    promptText,  // 行级注释：直接使用原始 prompt，不附加前置提示词
+    validMediaIds,
+    apiConfig.bearerToken,
+    apiConfig.projectId,
+    sessionId,
+    '16:9',  // 行级注释：固定横屏
+    accountTier,
+    seed,
+    sceneId
+  );
+
+  // 行级注释：轮询视频生成结果
+  const videoResult = await pollFlowVideoOperation(
+    generationTask.operationName,
+    apiConfig.bearerToken,
+    generationTask.sceneId,
+    apiConfig.proxy
+  );
+
+  return {
+    videoUrl: videoResult.videoUrl,
+    thumbnail: videoResult.thumbnailUrl,
+    duration: videoResult.duration,
+    promptId: generateId(),
+    mediaGenerationId: videoResult.mediaGenerationId,
+    operationName: generationTask.operationName,
+    sceneId: generationTask.sceneId,
+    status: 'COMPLETED',
+    remainingCredits: generationTask.remainingCredits,
+  };
+}
+
+/**
  * 延长视频 - 基于现有视频生成延续内容
  */
 export async function generateVideoExtend(

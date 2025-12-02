@@ -10,7 +10,7 @@ import {
   getVideoNodeSize,
   detectVideoAspectRatio,
 } from '@/lib/constants/node-sizes';
-import { generateNodeId } from '@/lib/services/node-management.service';
+import { generateNodeId, createReferenceImagesVideoNode } from '@/lib/services/node-management.service';
 import { generateVideoFromText } from '@/lib/api-mock';
 import type { ReshootMotionType } from '@/lib/types';
 
@@ -50,6 +50,7 @@ export interface UseVideoActionsReturn {
   handleGenerateVideoFromImage: () => void;
   handleGenerateReshoot: (motionType: ReshootMotionType) => Promise<void>;
   handleShowExtendVideo: () => void;
+  handleCreateReferenceImagesVideo: () => void; // 行级注释：创建多图参考视频节点
 }
 
 export function useVideoActions(options: UseVideoActionsOptions): UseVideoActionsReturn {
@@ -355,12 +356,67 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
 
   }, [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, reactFlowInstance, resetConnectionMenu]);
 
+  /**
+   * 创建多图参考视频节点
+   * 从图片节点连出，创建一个带 3 个输入端口的视频节点
+   */
+  const handleCreateReferenceImagesVideo = useCallback(() => {
+    const sourceNodeId = connectionMenu.sourceNodeId;
+    if (!sourceNodeId) return;
+
+    const sourceNode = elements.find(
+      (el) => el.id === sourceNodeId && el.type === 'image'
+    ) as ImageElement | undefined;
+
+    if (!sourceNode) {
+      resetConnectionMenu();
+      return;
+    }
+
+    resetConnectionMenu();
+
+    // 行级注释：计算视频节点位置（在源图片节点右侧）
+    const flowPosition = reactFlowInstance.screenToFlowPosition({
+      x: connectionMenu.position.x,
+      y: connectionMenu.position.y,
+    });
+
+    // 行级注释：创建多图参考视频节点
+    const newVideo = createReferenceImagesVideoNode(flowPosition);
+
+    // 行级注释：更新视频节点，添加第一个参考图片
+    newVideo.referenceImageIds = [sourceNode.id];
+    newVideo.generatedFrom = {
+      type: 'reference-images',
+      sourceIds: [sourceNode.id],
+    };
+
+    addElement(newVideo);
+
+    // 行级注释：创建从源图片到视频节点的连线
+    const edgeId = `edge-${sourceNode.id}-${newVideo.id}-ref-1`;
+    setEdges((eds: any[]) => [
+      ...eds,
+      {
+        id: edgeId,
+        source: sourceNode.id,
+        target: newVideo.id,
+        targetHandle: 'ref-image-1', // 行级注释：连接到第一个参考图片端口
+        type: 'default',
+        animated: false,
+        style: { stroke: '#10b981', strokeWidth: 2 }, // 行级注释：绿色表示参考图
+      },
+    ]);
+
+  }, [connectionMenu.sourceNodeId, connectionMenu.position, elements, addElement, setEdges, reactFlowInstance, resetConnectionMenu]);
+
   return {
     handleTextToVideo,
     handleImageToVideo,
     handleGenerateVideoFromImage,
     handleGenerateReshoot,
     handleShowExtendVideo,
+    handleCreateReferenceImagesVideo,
   };
 }
 

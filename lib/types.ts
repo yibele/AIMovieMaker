@@ -73,11 +73,13 @@ export interface VideoElement extends CanvasElement {
   promptText?: string; // 视频生成使用的提示词 // 行级注释说明字段用途
   readyForGeneration?: boolean; // 当前是否满足生成条件（提示词 + 首尾帧至少一个） // 行级注释说明字段用途
   generatedFrom?: {
-    type: 'text' | 'image' | 'image-to-image' | 'upsample' | 'reshoot' | 'extend'; // 行级注释：extend 表示视频延长
+    type: 'text' | 'image' | 'image-to-image' | 'upsample' | 'reshoot' | 'extend' | 'reference-images'; // 行级注释：reference-images 表示多图参考视频
     sourceIds: string[]; // 源节点 ID（文本/图片/视频）
     prompt?: string;
   };
   generationCount?: number; // 行级注释：生成数量 (1-4)
+  // 行级注释：多图参考视频的参考图片 ID（最多 3 张）
+  referenceImageIds?: string[];
 }
 
 // 提示词历史记录

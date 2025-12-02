@@ -42,5 +42,7 @@ export type ConnectionMenuCallbacks = {
   onCustomNextShot: () => void;
   onConfirmCustomNextShot: () => void;
   onShowAutoNextShotCountSubmenu: () => void;
+  // 行级注释：多图参考视频回调
+  onCreateReferenceImagesVideo: () => void;
 };
 

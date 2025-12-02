@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Edit3, Download, Trash2, FolderInput, Film, Link2 } from 'lucide-react';
+import { Edit3, Download, Trash2, FolderInput, Film, Link2, Images } from 'lucide-react';
 import { Panel, useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { useMaterialsStore } from '@/lib/materials-store';
 import { ImageElement, VideoElement } from '@/lib/types';
 import { toast } from 'sonner';
-import { createStartEndVideoNode, getRightSidePosition } from '@/lib/services/node-management.service';
+import { createStartEndVideoNode, createReferenceImagesVideoNode, getRightSidePosition } from '@/lib/services/node-management.service';
 
 interface SelectionToolbarProps {
   onMultiImageEdit?: () => void;
@@ -321,6 +321,64 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
     toast.success('已创建首尾帧视频节点，可输入提示词或直接发送');
   };
 
+  // 行级注释：多图参考视频 - 选中 2-3 张图片生成视频节点
+  const handleReferenceImagesVideo = () => {
+    if (selectedImages.length < 2 || selectedImages.length > 3) {
+      toast.error('请选择 2-3 张图片作为参考');
+      return;
+    }
+
+    // 检查是否有图片正在处理中
+    const hasProcessing = selectedImages.some(
+      (img) => img.uploadState === 'syncing' || !img.mediaGenerationId
+    );
+
+    if (hasProcessing) {
+      toast.error('存在未同步完成的图片，请稍后重试');
+      return;
+    }
+
+    // 行级注释：按 x 坐标排序，最右边的图片用于计算视频位置
+    const sortedImages = [...selectedImages].sort((a, b) => a.position.x - b.position.x);
+    const rightmostImage = sortedImages[sortedImages.length - 1];
+
+    // 行级注释：计算视频位置（最右边图片的右侧）
+    const videoPosition = getRightSidePosition(
+      rightmostImage.position,
+      rightmostImage.size || { width: 640, height: 360 },
+      80
+    );
+
+    // 行级注释：创建多图参考视频节点
+    const newVideo = createReferenceImagesVideoNode(videoPosition);
+
+    // 行级注释：设置参考图片 ID
+    newVideo.referenceImageIds = sortedImages.map(img => img.id);
+    newVideo.generatedFrom = {
+      type: 'reference-images',
+      sourceIds: sortedImages.map(img => img.id),
+    };
+
+    const addElement = useCanvasStore.getState().addElement;
+    addElement(newVideo);
+
+    // 行级注释：创建连线 - 每张图片连接到对应的参考图片端口
+    const handleIds = ['ref-image-1', 'ref-image-2', 'ref-image-3'];
+    const newEdges = sortedImages.map((img, index) => ({
+      id: `edge-${img.id}-${newVideo.id}-ref-${index + 1}`,
+      source: img.id,
+      target: newVideo.id,
+      targetHandle: handleIds[index],
+      type: 'default',
+      animated: false,
+      style: { stroke: '#10b981', strokeWidth: 2 }, // 行级注释：绿色表示参考图
+    }));
+
+    setEdges((eds: any[]) => [...eds, ...newEdges]);
+
+    toast.success(`已创建多图参考视频节点，连接了 ${sortedImages.length} 张参考图片`);
+  };
+
   // 行级注释：阻止事件冒泡，避免触发画布的拖动
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -331,6 +389,8 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
   const canEdit = allImages && selectedImages.length >= 2 && selectedImages.length <= 6;
   // 行级注释：恰好选中 2 张图片时可以生成首尾帧视频
   const canStartEndVideo = allImages && selectedImages.length === 2;
+  // 行级注释：选中 2-3 张图片时可以生成多图参考视频
+  const canReferenceImagesVideo = allImages && selectedImages.length >= 2 && selectedImages.length <= 3;
 
   return (
     <Panel position="top-center" className="!mt-20 !p-0 animate-in slide-in-from-top-4 fade-in duration-300">
@@ -358,6 +418,19 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
               icon={Link2}
               title="衔接镜头 - AI 分析并生成中间过渡分镜"
               className="text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/30"
+            />
+          </>
+        )}
+
+        {/* 多图参考视频按钮（仅当选中 2-3 张图片时显示） */}
+        {canReferenceImagesVideo && (
+          <>
+            {!canStartEndVideo && <div className="border-l border-gray-200 dark:border-slate-600 h-6 mx-1" />}
+            <SelectionButton
+              onClick={handleReferenceImagesVideo}
+              icon={Images}
+              title="多图参考视频 - 使用选中的图片作为参考生成视频"
+              className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
             />
           </>
         )}

@@ -266,6 +266,48 @@ export function useConnectionHandler(options: UseConnectionHandlerOptions): UseC
           }
           updateElement(targetId, updates);
           handled = true;
+        } else if (
+          // 行级注释：处理多图参考视频的连接
+          sourceNode.type === 'image' &&
+          (targetHandle === 'ref-image-1' || targetHandle === 'ref-image-2' || targetHandle === 'ref-image-3')
+        ) {
+          const imageNode = sourceNode as ImageElement;
+          const videoData = targetNode as VideoElement;
+          
+          // 行级注释：获取当前的参考图片 ID 列表
+          const currentReferenceIds = [...(videoData.referenceImageIds || [])];
+          
+          // 行级注释：根据连接的端口确定索引
+          const portIndex = targetHandle === 'ref-image-1' ? 0 : targetHandle === 'ref-image-2' ? 1 : 2;
+          
+          // 行级注释：更新对应位置的参考图片 ID
+          currentReferenceIds[portIndex] = imageNode.id;
+          
+          // 行级注释：移除空值，保持数组紧凑
+          const filteredReferenceIds = currentReferenceIds.filter((id): id is string => Boolean(id));
+          
+          // 行级注释：更新 sourceIds
+          const sourceIds = new Set<string>(filteredReferenceIds);
+          
+          const updates: Partial<VideoElement> = {
+            referenceImageIds: currentReferenceIds, // 行级注释：保留位置信息
+            generatedFrom: {
+              type: 'reference-images',
+              sourceIds: Array.from(sourceIds),
+              prompt: videoData.promptText,
+            },
+          };
+          
+          // 行级注释：如果视频已生成，重置为 pending 状态
+          if (videoData.status === 'ready') {
+            updates.status = 'pending';
+            updates.progress = 0;
+            updates.src = '';
+            updates.thumbnail = '';
+          }
+          
+          updateElement(targetId, updates);
+          handled = true;
         }
 
         if (!handled) {

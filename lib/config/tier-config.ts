@@ -36,7 +36,8 @@ export type VideoGenerationType =
   | 'image-to-video-fl'    // 图生视频（首尾帧）
   | 'extend'               // 视频延长
   | 'reshoot'              // 镜头控制重拍
-  | 'upsample';            // 超清放大
+  | 'upsample'             // 超清放大
+  | 'reference-images';    // 多图参考视频（最多3张参考图）
 
 // PaygateTier 类型
 export type PaygateTier = 'PAYGATE_TIER_ONE' | 'PAYGATE_TIER_TWO';
@@ -240,6 +241,12 @@ const RESHOOT_VIDEO_MODELS: Record<AspectRatio, string> = {
   '1:1': 'veo_3_0_reshoot_square',
 };
 
+// 行级注释：多图参考视频模型（区分 tier，Ultra 使用 _ultra 后缀）
+const REFERENCE_IMAGES_VIDEO_MODELS: Record<AccountTier, string> = {
+  pro: 'veo_3_0_r2v_fast',        // 行级注释：Pro 账号
+  ultra: 'veo_3_0_r2v_fast_ultra', // 行级注释：Ultra 账号带 _ultra 后缀
+};
+
 // 超清放大模型（固定）
 const UPSAMPLE_VIDEO_MODEL = 'veo_2_1080p_upsampler_8s';
 
@@ -354,6 +361,11 @@ export function getVideoModelKey(
     return RESHOOT_VIDEO_MODELS[aspectRatio];
   }
   
+  // 行级注释：多图参考视频根据 tier 选择模型
+  if (type === 'reference-images') {
+    return REFERENCE_IMAGES_VIDEO_MODELS[tier];
+  }
+  
   // 获取有效的视频模式（Pro 会自动降级为 fast）
   const effectiveMode = getEffectiveVideoMode(tier, videoMode);
   
@@ -392,7 +404,7 @@ export function getVideoModelKey(
  * 验证功能是否支持当前套餐
  */
 export function isFeatureSupported(
-  feature: 'upsample' | 'quality_mode' | 'extend' | 'reshoot',
+  feature: 'upsample' | 'quality_mode' | 'extend' | 'reshoot' | 'reference_images',
   tier: AccountTier,
   aspectRatio?: AspectRatio
 ): { supported: boolean; reason?: string } {
@@ -414,6 +426,7 @@ export function isFeatureSupported(
       
     case 'extend':
     case 'reshoot':
+    case 'reference_images':  // 行级注释：多图参考视频所有套餐都支持
       return { supported: true };
       
     default:
@@ -508,7 +521,8 @@ export function debugPrintAllVideoModels(): void {
     'image-to-video-fl', 
     'extend', 
     'reshoot', 
-    'upsample'
+    'upsample',
+    'reference-images'  // 行级注释：多图参考视频
   ];
   const tiers: AccountTier[] = ['pro', 'ultra'];
   const aspects: AspectRatio[] = ['16:9', '9:16', '1:1'];
