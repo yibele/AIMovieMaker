@@ -13,6 +13,66 @@ import {
   type VideoGenerationType,
 } from './config/tier-config';
 
+// ============================================================================
+// 网络重试工具
+// ============================================================================
+
+/**
+ * 判断是否为网络错误（可重试）
+ */
+function isNetworkError(error: any): boolean {
+  const message = error?.message?.toLowerCase() || '';
+  return (
+    message.includes('fetch') ||
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('econnrefused') ||
+    message.includes('etimedout') ||
+    message.includes('enotfound') ||
+    message.includes('failed to fetch') ||
+    error?.name === 'TypeError' || // fetch 失败通常是 TypeError
+    error?.name === 'AbortError'
+  );
+}
+
+/**
+ * 带重试的 fetch 请求
+ * 
+ * @param url 请求 URL
+ * @param options fetch 选项
+ * @param maxRetries 最大重试次数（默认 2）
+ * @param retryDelay 重试延迟毫秒数（默认 1000）
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 2,
+  retryDelay: number = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      return response;
+    } catch (error: any) {
+      lastError = error;
+
+      // 行级注释：只有网络错误才重试
+      if (isNetworkError(error) && attempt < maxRetries) {
+        console.warn(`⚠️ 网络错误，${retryDelay}ms 后重试 (${attempt + 1}/${maxRetries}):`, error.message);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        continue;
+      }
+
+      // 行级注释：非网络错误或重试次数用完，抛出
+      throw error;
+    }
+  }
+
+  throw lastError || new Error('请求失败');
+}
+
 /**
  * 获取视频积分状态
  * 返回当前账户的积分数量和付费等级
@@ -99,14 +159,20 @@ export async function uploadImageDirectly(
 
 
   try {
-    const response = await fetch('https://aisandbox-pa.googleapis.com/v1:uploadUserImage', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bearerToken}`,
+    // 行级注释：使用带重试的 fetch，网络错误时自动重试 2 次
+    const response = await fetchWithRetry(
+      'https://aisandbox-pa.googleapis.com/v1:uploadUserImage',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+      2, // 最大重试 2 次
+      1500 // 重试间隔 1.5 秒
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -221,7 +287,8 @@ export async function generateImageDirectly(
   const payload = { requests };
 
   try {
-    const response = await fetch(
+    // 行级注释：使用带重试的 fetch，网络错误时自动重试 2 次
+    const response = await fetchWithRetry(
       `https://aisandbox-pa.googleapis.com/v1/projects/${projectId.trim()}/flowMedia:batchGenerateImages`,
       {
         method: 'POST',
@@ -230,7 +297,9 @@ export async function generateImageDirectly(
           'Authorization': `Bearer ${bearerToken}`,
         },
         body: JSON.stringify(payload),
-      }
+      },
+      2, // 最大重试 2 次
+      1500 // 重试间隔 1.5 秒
     );
 
     if (!response.ok) {
