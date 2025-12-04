@@ -2,11 +2,12 @@
 
 import { useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/lib/store';
-import { VideoElement, ImageElement } from '@/lib/types';
+import { VideoElement, ImageElement, VideoModelType } from '@/lib/types';
 import { VIDEO_NODE_DEFAULT_SIZE, detectAspectRatio } from '@/lib/constants/node-sizes';
 import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
 import { generateVideoFromText, generateVideoFromImages, generateVideoFromReferenceImages } from '@/lib/api-mock';
 import { generateNodeId } from '@/lib/services/node-management.service';
+import { generateHailuoVideo } from '@/lib/services/hailuo-video.service';
 
 // 行级注释：边缘样式常量
 const EDGE_GENERATING_STYLE = { stroke: '#a855f7', strokeWidth: 1 };
@@ -248,6 +249,10 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
         let result;
         let generationType: 'text-to-video' | 'image-to-image' | 'extend' | 'reshoot' | 'reference-images' = 'text-to-video';
         const combinedSourceIds = new Set<string>(videoElement.generatedFrom?.sourceIds ?? []);
+        
+        // 行级注释：获取视频模型
+        const videoModel: VideoModelType = videoElement.videoModel || 'veo3.1';
+        const isHailuoModel = videoModel.startsWith('hailuo');
 
         // 行级注释：判断视频类型并调用对应 API
         if (videoElement.generatedFrom?.type === 'extend') {
@@ -311,8 +316,99 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           // 行级注释：更新 sourceIds
           referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
           generationType = 'reference-images'; // 行级注释：多图参考视频类型
+        } else if (isHailuoModel) {
+          // 行级注释：海螺模型视频生成
+          console.log('🎬 使用海螺模型生成视频:', videoModel);
+          
+          // 行级注释：获取首帧和尾帧图片
+          let firstFrameImage: string | undefined;
+          let lastFrameImage: string | undefined;
+          
+          // 行级注释：辅助函数 - 从图片元素获取可用的图片数据
+          const getImageData = (image: ImageElement): string | undefined => {
+            // 行级注释：优先使用 base64
+            if (image.base64) {
+              return image.base64.startsWith('data:') 
+                ? image.base64 
+                : `data:image/png;base64,${image.base64}`;
+            }
+            // 行级注释：其次使用 src（支持 http/https URL 和 data: URL）
+            if (image.src) {
+              if (image.src.startsWith('http') || image.src.startsWith('data:')) {
+                return image.src;
+              }
+            }
+            return undefined;
+          };
+          
+          // 行级注释：获取首帧图片
+          if (startImageId) {
+            const startImage = storeElements.find(el => el.id === startImageId) as ImageElement | undefined;
+            if (startImage) {
+              firstFrameImage = getImageData(startImage);
+              if (firstFrameImage) {
+                combinedSourceIds.add(startImageId);
+                console.log('✅ 海螺首帧图片已获取:', firstFrameImage.substring(0, 50) + '...');
+              }
+            }
+          }
+          
+          // 行级注释：获取尾帧图片（仅 hailuo-2.0 支持首尾帧）
+          if (endImageId && videoModel === 'hailuo-2.0') {
+            const endImage = storeElements.find(el => el.id === endImageId) as ImageElement | undefined;
+            if (endImage) {
+              lastFrameImage = getImageData(endImage);
+              if (lastFrameImage) {
+                combinedSourceIds.add(endImageId);
+                console.log('✅ 海螺尾帧图片已获取:', lastFrameImage.substring(0, 50) + '...');
+              }
+            }
+          }
+          
+          // 行级注释：如果没有首帧但有尾帧连接，把尾帧当首帧用
+          if (!firstFrameImage && endImageId) {
+            const endImage = storeElements.find(el => el.id === endImageId) as ImageElement | undefined;
+            if (endImage) {
+              firstFrameImage = getImageData(endImage);
+              if (firstFrameImage) {
+                combinedSourceIds.add(endImageId);
+                console.log('✅ 使用尾帧作为首帧:', firstFrameImage.substring(0, 50) + '...');
+              }
+            }
+          }
+          
+          console.log('🎬 海螺视频参数:', {
+            hasFirstFrame: Boolean(firstFrameImage),
+            hasLastFrame: Boolean(lastFrameImage),
+            prompt: promptText?.substring(0, 30) + '...',
+          });
+          
+          // 行级注释：调用海螺视频服务
+          const hailuoResult = await generateHailuoVideo(
+            {
+              prompt: promptText || '',
+              model: videoModel,
+              firstFrameImage,
+              lastFrameImage,
+              duration: 6,
+            },
+            (stage, progress) => {
+              // 行级注释：更新进度
+              updateElement(videoId, { progress } as Partial<VideoElement>);
+            }
+          );
+          
+          result = {
+            videoUrl: hailuoResult.videoUrl,
+            thumbnail: hailuoResult.thumbnailUrl || hailuoResult.videoUrl, // 海螺没有缩略图，用视频 URL
+            duration: hailuoResult.duration,
+            mediaGenerationId: hailuoResult.taskId, // 使用 taskId 作为标识
+          };
+          
+          generationType = hasAtLeastOneImage ? 'image-to-image' : 'text-to-video';
+          
         } else if (hasAtLeastOneImage) {
-          // 行级注释：图生视频 - 使用首尾帧
+          // 行级注释：Flow 图生视频 - 使用首尾帧
           const actualStartId = startImageId || endImageId!;
           const actualEndId = startImageId && endImageId ? endImageId : undefined;
 
@@ -322,7 +418,7 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           if (endImageId) combinedSourceIds.add(endImageId);
           generationType = 'image-to-image';
         } else {
-          // 行级注释：纯文本生成视频
+          // 行级注释：Flow 纯文本生成视频
           const aspectRatio = videoElement.size?.width && videoElement.size?.height
             ? detectAspectRatio(videoElement.size.width, videoElement.size.height)
             : '9:16';

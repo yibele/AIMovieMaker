@@ -2,8 +2,8 @@
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
-import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send, FolderInput } from 'lucide-react';
-import type { VideoElement } from '@/lib/types';
+import { Play, Pause, Image as ImageIcon, Download, Sparkles, Trash2, RotateCcw, Send, FolderInput, ChevronDown } from 'lucide-react';
+import type { VideoElement, VideoModelType, VIDEO_MODEL_CONFIG } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { ToolbarButton } from './ToolbarButton';
@@ -20,6 +20,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const [promptInput, setPromptInput] = useState(videoData.promptText || '');
   // 行级注释：使用本地 state 管理生成数量，避免频繁更新全局 store 导致卡顿
   const [generationCount, setGenerationCount] = useState(videoData.generationCount || 1);
+  // 行级注释：视频模型选择（默认 veo3.1）
+  const [videoModel, setVideoModel] = useState<VideoModelType>(videoData.videoModel || 'veo3.1');
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addElement = useCanvasStore((state) => state.addElement);
@@ -115,6 +118,27 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.generationCount]);
 
+  // 行级注释：同步外部更新的 videoModel
+  useEffect(() => {
+    if (videoData.videoModel && videoData.videoModel !== videoModel) {
+      setVideoModel(videoData.videoModel);
+    }
+  }, [videoData.videoModel]);
+
+  // 行级注释：视频模型配置
+  const VIDEO_MODELS: Array<{ id: VideoModelType; name: string; supportsEndFrame: boolean }> = [
+    { id: 'veo3.1', name: 'Veo 3.1', supportsEndFrame: true },
+    { id: 'hailuo-2.3', name: '海螺 2.3', supportsEndFrame: false },
+    { id: 'hailuo-2.3-fast', name: '海螺 2.3 Fast', supportsEndFrame: false },
+    { id: 'hailuo-2.0', name: '海螺 2.0', supportsEndFrame: true },
+  ];
+
+  // 行级注释：当前模型是否支持尾帧
+  const currentModelSupportsEndFrame = VIDEO_MODELS.find(m => m.id === videoModel)?.supportsEndFrame ?? true;
+  
+  // 行级注释：当前模型是否是海螺模型
+  const isHailuoModel = videoModel.startsWith('hailuo');
+
   // 行级注释：canUpscale 已移至 useVideoOperations Hook
 
   // 处理视频点击 - 播放/暂停
@@ -146,11 +170,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
 
 
-    // 行级注释：生成时同步 promptText 和 generationCount 到 store，并设置状态为 queued
+    // 行级注释：生成时同步 promptText、generationCount 和 videoModel 到 store，并设置状态为 queued
     // 如果没有提示词但有图片，promptText 留空，让 Canvas 的 maybeStartVideo 使用 VL 分析
     updateElement(id, {
       promptText: promptInput.trim() || '', // 可以为空，VL 会自动分析
       generationCount: generationCount,
+      videoModel: videoModel, // 行级注释：同步视频模型选择
       status: 'queued' // 行级注释：设置为 queued 状态，触发生成流程
     } as any);
 
@@ -184,6 +209,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       promptText: videoData.promptText || '', // 复制提示词
       startImageId: videoData.startImageId, // 复制首帧图片 ID
       endImageId: videoData.endImageId, // 复制尾帧图片 ID
+      videoModel: videoData.videoModel || 'veo3.1', // 复制视频模型
       generationCount: 1, // 重新生成默认 1 个
       readyForGeneration: true,
       generatedFrom: videoData.generatedFrom, // 复制生成来源信息
@@ -464,30 +490,33 @@ function VideoNode({ data, selected, id }: NodeProps) {
             </Handle>
           </>
         ) : (
-          // 行级注释：普通视频 - 显示首帧和尾帧输入点
+          // 行级注释：普通视频 - 显示首帧和尾帧输入点（根据模型支持情况）
           <>
             <Handle
               id="start-image"
               type="target"
               position={Position.Left}
-              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-400 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
-              style={{ left: '-6px', top: '46%', zIndex: '30' }}
+              className={`!flex !items-center !justify-center !w-5 !h-5 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125 ${isHailuoModel ? '!bg-cyan-500' : '!bg-blue-400'}`}
+              style={{ left: '-6px', top: currentModelSupportsEndFrame ? '46%' : '50%', zIndex: '30' }}
               isConnectable={true}
               title="首帧图片"
             >
               <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
             </Handle>
-            <Handle
-              id="end-image"
-              type="target"
-              position={Position.Left}
-              className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-600 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
-              style={{ left: '-6px', top: '54%', zIndex: '30' }}
-              isConnectable={true}
-              title="尾帧图片"
-            >
-              <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
-            </Handle>
+            {/* 行级注释：只有支持尾帧的模型才显示尾帧连接点 */}
+            {currentModelSupportsEndFrame && (
+              <Handle
+                id="end-image"
+                type="target"
+                position={Position.Left}
+                className="!flex !items-center !justify-center !w-5 !h-5 !bg-blue-600 !border-2 !border-white !rounded-full shadow-sm transition-transform hover:scale-125"
+                style={{ left: '-6px', top: '54%', zIndex: '30' }}
+                isConnectable={true}
+                title="尾帧图片"
+              >
+                <ImageIcon className="w-2 h-2 text-white" strokeWidth={2.5} />
+              </Handle>
+            )}
           </>
         )}
 
@@ -659,33 +688,92 @@ function VideoNode({ data, selected, id }: NodeProps) {
                   onPointerDown={(e) => e.stopPropagation()}
                 />
 
-                {/* 行级注释：数量选择 - 放在输入框下方，只更新本地状态，不频繁触发全局更新 */}
-                <div className={`flex items-center gap-2 mt-2 pt-1 border-t border-gray-100 dark:border-slate-600 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <span className="text-[9px] text-gray-400 dark:text-slate-500 font-medium select-none">生成数量</span>
-                  <div className="flex items-center bg-gray-100 dark:bg-slate-600 rounded-md p-0.5 gap-0.5">
-                    {[1, 2, 3, 4].map((num) => (
-                      <button
-                        key={num}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          // 行级注释：只更新本地 state，避免频繁更新全局 store 导致卡顿
-                          setGenerationCount(num);
-                        }}
+                {/* 行级注释：模型选择和数量选择 - 放在输入框下方 */}
+                <div className={`flex items-center justify-between gap-2 mt-2 pt-1 border-t border-gray-100 dark:border-slate-600 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {/* 行级注释：模型选择下拉菜单 */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModelMenuOpen(!isModelMenuOpen);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={isGenerating}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all duration-200 ${
+                        isHailuoModel 
+                          ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400' 
+                          : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
+                      } hover:bg-gray-200 dark:hover:bg-slate-500`}
+                      title="选择视频模型"
+                    >
+                      <span className="max-w-[60px] truncate">{VIDEO_MODELS.find(m => m.id === videoModel)?.name || 'Veo 3.1'}</span>
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    </button>
+                    
+                    {/* 行级注释：模型下拉菜单 */}
+                    {isModelMenuOpen && (
+                      <div 
+                        className="absolute left-0 top-full mt-1 w-32 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-gray-200 dark:border-slate-600 py-1 z-50"
                         onMouseDown={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
-                        disabled={isGenerating}
-                        className={`
-                          w-5 h-4 flex items-center justify-center rounded text-[9px] font-medium transition-all duration-200
-                          ${generationCount === num
-                            ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm scale-105'
-                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-600/50 hover:scale-105'}
-                        `}
-                        title={`生成 ${num} 个视频`}
                       >
-                        {num}
-                      </button>
-                    ))}
+                        {VIDEO_MODELS.map((model) => (
+                          <button
+                            key={model.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setVideoModel(model.id);
+                              setIsModelMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2 py-1 text-[9px] font-medium transition-colors ${
+                              videoModel === model.id
+                                ? model.id.startsWith('hailuo')
+                                  ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{model.name}</span>
+                              {!model.supportsEndFrame && (
+                                <span className="text-[7px] text-orange-500" title="不支持首尾帧">无尾帧</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 行级注释：数量选择 */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] text-gray-400 dark:text-slate-500 font-medium select-none">数量</span>
+                    <div className="flex items-center bg-gray-100 dark:bg-slate-600 rounded-md p-0.5 gap-0.5">
+                      {[1, 2, 3, 4].map((num) => (
+                        <button
+                          key={num}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            // 行级注释：只更新本地 state，避免频繁更新全局 store 导致卡顿
+                            setGenerationCount(num);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          disabled={isGenerating}
+                          className={`
+                            w-5 h-4 flex items-center justify-center rounded text-[9px] font-medium transition-all duration-200
+                            ${generationCount === num
+                              ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm scale-105'
+                              : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-600/50 hover:scale-105'}
+                          `}
+                          title={`生成 ${num} 个视频`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

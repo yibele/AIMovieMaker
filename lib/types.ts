@@ -7,6 +7,46 @@ export type AspectRatio = '16:9' | '9:16' | '1:1';
 // 视频宽高比（只支持 16:9 和 9:16）
 export type VideoAspectRatio = '16:9' | '9:16';
 
+// 视频生成模型类型
+export type VideoModelType = 
+  | 'veo3.1'                    // 默认 Veo 3.1 (Google Flow)
+  | 'hailuo-2.3'                // 海螺 MiniMax-Hailuo-2.3（标准版，不支持首尾帧）
+  | 'hailuo-2.3-fast'           // 海螺 MiniMax-Hailuo-2.3-Fast（快速版）
+  | 'hailuo-2.0';               // 海螺 MiniMax-Hailuo-02（基础版）
+
+// 视频模型配置
+export const VIDEO_MODEL_CONFIG: Record<VideoModelType, {
+  name: string;
+  apiModel: string;
+  supportsEndFrame: boolean;  // 是否支持首尾帧
+  provider: 'flow' | 'hailuo';
+}> = {
+  'veo3.1': {
+    name: 'Veo 3.1',
+    apiModel: 'veo3.1',
+    supportsEndFrame: true,
+    provider: 'flow',
+  },
+  'hailuo-2.3': {
+    name: '海螺 2.3',
+    apiModel: 'MiniMax-Hailuo-2.3',
+    supportsEndFrame: false,  // 2.3 不支持首尾帧
+    provider: 'hailuo',
+  },
+  'hailuo-2.3-fast': {
+    name: '海螺 2.3 Fast',
+    apiModel: 'MiniMax-Hailuo-2.3-Fast',
+    supportsEndFrame: false,
+    provider: 'hailuo',
+  },
+  'hailuo-2.0': {
+    name: '海螺 2.0',
+    apiModel: 'MiniMax-Hailuo-02',
+    supportsEndFrame: true,
+    provider: 'hailuo',
+  },
+};
+
 // 生成模式
 export type GenerationMode = 'generate' | 'regenerate' | 'similar' | 'batch' | 'edit' | 'next-shot';
 
@@ -72,6 +112,8 @@ export interface VideoElement extends CanvasElement {
   endImageUrl?: string; // 尾帧缩略图 URL // 行级注释说明字段用途
   promptText?: string; // 视频生成使用的提示词 // 行级注释说明字段用途
   readyForGeneration?: boolean; // 当前是否满足生成条件（提示词 + 首尾帧至少一个） // 行级注释说明字段用途
+  videoModel?: VideoModelType; // 视频生成模型（默认 veo3.1） // 行级注释说明字段用途
+  hailuoTaskId?: string; // 海螺视频任务 ID（轮询时使用） // 行级注释说明字段用途
   generatedFrom?: {
     type: 'text' | 'image' | 'image-to-image' | 'upsample' | 'reshoot' | 'extend' | 'reference-images'; // 行级注释：reference-images 表示多图参考视频
     sourceIds: string[]; // 源节点 ID（文本/图片/视频）
