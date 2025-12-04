@@ -238,7 +238,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
       const apiConfig = useCanvasStore.getState().apiConfig;
       if (!apiConfig.bearerToken) {
-        toast.error('请先配置 Bearer Token');
+        toast.error('请先同步 API 授权');
         setAnnotatorTarget(null);
         setIsLoadingAnnotatorImage(false);
         return;

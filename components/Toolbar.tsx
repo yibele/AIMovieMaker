@@ -196,7 +196,7 @@ export default function Toolbar() {
           if (!hasFlowCredential) {
             console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
       alert(
-        '图片已添加，但未配置 Flow 的 Bearer Token 或 Project ID，无法进行图生图，请先在设置中填写'
+        '图片已添加，但未同步 API 授权，无法进行图生图，请先同步授权'
       );
             return;
           }
@@ -218,7 +218,7 @@ export default function Toolbar() {
           } catch (error: any) {
             console.error('上传图片注册 Flow 失败:', error);
             const message =
-              error?.message || '上传图片注册 Flow 失败，请检查网络或凭证配置';
+              error?.message || '上传图片失败，请检查网络连接';
             updateElement(imageId, {
               uploadState: 'error',
               uploadMessage: message,

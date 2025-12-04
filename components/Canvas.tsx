@@ -836,7 +836,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
 
     if (!hasFlowCredential) {
       console.warn('⚠️ 未配置 Flow 凭证，跳过 Flow 上传注册流程');
-      toast.warning('图片已添加，但未配置 API 凭证，无法进行图生图');
+      toast.warning('图片已添加，但未同步 API 授权，无法进行图生图');
       return;
     }
 
@@ -854,7 +854,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
       toast.success('图片上传成功');
     } catch (error: any) {
       console.error('上传图片注册 Flow 失败:', error);
-      const message = error?.message || '上传图片注册 Flow 失败，请检查网络或凭证配置';
+      const message = error?.message || '上传图片失败，请检查网络连接';
       updateElement(imageId, {
         uploadState: 'error',
         uploadMessage: message,
@@ -1015,7 +1015,7 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         }
 
         if (!apiConfig.bearerToken) {
-          throw new Error('请先在设置中配置 Bearer Token');
+          throw new Error('请先同步 API 授权');
         }
 
         const mediaResponse = await fetch(

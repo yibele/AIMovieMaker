@@ -403,7 +403,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
         // 检查是否是401错误（token或cookie过期）
         if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('过期')) {
           setAuthStatus('expired');
-          toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置', {
+          toast.error('API 绑定失败，请检查网络或重新同步授权', {
             duration: 8000,
           });
         }
@@ -494,7 +494,7 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
     if (apiConfig.cookie?.trim()) {
       return true; // 已配置 Cookie
     }
-    setErrorMessage('请先在 API 设置中配置 Cookie'); // 提示用户配置
+    setErrorMessage('请先同步 API 授权'); // 提示用户配置
     setIsSettingsOpen(true); // 打开设置面板
     return false;
   }, [apiConfig.cookie, isHydrated, setIsSettingsOpen]);
@@ -565,9 +565,9 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
 
       setErrorMessage(errorMessage); // 显示错误
 
-      // 检查是否是401错误（token或cookie过期）
+      // 检查是否是401错误（API 授权过期）
       if (is401Error) {
-        toast.error('登录已过期\n您的 Token 或 Cookie 已过期，请重新设置 API 配置', {
+        toast.error('API 绑定失败，请检查网络或重新同步授权', {
           duration: 8000,
         });
       }
