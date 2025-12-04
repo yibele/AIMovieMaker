@@ -81,6 +81,10 @@ export async function pollVideoOperation(
   // 行级注释：动态导入 API 函数，避免循环依赖
   const { checkVideoStatusDirectly } = await import('../direct-google-api');
 
+  // 行级注释：记录连续网络错误次数
+  let consecutiveNetworkErrors = 0;
+  const MAX_NETWORK_ERRORS = 3;
+
   for (let attempt = 1; attempt <= VIDEO_MAX_ATTEMPTS; attempt++) {
 
     try {
@@ -91,11 +95,14 @@ export async function pollVideoOperation(
         sceneId
       );
 
+      // 行级注释：成功获取状态，重置网络错误计数
+      consecutiveNetworkErrors = 0;
+
       const status = result.status;
 
       // 行级注释：失败状态 - 立即抛出错误
       if (status === 'MEDIA_GENERATION_STATUS_FAILED') {
-        const errorMessage = result.error || 'Flow 视频生成失败';
+        const errorMessage = result.error || '视频生成失败';
         throw new Error(errorMessage);
       }
 
@@ -103,15 +110,13 @@ export async function pollVideoOperation(
       if (status === 'MEDIA_GENERATION_STATUS_SUCCESSFUL') {
 
         if (!result.videoUrl) {
-          throw new Error('Flow 返回缺少视频地址');
+          throw new Error('视频生成成功但返回地址为空');
         }
 
         // 行级注释：更新积分到 store
         if (typeof result.remainingCredits === 'number') {
           useCanvasStore.getState().setCredits(result.remainingCredits);
         }
-
-
 
         return {
           videoUrl: result.videoUrl,
@@ -122,13 +127,33 @@ export async function pollVideoOperation(
       }
 
       // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
+      console.log(`⏳ 视频生成中... (第 ${attempt} 次轮询, 状态: ${status})`);
 
     } catch (error: any) {
-      console.error(`❌ 轮询第 ${attempt} 次出错:`, error);
-      console.error('错误详情:', error.message, error.stack);
+      // 行级注释：区分业务错误和网络错误
+      const isNetworkError = 
+        error.message?.includes('fetch') ||
+        error.message?.includes('network') ||
+        error.message?.includes('timeout') ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.name === 'TypeError'; // fetch 失败通常是 TypeError
 
-      // 行级注释：直接抛出错误，不要继续轮询了
-      throw error;
+      if (isNetworkError) {
+        consecutiveNetworkErrors++;
+        console.warn(`⚠️ 轮询第 ${attempt} 次网络错误 (${consecutiveNetworkErrors}/${MAX_NETWORK_ERRORS}):`, error.message);
+
+        // 行级注释：连续网络错误达到上限才抛出
+        if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
+          console.error('❌ 连续网络错误过多，停止轮询');
+          throw new Error('网络连接不稳定，请检查网络后重试');
+        }
+        // 行级注释：网络错误时继续重试
+      } else {
+        // 行级注释：业务错误（如 FAILED 状态）直接抛出
+        console.error(`❌ 轮询第 ${attempt} 次出错:`, error.message);
+        throw error;
+      }
     }
 
     // 行级注释：等待后进行下一次轮询
