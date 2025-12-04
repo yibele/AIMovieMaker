@@ -7,7 +7,6 @@ import { useCanvasStore } from '@/lib/store';
 import { loadMaterialsFromProject } from '@/lib/project-materials'; // This now loads into projectHistory
 import { MaterialItem, MaterialType } from '@/lib/types-materials';
 import { MaterialsIcon } from './icons/MaterialsIcon';
-import { supabase } from '@/lib/supabaseClient'; // 用于获取 user_id
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface MaterialsPanelProps {
@@ -56,22 +55,8 @@ export default function MaterialsPanel({ isOpen, onClose }: MaterialsPanelProps)
     variant: 'default',
   });
 
-  // 获取当前用户 ID
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-    const fetchUser = async () => {
-
-      const { data, error } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUserId(data.user.id);
-        useCanvasStore.getState().setApiConfig({ userId: data.user.id }); // 更新到 canvasStore
-      } else if (error) {
-        console.error('Failed to get user:', error);
-        setUserId(null);
-      }
-    };
-    fetchUser();
-  }, []);
+  // 行级注释：从 store 读取 userId（已在 app/page.tsx 登录时设置）
+  const userId = useCanvasStore((state) => state.apiConfig.userId) || null;
 
   // 加载精选素材和项目历史
   useEffect(() => {

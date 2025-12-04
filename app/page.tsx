@@ -26,7 +26,7 @@ export default function Home() {
   const hasSyncedRef = useRef(false);
 
   // 行级注释：自动同步云端 API 授权（只执行一次）
-  const syncCloudCredentials = useCallback(async (accessToken: string, forceSync: boolean = false) => {
+  const syncCloudCredentials = useCallback(async (accessToken: string, userId: string, forceSync: boolean = false) => {
     // 行级注释：如果已经同步过且不是强制同步，则跳过
     if (hasSyncedRef.current && !forceSync) {
       console.log('⏭️ API 授权已同步，跳过重复同步');
@@ -47,13 +47,14 @@ export default function Home() {
         const data = await response.json();
         if (data.activated && data.credentials) {
           const creds = data.credentials;
-          // 行级注释：更新凭证到本地 store
+          // 行级注释：更新凭证到本地 store（包含 userId）
           setApiConfig({
             apiKey: creds.apiKey || '',
             bearerToken: creds.bearerToken || '',
             cookie: creds.cookie || '',
             projectId: creds.projectId || '',
             isManaged: true,
+            userId, // 行级注释：设置 userId，避免其他组件重复调用 getUser
           });
           console.log('✅ API 授权同步成功');
           // 行级注释：标记已同步
@@ -61,12 +62,18 @@ export default function Home() {
           toast.success('API 授权已自动同步');
         } else {
           console.log('⚠️ 未找到有效的 API 授权');
+          // 行级注释：即使没有凭证，也设置 userId
+          setApiConfig({ userId });
         }
       } else {
         console.error('❌ 同步 API 授权失败:', response.status);
+        // 行级注释：即使失败，也设置 userId
+        setApiConfig({ userId });
       }
     } catch (error) {
       console.error('❌ 同步云端凭证出错:', error);
+      // 行级注释：即使出错，也设置 userId
+      setApiConfig({ userId });
     }
   }, [setApiConfig]);
 
@@ -76,8 +83,8 @@ export default function Home() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setView(ViewMode.DASHBOARD);
-        // 行级注释：登录时自动同步 API 授权
-        syncCloudCredentials(session.access_token);
+        // 行级注释：登录时自动同步 API 授权，传入 userId
+        syncCloudCredentials(session.access_token, session.user.id);
       }
       setIsLoading(false);
     };
@@ -92,20 +99,21 @@ export default function Home() {
         
         // 行级注释：只在新登录时强制同步，TOKEN_REFRESHED 时跳过（因为凭证没变）
         if (event === 'SIGNED_IN') {
-          // 行级注释：新登录，强制同步
+          // 行级注释：新登录，强制同步，传入 userId
           hasSyncedRef.current = false;
-          syncCloudCredentials(session.access_token, true);
+          syncCloudCredentials(session.access_token, session.user.id, true);
         }
         // 行级注释：TOKEN_REFRESHED 不需要重新同步，凭证没有变化
       } else {
         setView(ViewMode.LANDING);
-        // 行级注释：登出时重置同步状态
+        // 行级注释：登出时重置同步状态和 userId
         hasSyncedRef.current = false;
+        setApiConfig({ userId: undefined });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [syncCloudCredentials]);
+  }, [syncCloudCredentials, setApiConfig]);
 
   const handleLoginClick = () => {
     setIsLoginModalOpen(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Home, FolderOpen, Sparkles, RefreshCw } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { getVideoCreditStatus } from '@/lib/direct-google-api';
@@ -11,19 +11,29 @@ export default function CanvasNavigation() {
   const setCredits = useCanvasStore((state) => state.setCredits);
   
   const [isLoadingCredits, setIsLoadingCredits] = useState(false);
+  // 行级注释：防止 StrictMode 导致的重复请求
+  const hasFetchedCreditsRef = useRef(false);
 
   // 行级注释：获取积分状态
-  const fetchCredits = async () => {
+  const fetchCredits = async (force: boolean = false) => {
     if (!apiConfig.bearerToken) {
       return;
     }
     
+    // 行级注释：如果已请求过且不是强制刷新，跳过
+    if (hasFetchedCreditsRef.current && !force) {
+      return;
+    }
+    
     setIsLoadingCredits(true);
+    hasFetchedCreditsRef.current = true;
     try {
       const result = await getVideoCreditStatus(apiConfig.bearerToken);
       setCredits(result.credits);
     } catch (error) {
       console.error('获取积分失败:', error);
+      // 行级注释：请求失败时重置标志，允许重试
+      hasFetchedCreditsRef.current = false;
     } finally {
       setIsLoadingCredits(false);
     }
@@ -62,7 +72,7 @@ export default function CanvasNavigation() {
       {!apiConfig.isManaged && (
         <div className="absolute top-4 right-4 z-50">
           <button
-            onClick={() => fetchCredits()}
+            onClick={() => fetchCredits(true)}
             disabled={isLoadingCredits}
             className={`inline-flex items-center gap-2 rounded-xl backdrop-blur-sm px-4 py-2 text-sm font-medium shadow-lg transition-all ${
               apiConfig.accountTier === 'ultra'
