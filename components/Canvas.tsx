@@ -55,6 +55,7 @@ import { useConnectionHandler } from '@/hooks/canvas/useConnectionHandler';
 import { ConnectionMenuCallbacks } from '@/types/connection-menu';
 import { useTextToImage } from '@/hooks/canvas/useTextToImage';
 import { useImageToImage } from '@/hooks/canvas/useImageToImage';
+import { useCanvasPersistence } from '@/hooks/canvas/useCanvasPersistence';
 import { ImageAspectRatio } from '@/types/image-generation';
 import {
   VIDEO_NODE_DEFAULT_SIZE,
@@ -176,6 +177,37 @@ function CanvasContent({ projectId }: { projectId?: string }) {
   const { handleNextShotGeneration, handleTransitionShotsGeneration } = useNextShot({
     setEdges: setEdges as any,
     resetConnectionMenu,
+  });
+
+  // 行级注释：获取项目标题
+  const projectTitle = useCanvasStore((state) => state.projectTitle);
+
+  // 行级注释：画布数据恢复回调（从 IndexedDB 加载后恢复到 store 和 React Flow）
+  const handleCanvasRestore = useCallback((
+    restoredElements: CanvasElement[],
+    restoredEdges: Edge[]
+  ) => {
+    // 行级注释：恢复元素到 store
+    useCanvasStore.setState({ elements: restoredElements });
+    // 行级注释：恢复连线到 React Flow
+    setEdges(restoredEdges);
+    console.log(`🔄 画布已恢复: ${restoredElements.length} 个元素, ${restoredEdges.length} 条连线`);
+  }, [setEdges]);
+
+  // 行级注释：使用画布持久化 Hook（自动保存到 IndexedDB）
+  const {
+    isLoading: isCanvasLoading,
+    isSaving: isCanvasSaving,
+    lastSaved: canvasLastSaved,
+    hasUnsavedChanges,
+  } = useCanvasPersistence({
+    projectId: projectId || '',
+    projectTitle,
+    elements,
+    edges,
+    onRestore: handleCanvasRestore,
+    debounceMs: 2000, // 行级注释：2 秒防抖
+    autoSave: true,
   });
 
   // 行级注释：同步 elements 到 React Flow 节点状态（性能优化：只在元素数量或 ID 变化时完全重建）
@@ -1266,7 +1298,33 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         proOptions={{ hideAttribution: true }}
       >
         {/* 主题切换按钮 - 右下角 */}
-        <div className="absolute bottom-4 right-4 z-10">
+        <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
+          {/* 行级注释：画布保存状态指示器 */}
+          {projectId && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm text-xs text-gray-500 dark:text-gray-400 shadow-sm">
+              {isCanvasLoading ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  <span>加载中...</span>
+                </>
+              ) : isCanvasSaving ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span>保存中...</span>
+                </>
+              ) : hasUnsavedChanges ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>未保存</span>
+                </>
+              ) : canvasLastSaved ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>已保存</span>
+                </>
+              ) : null}
+            </div>
+          )}
           <ThemeToggle />
         </div>
 
