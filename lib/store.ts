@@ -19,6 +19,7 @@ interface ApiConfig {
   bearerToken: string;
   cookie: string;
   dashScopeApiKey: string; // 阿里云 DashScope API Key
+  hailuoApiKey: string; // 海螺 Hailuo API Key（DMXAPI）
   proxy: string; // 代理地址，例如 http://127.0.0.1:10808
   projectId: string;
   workflowId: string;
@@ -122,6 +123,7 @@ const loadApiConfig = (): ApiConfig => {
       bearerToken: '',
       cookie: '',
       dashScopeApiKey: 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
+      hailuoApiKey: '', // 海螺 Hailuo API Key
       proxy: '',
       projectId: '',
       workflowId: context.workflowId,
@@ -145,6 +147,7 @@ const loadApiConfig = (): ApiConfig => {
         bearerToken: parsed?.bearerToken || '',
         cookie: parsed?.cookie || '',
         dashScopeApiKey: parsed?.dashScopeApiKey || 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
+        hailuoApiKey: parsed?.hailuoApiKey || '', // 海螺 Hailuo API Key
         proxy: parsed?.proxy || '',
         projectId: parsed?.projectId || '',
         workflowId: parsed?.workflowId || context.workflowId,
@@ -167,6 +170,7 @@ const loadApiConfig = (): ApiConfig => {
     bearerToken: '',
     cookie: '',
     dashScopeApiKey: 'sk-81d6958df6134cf393812891bb388b18', // 默认阿里云 API Key
+    hailuoApiKey: '', // 海螺 Hailuo API Key
     proxy: '',
     projectId: '',
     workflowId: context.workflowId,

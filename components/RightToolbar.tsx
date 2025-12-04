@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen, Bot, Lightbulb } from 'lucide-react';
+import { Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Download, Sparkles, LayoutGrid, Image as ImageIcon, Box, Palette, FolderOpen, Bot, Lightbulb, Settings } from 'lucide-react';
 import MaterialsPanel from './MaterialsPanel';
 import PromptLibraryPanel from './PromptLibraryPanel';
 import GrokAssistantPanel from './GrokAssistantPanel';
 import AiwindPromptsPanel from './AiwindPromptsPanel';
+import SettingsPanel from './SettingsPanel';
 import { useCanvasStore } from '@/lib/store';
 
 export default function RightToolbar() {
@@ -15,6 +16,8 @@ export default function RightToolbar() {
   const prefixPrompt = useCanvasStore((state) => state.currentPrefixPrompt);
   const isAssistantOpen = useCanvasStore((state) => state.isAssistantOpen);
   const setIsAssistantOpen = useCanvasStore((state) => state.setIsAssistantOpen);
+  const isSettingsOpen = useCanvasStore((state) => state.isSettingsOpen); // 设置面板状态
+  const setIsSettingsOpen = useCanvasStore((state) => state.setIsSettingsOpen); // 设置面板控制
   const isManaged = useCanvasStore((state) => state.apiConfig.isManaged); // 读取是否为托管模式
 
   // 关闭所有面板的辅助函数
@@ -23,6 +26,7 @@ export default function RightToolbar() {
     setIsPromptLibraryOpen(false);
     setIsAiwindPanelOpen(false);
     setIsAssistantOpen(false);
+    setIsSettingsOpen(false);
   };
 
   // 按钮配置
@@ -126,6 +130,28 @@ export default function RightToolbar() {
           dotColor: undefined // 添加可选属性
         },
       ]
+    },
+    // 第四组：设置
+    {
+      id: 'settings',
+      items: [
+        {
+          icon: Settings,
+          onClick: () => {
+            setIsSettingsOpen(!isSettingsOpen);
+            if (!isSettingsOpen) {
+              // 打开设置时关闭其他面板
+              setIsMaterialsPanelOpen(false);
+              setIsPromptLibraryOpen(false);
+              setIsAiwindPanelOpen(false);
+              setIsAssistantOpen(false);
+            }
+          },
+          title: '设置',
+          isActive: isSettingsOpen,
+          dotColor: 'bg-slate-500'
+        },
+      ]
     }
   ];
 
@@ -203,6 +229,9 @@ export default function RightToolbar() {
         isOpen={isAiwindPanelOpen}
         onClose={() => setIsAiwindPanelOpen(false)}
       />
+
+      {/* 设置面板 */}
+      <SettingsPanel />
     </>
   );
 }

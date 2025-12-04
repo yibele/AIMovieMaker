@@ -19,6 +19,7 @@ export default function SettingsPanel() {
   const [bearerToken, setBearerToken] = useState(apiConfig.bearerToken || '');
   const [cookie, setCookie] = useState(apiConfig.cookie || '');
   const [dashScopeApiKey, setDashScopeApiKey] = useState(apiConfig.dashScopeApiKey || '');
+  const [hailuoApiKey, setHailuoApiKey] = useState(apiConfig.hailuoApiKey || ''); // 海螺 API Key
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
   const [projectId, setProjectId] = useState(apiConfig.projectId || '');
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
@@ -33,6 +34,7 @@ export default function SettingsPanel() {
       setBearerToken(apiConfig.bearerToken || '');
       setCookie(apiConfig.cookie || '');
       setDashScopeApiKey(apiConfig.dashScopeApiKey || '');
+      setHailuoApiKey(apiConfig.hailuoApiKey || ''); // 同步海螺 API Key
       setProxy(apiConfig.proxy || '');
       setProjectId(apiConfig.projectId || '');
       setWorkflowId(apiConfig.workflowId || '');
@@ -112,6 +114,7 @@ export default function SettingsPanel() {
       bearerToken: bearerToken.trim(),
       cookie: cookie.trim(),
       dashScopeApiKey: dashScopeApiKey.trim(),
+      hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
       proxy: proxy.trim(),
       projectId: projectId.trim(),
       workflowId: workflowId.trim(),
@@ -256,6 +259,32 @@ export default function SettingsPanel() {
                   type="password"
                   value={dashScopeApiKey}
                   onChange={(e) => setDashScopeApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
+                />
+              </div>
+
+              {/* 海螺 Hailuo Video Configuration */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <span className="w-4 h-4 flex items-center justify-center text-[10px] bg-cyan-500 text-white rounded font-mono">H</span>
+                  Hailuo Video (海螺视频)
+                </label>
+                <p className="text-xs text-slate-500 font-medium">
+                  DMXAPI Key for Hailuo video generation. Get it from{' '}
+                  <a 
+                    href="https://www.dmxapi.cn" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-600 hover:text-cyan-700 underline"
+                  >
+                    dmxapi.cn
+                  </a>
+                </p>
+                <input
+                  type="password"
+                  value={hailuoApiKey}
+                  onChange={(e) => setHailuoApiKey(e.target.value)}
                   placeholder="sk-..."
                   className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
                 />

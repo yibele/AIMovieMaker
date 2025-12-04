@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useCanvasStore } from '@/lib/store';
-import SettingsPanel from '@/components/SettingsPanel';
 import { DashboardView } from './DashboardView';
 import { Project } from '../types/morpheus';
 import { supabase } from '@/lib/supabaseClient';
@@ -590,7 +589,6 @@ export default function ProjectsHome({ onLogout }: ProjectsHomeProps) {
 
   return (
     <div className="w-screen h-screen overflow-auto relative">
-      <SettingsPanel />
       <DashboardView
         projects={morpheusProjects}
         onCreateProject={handleCreateProject}
