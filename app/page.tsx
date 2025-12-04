@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { LandingPage } from '@/components/LandingPage';
 import { LoginModal } from '@/components/LoginModal';
@@ -21,9 +21,18 @@ export default function Home() {
   
   // 行级注释：获取 store 中的 setApiConfig 方法
   const setApiConfig = useCanvasStore((state) => state.setApiConfig);
+  
+  // 行级注释：追踪是否已经同步过 API 授权，避免重复同步
+  const hasSyncedRef = useRef(false);
 
-  // 行级注释：自动同步云端 API 授权
-  const syncCloudCredentials = useCallback(async (accessToken: string) => {
+  // 行级注释：自动同步云端 API 授权（只执行一次）
+  const syncCloudCredentials = useCallback(async (accessToken: string, forceSync: boolean = false) => {
+    // 行级注释：如果已经同步过且不是强制同步，则跳过
+    if (hasSyncedRef.current && !forceSync) {
+      console.log('⏭️ API 授权已同步，跳过重复同步');
+      return;
+    }
+    
     try {
       console.log('🔄 自动同步云端 API 授权...');
       
@@ -47,6 +56,8 @@ export default function Home() {
             isManaged: true,
           });
           console.log('✅ API 授权同步成功');
+          // 行级注释：标记已同步
+          hasSyncedRef.current = true;
           toast.success('API 授权已自动同步');
         } else {
           console.log('⚠️ 未找到有效的 API 授权');
@@ -79,12 +90,17 @@ export default function Home() {
         setView(ViewMode.DASHBOARD);
         setIsLoginModalOpen(false); // Close modal if open
         
-        // 行级注释：登录事件时自动同步 API 授权
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          syncCloudCredentials(session.access_token);
+        // 行级注释：只在新登录时强制同步，TOKEN_REFRESHED 时跳过（因为凭证没变）
+        if (event === 'SIGNED_IN') {
+          // 行级注释：新登录，强制同步
+          hasSyncedRef.current = false;
+          syncCloudCredentials(session.access_token, true);
         }
+        // 行级注释：TOKEN_REFRESHED 不需要重新同步，凭证没有变化
       } else {
         setView(ViewMode.LANDING);
+        // 行级注释：登出时重置同步状态
+        hasSyncedRef.current = false;
       }
     });
 
