@@ -135,24 +135,28 @@ Describe:
 Keep it concise, suitable for video generation prompt.`,
 
   // 单图视频提示词生成（8秒电影级视频）
-  VIDEO_PROMPT_SINGLE: `Analyze this image and generate an 8-second cinematic video prompt.
+  VIDEO_PROMPT_SINGLE: `Analyze this image and generate an 8-second video prompt.
+
+IMPORTANT: Use NORMAL SPEED motion, NOT slow motion. All actions should happen at realistic, natural pace.
 
 STYLE OPTIONS (choose the best fit for this image):
-- Single continuous shot: Smooth camera movement (pan, zoom, dolly) with natural motion
+- Single continuous shot: Camera movement (pan, zoom, dolly) at normal speed
 - Multi-shot sequence: 2-3 shots with cuts if the scene benefits from angle changes
 
-Focus on: subject movement, camera motion, environmental dynamics, mood/atmosphere.
-Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps.`,
+Focus on: subject movement at normal speed, camera motion, environmental dynamics.
+Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps. Do NOT use "slow motion" or "slowly".`,
 
   // 首尾帧视频提示词生成（8秒过渡视频）
   VIDEO_PROMPT_START_END: `Analyze these two images (start frame and end frame) and generate an 8-second video prompt.
 
+IMPORTANT: Use NORMAL SPEED motion, NOT slow motion. All actions should happen at realistic, natural pace.
+
 STYLE OPTIONS (choose the best fit):
-- Single continuous transition: One smooth camera movement from Frame A to Frame B
+- Single continuous transition: Camera movement from Frame A to Frame B at normal speed
 - Multi-shot transition: 2-3 shots if the change requires cuts or complex motion
 
-Describe the journey from Frame A to Frame B: subject movement, camera motion, environmental changes.
-Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps.`,
+Describe the journey from Frame A to Frame B: subject movement at normal speed, camera motion, environmental changes.
+Output ONLY the prompt text. Under 80 words. English. No shot numbers or timestamps. Do NOT use "slow motion" or "slowly".`,
 } as const;
 
 // ============================================================================
