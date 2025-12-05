@@ -33,6 +33,11 @@ interface PromptLibraryPanelProps {
   onClose: () => void;
 }
 
+// 行级注释：缓存时间戳，避免频繁请求数据库
+let lastSystemPromptsFetch = 0;
+let lastUserPromptsFetch = 0;
+const PROMPTS_CACHE_TTL = 5 * 60 * 1000; // 行级注释：5 分钟缓存
+
 export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPanelProps) {
   // 状态管理
   const [activeTab, setActiveTab] = useState<'system' | 'user'>('system');
@@ -60,11 +65,17 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
     }
   }, [isOpen]);
 
-  // 初始化加载数据
+  // 初始化加载数据（带缓存）
   useEffect(() => {
     if (isOpen) {
-      fetchSystemPrompts();
-      fetchUserPrompts();
+      const now = Date.now();
+      // 行级注释：只有缓存过期时才重新请求
+      if (now - lastSystemPromptsFetch > PROMPTS_CACHE_TTL || systemPrompts.length === 0) {
+        fetchSystemPrompts();
+      }
+      if (now - lastUserPromptsFetch > PROMPTS_CACHE_TTL || userPrompts.length === 0) {
+        fetchUserPrompts();
+      }
     }
   }, [isOpen]);
 
@@ -88,6 +99,8 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
           createdAt: new Date(item.created_at).getTime()
         }));
         setSystemPrompts(formattedData);
+        // 行级注释：更新缓存时间戳
+        lastSystemPromptsFetch = Date.now();
       }
     } catch (error) {
       console.error('Error fetching system prompts:', error);
@@ -120,6 +133,8 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
           createdAt: new Date(item.created_at).getTime()
         }));
         setUserPrompts(formattedData);
+        // 行级注释：更新缓存时间戳
+        lastUserPromptsFetch = Date.now();
       }
     } catch (error) {
       console.error('Error fetching user prompts:', error);
