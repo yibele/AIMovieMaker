@@ -273,7 +273,7 @@ export default function SettingsPanel() {
                 <p className="text-xs text-slate-500 font-medium">
                   DMXAPI Key for Hailuo video generation. Get it from{' '}
                   <a 
-                    href="https://www.dmxapi.cn" 
+                    href="https://www.dmxapi.cn/register?aff=pS4M" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-cyan-600 hover:text-cyan-700 underline"
