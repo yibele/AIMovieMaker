@@ -455,7 +455,6 @@ export async function generateSmartStoryboard(
   }
   setIsGeneratingStoryboard(true);
 
-  try {
   // 行级注释：获取网格配置
   const gridConfig = GRID_PRESETS[gridPreset];
   const { rows, cols } = gridConfig;
