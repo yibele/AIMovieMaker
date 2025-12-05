@@ -61,6 +61,9 @@ interface CanvasStore {
   prefixPromptEnabled: boolean;
   // 行级注释：视频积分状态
   credits: number | null;
+  // 行级注释：生成任务并发限制状态
+  isGeneratingImage: boolean; // 是否正在生成图片
+  isGeneratingVideo: boolean; // 是否正在生成视频
 
   // 操作方法
   addElement: (element: CanvasElement) => void;
@@ -83,6 +86,8 @@ interface CanvasStore {
   regenerateFlowContext: () => { workflowId: string; sessionId: string };
   triggerVideoGeneration?: (videoId: string) => void;
   setCredits: (credits: number) => void; // 行级注释：更新积分
+  setIsGeneratingImage: (isGenerating: boolean) => void; // 行级注释：设置图片生成状态
+  setIsGeneratingVideo: (isGenerating: boolean) => void; // 行级注释：设置视频生成状态
   // 行级注释：从输入框生成图片的回调（由 Canvas 注入）
   onGenerateFromInput?: (
     prompt: string,
@@ -242,6 +247,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     projectTitle: 'Untitled',
     apiConfig: initialConfig,
     credits: null, // 行级注释：初始积分为 null，待首次获取
+    isGeneratingImage: false, // 行级注释：初始无图片生成任务
+    isGeneratingVideo: false, // 行级注释：初始无视频生成任务
     isSettingsOpen: false,
     projectPrefixPrompts: loadProjectPrefixPrompts(),
     currentPrefixPrompt: initialConfig.projectId ? loadProjectPrefixPrompts()[initialConfig.projectId] || '' : '',
@@ -422,6 +429,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
     },
 
     setCredits: (credits) => set({ credits }), // 行级注释：更新积分状态
+    setIsGeneratingImage: (isGenerating) => set({ isGeneratingImage: isGenerating }), // 行级注释：设置图片生成状态
+    setIsGeneratingVideo: (isGenerating) => set({ isGeneratingVideo: isGenerating }), // 行级注释：设置视频生成状态
 
     // 图片编辑器状态和方法
     annotatorTarget: null,

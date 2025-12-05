@@ -443,6 +443,14 @@ export async function generateImage(
     fifeUrl?: string;
   }>;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
+  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
+  if (isGeneratingImage) {
+    throw new Error('已有图片生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingImage(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
@@ -499,6 +507,10 @@ export async function generateImage(
     sessionId: result.sessionId,
     images, // 返回所有生成的图片（包含 base64）
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置图片生成状态
+    useCanvasStore.getState().setIsGeneratingImage(false);
+  }
 }
 
 // 上传图片并注册到 Flow，获取 mediaGenerationId 供后续图生图使用
@@ -598,6 +610,14 @@ export async function runImageRecipe(
     fifeUrl?: string;
   }>;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
+  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
+  if (isGeneratingImage) {
+    throw new Error('已有图片生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingImage(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
@@ -663,6 +683,10 @@ export async function runImageRecipe(
     translatedPrompt: images[0]?.prompt,
     images, // 返回所有生成的图片（包含 fifeUrl 和 base64）
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置图片生成状态
+    useCanvasStore.getState().setIsGeneratingImage(false);
+  }
 }
 
 // 图生图接口 - 直接调用 Google API，获取 base64
@@ -694,6 +718,14 @@ export async function imageToImage(
     fifeUrl?: string;
   }>;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
+  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
+  if (isGeneratingImage) {
+    throw new Error('已有图片生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingImage(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier, imageModel } = getApiContext();
 
@@ -752,6 +784,10 @@ export async function imageToImage(
     base64: images[0]?.base64, // Return base64 in root object
     images, // 返回所有生成的图片（包含 fifeUrl 和 base64）
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置图片生成状态
+    useCanvasStore.getState().setIsGeneratingImage(false);
+  }
 }
 
 // 编辑图片接口（再次生成 / 类似图片）- 保留用于其他功能
@@ -783,6 +819,14 @@ export async function generateVideoFromText(
   promptId: string;
   mediaGenerationId?: string;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
+  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
+  if (isGeneratingVideo) {
+    throw new Error('已有视频生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingVideo(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier, videoModel } = getApiContext();
 
@@ -834,6 +878,10 @@ export async function generateVideoFromText(
     promptId: generateId(),
     mediaGenerationId: videoResult.mediaGenerationId,
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置视频生成状态
+    useCanvasStore.getState().setIsGeneratingVideo(false);
+  }
 }
 
 // 生成视频接口（图生视频）
@@ -869,6 +917,14 @@ export async function generateVideoFromImages(
   promptId: string;
   mediaGenerationId?: string;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
+  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
+  if (isGeneratingVideo) {
+    throw new Error('已有视频生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingVideo(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier, videoModel } = getApiContext();
 
@@ -957,6 +1013,10 @@ export async function generateVideoFromImages(
     promptId: generateId(),
     mediaGenerationId: videoResult.mediaGenerationId,
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置视频生成状态
+    useCanvasStore.getState().setIsGeneratingVideo(false);
+  }
 }
 // 行级注释：视频超清放大（1080p）- 直接调用 Google API
 export async function generateVideoUpsample(
@@ -1088,6 +1148,14 @@ export async function generateVideoFromReferenceImages(
   status: string;
   remainingCredits?: number;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
+  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
+  if (isGeneratingVideo) {
+    throw new Error('已有视频生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingVideo(true);
+
+  try {
   // 行级注释：业务层 - 获取上下文和配置
   const { apiConfig, sessionId, accountTier } = getApiContext();
 
@@ -1153,6 +1221,10 @@ export async function generateVideoFromReferenceImages(
     status: 'COMPLETED',
     remainingCredits: generationTask.remainingCredits,
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置视频生成状态
+    useCanvasStore.getState().setIsGeneratingVideo(false);
+  }
 }
 
 /**
@@ -1175,6 +1247,14 @@ export async function generateVideoExtend(
   status: string;
   remainingCredits?: number;
 }> {
+  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
+  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
+  if (isGeneratingVideo) {
+    throw new Error('已有视频生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingVideo(true);
+
+  try {
   // 行级注释：校验层 - 校验输入参数
   if (!originalMediaId) {
     throw new Error('缺少原始视频 mediaId');
@@ -1228,4 +1308,8 @@ export async function generateVideoExtend(
     sceneId: generationTask.sceneId,
     status: 'COMPLETED',
   };
+  } finally {
+    // 行级注释：无论成功或失败都重置视频生成状态
+    useCanvasStore.getState().setIsGeneratingVideo(false);
+  }
 }
