@@ -448,6 +448,14 @@ export async function generateSmartStoryboard(
   addPromptHistory: (history: any) => void,
   setEdges: any
 ) {
+  // 行级注释：并发限制检查 - 同时只能有一个分镜生成任务
+  const { isGeneratingStoryboard, setIsGeneratingStoryboard } = useCanvasStore.getState();
+  if (isGeneratingStoryboard) {
+    throw new Error('已有分镜生成任务进行中，请等待完成后再试');
+  }
+  setIsGeneratingStoryboard(true);
+
+  try {
   // 行级注释：获取网格配置
   const gridConfig = GRID_PRESETS[gridPreset];
   const { rows, cols } = gridConfig;
@@ -720,6 +728,10 @@ export async function generateSmartStoryboard(
       );
     }
     throw error;
+  } finally {
+    // 行级注释：无论成功或失败都重置分镜生成状态
+    useCanvasStore.getState().setIsGeneratingStoryboard(false);
+  }
   }
 }
 
