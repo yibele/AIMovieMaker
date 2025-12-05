@@ -281,44 +281,14 @@ export function useVideoOperations(videoId: string): UseVideoOperationsReturn {
   }, [videoData]);
 
   // 下载
-  const handleDownload = useCallback(async () => {
+  const handleDownload = useCallback(() => {
     if (!videoData?.src) {
       toast.error('视频未生成，无法下载');
       return;
     }
-
-    try {
-      // 行级注释：生成文件名，使用 prompt 前几个字或默认名称
-      const promptPrefix = videoData.promptText?.slice(0, 20)?.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_') || 'video';
-      const fileName = `${promptPrefix}_${Date.now()}.mp4`;
-
-      // 行级注释：使用 fetch 获取 blob 强制下载
-      const response = await fetch(videoData.src);
-      if (!response.ok) {
-        throw new Error(`下载失败: ${response.status}`);
-      }
-      const blob = await response.blob();
-
-      // 行级注释：创建下载链接并触发下载
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      // 行级注释：清理
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
-      toast.success('下载成功');
-    } catch (error) {
-      console.error('❌ 下载视频失败:', error);
-      toast.error(`下载失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
-  }, [videoData]);
+    // 行级注释：视频直接在新页面打开（避免跨域问题）
+    window.open(videoData.src, '_blank');
+  }, [videoData?.src]);
 
   return {
     videoData,
