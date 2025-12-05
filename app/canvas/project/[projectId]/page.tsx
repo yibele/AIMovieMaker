@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 import { AlertCircle } from 'lucide-react';
 
 // 动态导入画布组件，避免 SSR 问题
@@ -29,8 +29,8 @@ export default function ProjectCanvasPage() {
   useEffect(() => {
     // 检查用户认证状态和项目权限
     const checkAuthAndAccess = async () => {
-      // 1. 检查用户是否登录
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       
       if (!session || !session.user?.email) {
         // 未登录，重定向到首页

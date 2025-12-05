@@ -6,7 +6,7 @@ import { LandingPage } from '@/components/LandingPage';
 import { LoginModal } from '@/components/LoginModal';
 import ProjectsHome from '@/components/ProjectsHome';
 import { ViewMode } from '@/types/morpheus';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession, clearSessionCache } from '@/lib/supabaseClient';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -80,7 +80,8 @@ export default function Home() {
   useEffect(() => {
     // Check active session
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       if (session) {
         setView(ViewMode.DASHBOARD);
         // 行级注释：登录时自动同步 API 授权，传入 userId

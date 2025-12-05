@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
 // 动态导入 Canvas 组件（避免 SSR 问题）
 const Canvas = dynamic(() => import('@/components/Canvas'), {
@@ -22,7 +22,8 @@ export default function CanvasPage() {
   useEffect(() => {
     // 检查用户认证状态
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       
       if (!session) {
         // 未登录，重定向到首页

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Key, X, Gift, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
 interface InvitationModalProps {
   isOpen: boolean;
@@ -30,8 +30,8 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
     setIsLoading(true);
     try {
-      // 获取当前 session
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       if (!session) {
         toast.error('Please login first');
         return;

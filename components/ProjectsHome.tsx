@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCanvasStore } from '@/lib/store';
 import { DashboardView } from './DashboardView';
 import { Project } from '../types/morpheus';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
 // Flow 项目返回结构
 interface FlowProject {
@@ -43,7 +43,8 @@ const CACHE_KEY = 'flow_projects_cache'; // localStorage 键名
 // 存储用户的项目ID列表到 localStorage
 const saveUserProjectIds = async (projectIds: string[]) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // 行级注释：使用缓存的 session，减少 API 请求
+    const session = await getCachedSession();
     if (!session?.user?.email) {
       return;
     }
@@ -59,7 +60,8 @@ const saveUserProjectIds = async (projectIds: string[]) => {
 // 添加单个项目ID到 localStorage
 const addProjectIdToCache = async (projectId: string) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // 行级注释：使用缓存的 session，减少 API 请求
+    const session = await getCachedSession();
     if (!session?.user?.email) {
       return;
     }
@@ -82,7 +84,8 @@ const addProjectIdToCache = async (projectId: string) => {
 // 从 localStorage 移除项目ID
 const removeProjectIdFromCache = async (projectId: string) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    // 行级注释：使用缓存的 session，减少 API 请求
+    const session = await getCachedSession();
     if (!session?.user?.email) {
       return;
     }

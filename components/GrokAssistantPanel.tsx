@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, X, Sparkles, Bot, User, Loader2, Copy, Check, Key, Eye, EyeOff, Cloud, CloudOff } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
@@ -54,7 +54,8 @@ export default function GrokAssistantPanel() {
   // 从服务器加载 API Key
   const loadApiKeyFromServer = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       if (!session?.access_token) {
         return;
       }
@@ -87,7 +88,8 @@ export default function GrokAssistantPanel() {
   // 保存 API Key 到服务器
   const saveApiKeyToServer = useCallback(async (apiKey: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       if (!session?.access_token) {
         return false;
       }

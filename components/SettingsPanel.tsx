@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
 export default function SettingsPanel() {
   const isOpen = useCanvasStore((state) => state.isSettingsOpen);
@@ -47,7 +47,8 @@ export default function SettingsPanel() {
   const handleSyncCloudCredentials = async () => {
     setIsSyncingCredentials(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 行级注释：使用缓存的 session，减少 API 请求
+      const session = await getCachedSession();
       if (!session) {
         toast.error('请先登录');
         return;
