@@ -732,6 +732,5 @@ export async function generateSmartStoryboard(
     // 行级注释：无论成功或失败都重置分镜生成状态
     useCanvasStore.getState().setIsGeneratingStoryboard(false);
   }
-  }
 }
 
