@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { useCanvasStore } from '@/lib/store';
 import { VideoElement, ImageElement, VideoModelType } from '@/lib/types';
 import { VIDEO_NODE_DEFAULT_SIZE, detectAspectRatio } from '@/lib/constants/node-sizes';
@@ -134,8 +135,10 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             promptText: promptText,
             progress: 15,
           } as Partial<VideoElement>);
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ VL 分析失败:', error);
+          // 行级注释：显示错误提示给用户
+          toast.error(error?.message || 'VL 分析失败，请重试');
           updateElement(videoId, {
             status: 'error',
             readyForGeneration: false,
@@ -451,8 +454,10 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
               : edge
           )
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ 视频生成失败:', error);
+        // 行级注释：显示错误提示给用户
+        toast.error(error?.message || '视频生成失败，请重试');
         updateElement(videoId, {
           status: 'error',
           readyForGeneration: true,

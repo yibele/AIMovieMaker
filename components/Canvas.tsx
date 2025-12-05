@@ -349,6 +349,8 @@ function CanvasContent({ projectId }: { projectId?: string }) {
         }
       } catch (error: any) {
         console.error('生成失败:', error);
+        // 行级注释：显示错误提示给用户
+        toast.error(error?.message || '生成失败，请重试');
       }
     },
     [addElement, updateElement, setEdges, reactFlowInstance]

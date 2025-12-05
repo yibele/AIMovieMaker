@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import { useCanvasStore } from '@/lib/store';
 import { TextElement, ImageElement, VideoElement } from '@/lib/types';
 import {
@@ -139,8 +140,10 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
           )
         );
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ 生成视频失败:', error);
+        // 行级注释：显示错误提示给用户
+        toast.error(error?.message || '生成视频失败，请重试');
         setEdges((eds: any[]) =>
           eds.map((edge: any) =>
             edge.id === `edge-${sourceNode.id}-${newVideoId}-prompt-text`
@@ -286,8 +289,10 @@ export function useVideoActions(options: UseVideoActionsOptions): UseVideoAction
           )
         );
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ 镜头控制视频生成失败:', error);
+        // 行级注释：显示错误提示给用户
+        toast.error(error?.message || '镜头控制视频生成失败，请重试');
         updateElement(newVideoId, { status: 'error' } as Partial<VideoElement>);
         setEdges((eds: any[]) =>
           eds.map((edge: any) =>
