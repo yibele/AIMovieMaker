@@ -134,27 +134,69 @@ export function useImageOperations(imageId: string): UseImageOperationsReturn {
   }, [imageData]);
 
   // 下载
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!imageData?.src) {
       toast.error('图片未生成，无法下载');
       return;
     }
 
-    // 行级注释：如果是 Data URL（base64），使用 <a download> 强制下载
-    if (imageData.src.startsWith('data:')) {
-      const link = document.createElement('a');
-      link.href = imageData.src;
+    try {
+      let blob: Blob;
+
       // 行级注释：生成文件名，使用 prompt 前几个字或默认名称
       const promptPrefix = imageData.generatedFrom?.prompt?.slice(0, 20)?.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_') || 'image';
-      link.download = `${promptPrefix}_${Date.now()}.png`;
+      const fileName = `${promptPrefix}_${Date.now()}.png`;
+
+      // 行级注释：优先使用 base64（AI 生成的图片都有 base64）
+      if (imageData.base64) {
+        const dataUrl = imageData.base64.startsWith('data:')
+          ? imageData.base64
+          : `data:image/png;base64,${imageData.base64}`;
+        const base64Data = dataUrl.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
+      } else if (imageData.src.startsWith('data:')) {
+        // 行级注释：src 是 base64（用户上传的图片）
+        const base64Data = imageData.src.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
+      } else {
+        // 行级注释：普通 URL，使用 fetch 获取 blob 强制下载
+        const response = await fetch(imageData.src);
+        if (!response.ok) {
+          throw new Error(`下载失败: ${response.status}`);
+        }
+        blob = await response.blob();
+      }
+
+      // 行级注释：创建下载链接并触发下载
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-    } else {
-      // 行级注释：普通 URL，新窗口打开
-      window.open(imageData.src, '_blank');
+
+      // 行级注释：清理
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.success('下载成功');
+    } catch (error) {
+      console.error('❌ 下载图片失败:', error);
+      toast.error(`下载失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
-  }, [imageData?.src, imageData?.generatedFrom?.prompt]);
+  }, [imageData]);
 
   // 再次生成
   const handleRegenerate = useCallback(async () => {
