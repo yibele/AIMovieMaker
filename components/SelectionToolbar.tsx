@@ -28,10 +28,16 @@ function SelectionButton({
   className?: string;
   disabled?: boolean;
 }) {
+  // 行级注释：阻止事件冒泡，防止 React Flow 在点击按钮时清空选中状态
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick();
+  };
+
   return (
     <div className="relative group">
       <button
-        onClick={onClick}
+        onClick={handleClick}
         disabled={disabled}
         className={`flex items-center justify-center p-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       >
@@ -200,8 +206,14 @@ export default function SelectionToolbar({ onMultiImageEdit, onTransitionShots }
 
   // 行级注释：删除选中的元素
   const handleDelete = () => {
-    deleteSelectedElements();
-    toast.success(`已删除 ${selection.length} 个元素`);
+    // 行级注释：立即捕获当前选中的 ID 列表，避免 React Flow 在点击时清空 selection
+    const currentSelection = [...selection];
+    if (currentSelection.length === 0) {
+      toast.error('没有选中的元素');
+      return;
+    }
+    deleteSelectedElements(currentSelection);
+    toast.success(`已删除 ${currentSelection.length} 个元素`);
   };
 
   // 行级注释：图片编辑（多图参考）

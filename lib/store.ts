@@ -66,7 +66,7 @@ interface CanvasStore {
   addElement: (element: CanvasElement) => void;
   updateElement: (id: string, updates: Partial<CanvasElement>) => void;
   deleteElement: (id: string) => void;
-  deleteSelectedElements: () => void;
+  deleteSelectedElements: (idsToDelete?: string[]) => void; // 行级注释：可选参数，传入要删除的 ID 列表，避免点击时 selection 被 React Flow 清空
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
   addPromptHistory: (history: PromptHistory) => void;
@@ -300,13 +300,22 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
       }));
     },
 
-    deleteSelectedElements: () => {
+    deleteSelectedElements: (idsToDelete?: string[]) => {
       const { elements, selection } = get();
       const { moveToTrash } = require('./materials-store').useMaterialsStore.getState();
 
+      // 行级注释：使用传入的 ID 列表，如果没有传入则使用当前 selection（兼容旧调用方式）
+      const idsToRemove = idsToDelete ?? selection;
+
+      // 行级注释：如果没有要删除的元素，直接返回
+      if (idsToRemove.length === 0) {
+        console.warn('⚠️ deleteSelectedElements: 没有要删除的元素');
+        return;
+      }
+
       // 遍历选中的元素，将图片/视频移入废片库
       elements.forEach(el => {
-        if (selection.includes(el.id) && (el.type === 'image' || el.type === 'video')) {
+        if (idsToRemove.includes(el.id) && (el.type === 'image' || el.type === 'video')) {
           const mediaEl = el as any;
           if (mediaEl.src && !mediaEl.src.startsWith('blob:')) {
             moveToTrash({
@@ -332,7 +341,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => {
 
       set((state) => ({
         elements: state.elements.filter(
-          (el) => !state.selection.includes(el.id)
+          (el) => !idsToRemove.includes(el.id)
         ),
         selection: [],
       }));
