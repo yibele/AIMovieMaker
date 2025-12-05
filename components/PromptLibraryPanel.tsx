@@ -16,7 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getCachedUser } from '@/lib/supabaseClient';
 
 // 类型定义
 export interface PromptItem {
@@ -98,7 +98,8 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
 
   const fetchUserPrompts = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 行级注释：使用缓存的用户信息，减少 API 请求
+      const user = await getCachedUser();
       
       // 如果用户未登录，暂不获取用户提示词
       if (!user) return;
@@ -169,7 +170,8 @@ export default function PromptLibraryPanel({ isOpen, onClose }: PromptLibraryPan
 
   const handleSavePrompt = async (prompt: PromptItem) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 行级注释：使用缓存的用户信息，减少 API 请求
+      const user = await getCachedUser();
       if (!user) {
         alert('请先登录再保存提示词');
         return;

@@ -4,7 +4,7 @@ import { CreateProjectModal } from './CreateProjectModal';
 import { Project } from '../types/morpheus';
 import { Settings, Plus, Search, Bell, LogOut, RefreshCw, LayoutGrid, User, Sparkles, Zap, Play, Gift } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
-import { supabase } from '@/lib/supabaseClient';
+import { getCachedUser } from '@/lib/supabaseClient';
 import { InvitationModal } from '@/components/InvitationModal';
 
 interface DashboardViewProps {
@@ -25,8 +25,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onCreate
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
+        // 行级注释：使用缓存的用户信息，减少 API 请求
         const getUserProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getCachedUser();
             if (user?.user_metadata?.avatar_url) {
                 setAvatarUrl(user.user_metadata.avatar_url);
             }

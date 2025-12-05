@@ -1,4 +1,4 @@
-import { createClient, Session } from '@supabase/supabase-js';
+import { createClient, Session, User } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -17,7 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // ============================================================================
-// Session 缓存 - 减少重复的 getSession 请求
+// Session 和 User 缓存 - 减少重复的 API 请求
 // ============================================================================
 
 // 行级注释：缓存的 session 和获取时间
@@ -51,6 +51,24 @@ export async function getCachedSession(forceRefresh = false): Promise<Session | 
     sessionCacheTime = now;
     
     return session;
+}
+
+/**
+ * 获取缓存的用户信息（从 session 中提取，无需额外 API 调用）
+ * 
+ * @param forceRefresh 是否强制刷新缓存
+ * @returns User 或 null
+ * 
+ * @example
+ * const user = await getCachedUser();
+ * if (user) {
+ *   console.log(user.email);
+ * }
+ */
+export async function getCachedUser(forceRefresh = false): Promise<User | null> {
+    // 行级注释：直接从缓存的 session 中获取用户，避免额外的 getUser() 调用
+    const session = await getCachedSession(forceRefresh);
+    return session?.user ?? null;
 }
 
 /**

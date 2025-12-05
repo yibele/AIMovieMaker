@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { loadImageSize, calculateDisplaySize } from './image-utils';
 import { addMaterialToCloud, getCloudMaterials, deleteCloudMaterial } from './materials-service';
 import { useCanvasStore } from './store'; // 引入 CanvasStore 获取 userId
-import { supabase } from './supabaseClient';
+import { getCachedUser } from './supabaseClient';
 
 // 素材库 store
 interface MaterialsStore extends MaterialsState, MaterialsActions { }
@@ -70,11 +70,11 @@ export const useMaterialsStore = create<MaterialsStore>()(
         // 1. 获取 userId
         let userId = useCanvasStore.getState().apiConfig.userId;
 
-        // 如果 store 中没有 userId，尝试从 Supabase 获取
+        // 行级注释：使用缓存的用户信息，减少 API 请求
         if (!userId) {
-          const { data } = await supabase.auth.getUser();
-          if (data?.user) {
-            userId = data.user.id;
+          const user = await getCachedUser();
+          if (user) {
+            userId = user.id;
             // 更新 store 以备后用
             useCanvasStore.getState().setApiConfig({ userId });
           }
