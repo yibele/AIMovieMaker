@@ -102,7 +102,6 @@ export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<
   // 行级注释：如果有参考图片，添加到请求（图生视频模式）
   if (imageUrls && imageUrls.length > 0) {
     requestBody.image_urls = imageUrls;
-    console.log('📷 Sora2 图生视频模式，图片数量:', imageUrls.length);
   }
 
   // 行级注释：调用 Sora2 API
@@ -119,7 +118,6 @@ export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<
 
   // 行级注释：检查响应
   if (!response.ok || data.code !== 200) {
-    console.error('❌ Sora2 API 错误:', data);
     throw new Error(data.message || '提交 Sora2 视频任务失败');
   }
 
@@ -161,7 +159,6 @@ export async function checkSora2TaskStatus(taskId: string): Promise<{
   const responseData = await response.json();
 
   if (!response.ok || responseData.code !== 200) {
-    console.error('❌ Sora2 状态查询错误:', responseData);
     throw new Error(responseData.message || '查询 Sora2 任务状态失败');
   }
 
@@ -172,11 +169,7 @@ export async function checkSora2TaskStatus(taskId: string): Promise<{
   const video = data.result?.videos?.[0];
   const videoUrl = Array.isArray(video?.url) ? video.url[0] : video?.url;
   
-  console.log('📊 Sora2 任务状态:', { 
-    status: data.status, 
-    progress: data.progress,
-    hasVideo: Boolean(videoUrl),
-  });
+
   
   return {
     status: data.status as TaskStatus,
@@ -201,7 +194,6 @@ export async function pollSora2VideoTask(
   taskId: string,
   onProgress?: (attempt: number, status: TaskStatus, progress?: number) => void
 ): Promise<Sora2VideoResult> {
-  console.log('⏳ 开始轮询 Sora2 任务:', taskId);
 
   for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
     try {
@@ -213,13 +205,11 @@ export async function pollSora2VideoTask(
       // 行级注释：失败状态 - 立即停止并抛出错误
       if (result.status === 'failed') {
         const errorMsg = result.errorMessage || 'Sora2 视频生成失败';
-        console.error('❌ Sora2 任务失败:', { taskId, errorMessage: errorMsg });
         throw new Error(`Sora2 视频生成失败: ${errorMsg}`);
       }
 
       // 行级注释：成功状态 - 返回结果
       if (result.status === 'completed' && result.videoUrl) {
-        console.log('✅ Sora2 任务完成:', { taskId, videoUrl: result.videoUrl });
 
         return {
           videoUrl: result.videoUrl,
@@ -232,14 +222,12 @@ export async function pollSora2VideoTask(
       }
 
       // 行级注释：处理中状态 - 继续轮询
-      console.log(`⏳ Sora2 任务处理中... (第 ${attempt} 次轮询, 状态: ${result.status}, 进度: ${result.progress || 0}%)`);
 
     } catch (error) {
       // 行级注释：如果是业务错误，直接抛出，停止轮询
       if (error instanceof Error && (error.message.includes('失败') || error.message.includes('failed'))) {
         throw error;
       }
-      console.warn(`⚠️ 轮询第 ${attempt} 次出错:`, error);
     }
 
     // 行级注释：等待后进行下一次轮询

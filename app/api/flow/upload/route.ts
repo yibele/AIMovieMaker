@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
     const workflowId = response.data?.workflowId;
 
     if (!mediaGenerationId) {
-      console.warn('⚠️ Flow 上传未返回 mediaGenerationId');
     }
 
     return NextResponse.json({

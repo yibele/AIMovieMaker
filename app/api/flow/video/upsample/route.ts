@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
     // 解析返回的 operations
     const operations = data.operations || [];
     if (operations.length === 0) {
-      console.error('❌ Flow 视频超清响应中未找到 operations');
       return NextResponse.json(
         { error: 'Flow 响应中未找到视频超清任务' },
         { status: 500 }

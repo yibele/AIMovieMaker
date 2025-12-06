@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
       : [];
 
     if (!mediaArray.length) {
-      console.error('❌ Flow 响应中未找到 media 数组');
       return NextResponse.json(
         { error: 'Flow 响应中未找到图片数据' },
         { status: 500 }
@@ -137,14 +136,12 @@ export async function POST(request: NextRequest) {
     const normalizedImages = mediaArray
       .map((entry: any) => {
         if (!entry || !entry.image) {
-          console.warn('⚠️ media 条目缺少 image 字段:', entry);
           return null;
         }
 
         // 图片数据在 entry.image.generatedImage 中
         const generatedImage = entry.image.generatedImage;
         if (!generatedImage) {
-          console.warn('⚠️ image 对象缺少 generatedImage:', entry.image);
           return null;
         }
 
@@ -152,7 +149,6 @@ export async function POST(request: NextRequest) {
 
         // 只使用 fifeUrl，不返回 base64 以节省带宽
         if (!fifeUrl) {
-          console.warn('⚠️ generatedImage 缺少 fifeUrl:', generatedImage);
           return null;
         }
 
@@ -179,7 +175,6 @@ export async function POST(request: NextRequest) {
       .filter(Boolean);
 
     if (!normalizedImages.length) {
-      console.error('❌ 无法从 media 数组中提取图片数据');
       return NextResponse.json(
         { error: 'Flow 响应中未找到图片数据' },
         { status: 500 }

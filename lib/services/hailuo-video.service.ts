@@ -236,7 +236,6 @@ export async function pollHailuoVideoTask(
   taskId: string,
   onProgress?: (attempt: number, status: TaskStatus) => void
 ): Promise<HailuoVideoResult> {
-  console.log('⏳ 开始轮询海螺任务:', taskId);
 
   for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
     try {
@@ -248,13 +247,11 @@ export async function pollHailuoVideoTask(
       // 行级注释：失败状态 - 立即停止并抛出错误
       if (result.status === 'Fail') {
         const errorMsg = result.errorMessage || '海螺视频生成失败';
-        console.error('❌ 海螺任务失败:', { taskId, errorCode: result.errorCode, errorMessage: errorMsg });
         throw new Error(`海螺视频生成失败: ${errorMsg}`);
       }
 
       // 行级注释：成功状态 - 获取下载链接
       if (result.status === 'Success' && result.fileId) {
-        console.log('✅ 海螺任务完成:', { taskId, fileId: result.fileId });
 
         // 行级注释：获取下载链接
         const downloadUrl = await getHailuoVideoDownloadUrl(result.fileId, taskId);
@@ -269,14 +266,12 @@ export async function pollHailuoVideoTask(
       }
 
       // 行级注释：处理中状态 - 继续轮询
-      console.log(`⏳ 海螺任务处理中... (第 ${attempt} 次轮询, 状态: ${result.status})`);
 
     } catch (error) {
       // 行级注释：如果是业务错误（如 Fail 状态），直接抛出，停止轮询
       if (error instanceof Error && (error.message.includes('失败') || error.message.includes('Fail'))) {
         throw error;
       }
-      console.warn(`⚠️ 轮询第 ${attempt} 次出错:`, error);
     }
 
     // 行级注释：等待后进行下一次轮询

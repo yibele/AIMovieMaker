@@ -73,14 +73,6 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log('🖼️ 发起 Whisk 编辑 API 请求:', {
-      instruction: instruction.substring(0, 50),
-      aspectRatio,
-      proxy: proxy ? '已配置' : '未配置',
-      mediaGenerationId: normalizedOriginalId ? '已提供' : '未提供',
-      workflowId: clientWorkflowId,
-      sessionId: clientSessionId,
-    });
 
     // 配置 axios // 行级注释说明 axios 基础配置
     const axiosConfig: any = {
@@ -104,19 +96,12 @@ export async function POST(request: NextRequest) {
     if (agent) {
       axiosConfig.httpsAgent = agent;
       axiosConfig.httpAgent = agent;
-      console.log(
-        '📡 使用代理连接 Whisk 编辑 API:',
-        proxyType.toUpperCase(),
-        resolvedProxyUrl
-      );
+
     } else {
-      console.log('🌐 未使用代理，直接请求 Whisk 编辑 API');
     }
 
     const response = await axios(axiosConfig);
 
-    console.log('📥 Whisk 编辑 API 响应状态:', response.status);
-    console.log('✅ Whisk 编辑 API 成功');
     
     return NextResponse.json({
       ...response.data,
@@ -127,14 +112,11 @@ export async function POST(request: NextRequest) {
       sessionId: clientSessionId,
     });
   } catch (error: any) {
-    console.error('❌ 编辑图片代理错误:', error);
     
     // 处理 axios 错误
     if (error.response) {
-      console.error('API 错误响应:', error.response.data);
       const detail = error.response.data?.error?.json?.data;
       if (detail) {
-        console.error('API 错误详情:', detail); // 输出更详细的错误数据帮助定位问题 // 行级注释说明用途
       }
       return NextResponse.json(error.response.data, { status: error.response.status });
     }

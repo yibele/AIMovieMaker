@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === 'IN_PROGRESS') {
-            console.log(`📸 fal.ai 图片放大中 (${resolution})...`);
           }
         },
       });

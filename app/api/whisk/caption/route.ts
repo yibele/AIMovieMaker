@@ -96,10 +96,8 @@ export async function POST(request: NextRequest) {
       sessionId: clientSessionId,
     });
   } catch (error: any) {
-    console.error('❌ Caption API 代理错误:', error);
 
     if (error.response) {
-      console.error('API 错误响应:', error.response.data);
       return NextResponse.json(error.response.data, {
         status: error.response.status,
       });

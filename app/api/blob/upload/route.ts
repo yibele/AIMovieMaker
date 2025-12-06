@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
 
     // 检查环境变量
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.warn('⚠️ 未配置 BLOB_READ_WRITE_TOKEN，无法使用 Vercel Blob');
       return NextResponse.json(
         { 
           error: '服务器未配置 Blob 存储',
@@ -79,7 +78,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Blob 上传错误:', error);
 
     return NextResponse.json(
       {

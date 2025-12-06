@@ -126,8 +126,7 @@ export async function pollVideoOperation(
         };
       }
 
-      // 行级注释：其他状态（PENDING, ACTIVE 等）- 继续轮询
-      console.log(`⏳ 视频生成中... (第 ${attempt} 次轮询, 状态: ${status})`);
+
 
     } catch (error: any) {
       // 行级注释：区分业务错误和网络错误
@@ -141,17 +140,14 @@ export async function pollVideoOperation(
 
       if (isNetworkError) {
         consecutiveNetworkErrors++;
-        console.warn(`⚠️ 轮询第 ${attempt} 次网络错误 (${consecutiveNetworkErrors}/${MAX_NETWORK_ERRORS}):`, error.message);
 
         // 行级注释：连续网络错误达到上限才抛出
         if (consecutiveNetworkErrors >= MAX_NETWORK_ERRORS) {
-          console.error('❌ 连续网络错误过多，停止轮询');
           throw new Error('网络连接不稳定，请检查网络后重试');
         }
         // 行级注释：网络错误时继续重试
       } else {
         // 行级注释：业务错误（如 FAILED 状态）直接抛出
-        console.error(`❌ 轮询第 ${attempt} 次出错:`, error.message);
         throw error;
       }
     }

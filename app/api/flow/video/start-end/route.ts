@@ -130,7 +130,6 @@ export async function POST(request: NextRequest) {
     const data = response.data;
     const operations = data.operations || [];
     if (operations.length === 0) {
-      console.error('❌ Flow 图生视频响应中未找到 operations');
       return NextResponse.json(
         { error: 'Flow 响应中未找到视频生成任务' },
         { status: 500 }
