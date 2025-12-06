@@ -261,17 +261,22 @@ function CanvasContent({ projectId }: { projectId?: string }) {
     }
   }, [elements, setNodes]);
 
-  useEffect(() => {
-    if (!projectId) {
-      return;
-    }
-    // 设置 projectId 到 store 的 apiConfig 中
+  // 行级注释：【关键】立即同步设置 projectId，而不是在 useEffect 中
+  // 这样确保在任何 API 调用之前，projectId 已经设置好
+  // 使用 useLayoutEffect 或直接同步执行，避免时序问题
+  if (projectId && useCanvasStore.getState().apiConfig.projectId !== projectId) {
     useCanvasStore.setState((state) => ({
       apiConfig: {
         ...state.apiConfig,
         projectId,
       },
     }));
+  }
+
+  useEffect(() => {
+    if (!projectId) {
+      return;
+    }
     // 加载项目的前置提示词
     loadProjectPrefixPrompt(projectId);
     // 行级注释：素材库改为手动加载，不自动加载
