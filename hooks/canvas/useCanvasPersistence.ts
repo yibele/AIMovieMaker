@@ -124,7 +124,9 @@ export function useCanvasPersistence(
           setLastSaved(snapshot.updatedAt);
           hasLoadedRef.current = true;
         } else {
-          console.log(`ℹ️ 无保存的画布数据: ${projectId}`);
+          console.log(`ℹ️ 无保存的画布数据: ${projectId}，清空画布`);
+          // 行级注释：关键修复！新项目没有数据时，必须清空画布，避免显示其他项目的内容
+          onRestore([], []);
           hasLoadedRef.current = true;
         }
       } catch (error) {
