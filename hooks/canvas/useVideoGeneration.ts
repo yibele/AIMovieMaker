@@ -9,6 +9,8 @@ import { analyzeImageForVideoPrompt } from '@/lib/tools/vision-api';
 import { generateVideoFromText, generateVideoFromImages, generateVideoFromReferenceImages } from '@/lib/api-mock';
 import { generateNodeId } from '@/lib/services/node-management.service';
 import { generateHailuoVideo } from '@/lib/services/hailuo-video.service';
+import { generateSora2Video } from '@/lib/services/sora2-video.service';
+import { toast } from 'sonner';
 
 // 行级注释：边缘样式常量
 const EDGE_GENERATING_STYLE = { stroke: '#a855f7', strokeWidth: 1 };
@@ -185,6 +187,8 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             promptText: promptText,
             startImageId: startImageId,
             endImageId: endImageId,
+            videoModel: videoElement.videoModel || 'veo3.1', // 行级注释：复制视频模型
+            sora2Duration: videoElement.sora2Duration || 10, // 行级注释：复制 Sora2 时长
             generationCount: 1,
             generatedFrom: videoElement.generatedFrom,
           };
@@ -256,6 +260,22 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
         // 行级注释：获取视频模型
         const videoModel: VideoModelType = videoElement.videoModel || 'veo3.1';
         const isHailuoModel = videoModel.startsWith('hailuo');
+        const isSora2Model = videoModel === 'sora2';
+
+        // 行级注释：检查 API Key 是否已配置
+        const { apiConfig } = useCanvasStore.getState();
+        
+        if (isHailuoModel && !apiConfig.hailuoApiKey?.trim()) {
+          toast.error('请先在设置中配置海螺 API Key');
+          updateElement(videoId, { status: 'pending' } as Partial<VideoElement>);
+          return;
+        }
+        
+        if (isSora2Model && !apiConfig.sora2ApiKey?.trim()) {
+          toast.error('请先在设置中配置 Sora2 API Key');
+          updateElement(videoId, { status: 'pending' } as Partial<VideoElement>);
+          return;
+        }
 
         // 行级注释：判断视频类型并调用对应 API
         if (videoElement.generatedFrom?.type === 'extend') {
@@ -319,6 +339,38 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           // 行级注释：更新 sourceIds
           referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
           generationType = 'reference-images'; // 行级注释：多图参考视频类型
+        } else if (isSora2Model) {
+          // 行级注释：Sora2 模型视频生成（纯文生视频）
+          const sora2Duration = videoElement.sora2Duration || 10;
+          console.log('🎬 使用 Sora2 模型生成视频, 时长:', sora2Duration, '秒');
+          
+          // 行级注释：获取宽高比
+          const aspectRatio = videoElement.size?.width && videoElement.size?.height
+            ? detectAspectRatio(videoElement.size.width, videoElement.size.height) as '16:9' | '9:16' | '1:1'
+            : '16:9';
+          
+          // 行级注释：调用 Sora2 视频服务
+          const sora2Result = await generateSora2Video(
+            {
+              prompt: promptText || '',
+              duration: sora2Duration,
+              aspectRatio,
+            },
+            (stage, progress) => {
+              // 行级注释：更新进度
+              updateElement(videoId, { progress } as Partial<VideoElement>);
+            }
+          );
+          
+          result = {
+            videoUrl: sora2Result.videoUrl,
+            thumbnail: sora2Result.thumbnailUrl || sora2Result.videoUrl,
+            duration: sora2Result.duration,
+            mediaGenerationId: sora2Result.taskId, // 使用 taskId 作为标识
+          };
+          
+          generationType = 'text-to-video';
+          
         } else if (isHailuoModel) {
           // 行级注释：海螺模型视频生成
           console.log('🎬 使用海螺模型生成视频:', videoModel);

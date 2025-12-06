@@ -24,6 +24,7 @@ export default function SettingsPanel() {
   const [cookie, setCookie] = useState(apiConfig.cookie || '');
   const [dashScopeApiKey, setDashScopeApiKey] = useState(apiConfig.dashScopeApiKey || '');
   const [hailuoApiKey, setHailuoApiKey] = useState(apiConfig.hailuoApiKey || ''); // 海螺 API Key
+  const [sora2ApiKey, setSora2ApiKey] = useState(apiConfig.sora2ApiKey || ''); // Sora2 API Key
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
   const [projectId, setProjectId] = useState(apiConfig.projectId || '');
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
@@ -67,6 +68,7 @@ export default function SettingsPanel() {
       setCookie(apiConfig.cookie || '');
       setDashScopeApiKey(apiConfig.dashScopeApiKey || '');
       setHailuoApiKey(apiConfig.hailuoApiKey || ''); // 同步海螺 API Key
+      setSora2ApiKey(apiConfig.sora2ApiKey || ''); // 同步 Sora2 API Key
       setProxy(apiConfig.proxy || '');
       setProjectId(apiConfig.projectId || '');
       setWorkflowId(apiConfig.workflowId || '');
@@ -148,6 +150,7 @@ export default function SettingsPanel() {
       cookie: cookie.trim(),
       dashScopeApiKey: dashScopeApiKey.trim(),
       hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
+      sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
       proxy: proxy.trim(),
       projectId: projectId.trim(),
       workflowId: workflowId.trim(),
@@ -332,6 +335,32 @@ export default function SettingsPanel() {
                   type="password"
                   value={hailuoApiKey}
                   onChange={(e) => setHailuoApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
+                />
+              </div>
+
+              {/* Sora2 Video Configuration */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <span className="w-4 h-4 flex items-center justify-center text-[10px] bg-purple-500 text-white rounded font-mono">S</span>
+                  Sora 2 Video
+                </label>
+                <p className="text-xs text-slate-500 font-medium">
+                  API Key for Sora 2 video generation. Get it from{' '}
+                  <a 
+                    href="https://api.apimart.ai" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-purple-600 hover:text-purple-700 underline"
+                  >
+                    apimart.ai
+                  </a>
+                </p>
+                <input
+                  type="password"
+                  value={sora2ApiKey}
+                  onChange={(e) => setSora2ApiKey(e.target.value)}
                   placeholder="sk-..."
                   className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
                 />

@@ -12,14 +12,15 @@ export type VideoModelType =
   | 'veo3.1'                    // 默认 Veo 3.1 (Google Flow)
   | 'hailuo-2.3'                // 海螺 MiniMax-Hailuo-2.3（标准版，不支持首尾帧）
   | 'hailuo-2.3-fast'           // 海螺 MiniMax-Hailuo-2.3-Fast（快速版）
-  | 'hailuo-2.0';               // 海螺 MiniMax-Hailuo-02（基础版）
+  | 'hailuo-2.0'                // 海螺 MiniMax-Hailuo-02（基础版）
+  | 'sora2';                    // Sora 2 (apimart.ai)
 
 // 视频模型配置
 export const VIDEO_MODEL_CONFIG: Record<VideoModelType, {
   name: string;
   apiModel: string;
   supportsEndFrame: boolean;  // 是否支持首尾帧
-  provider: 'flow' | 'hailuo';
+  provider: 'flow' | 'hailuo' | 'sora2';
 }> = {
   'veo3.1': {
     name: 'Veo 3.1',
@@ -44,6 +45,12 @@ export const VIDEO_MODEL_CONFIG: Record<VideoModelType, {
     apiModel: 'MiniMax-Hailuo-02',
     supportsEndFrame: true,
     provider: 'hailuo',
+  },
+  'sora2': {
+    name: 'Sora 2',
+    apiModel: 'sora-2',
+    supportsEndFrame: false,  // Sora2 文生视频，不支持首尾帧
+    provider: 'sora2',
   },
 };
 
@@ -113,6 +120,7 @@ export interface VideoElement extends CanvasElement {
   promptText?: string; // 视频生成使用的提示词 // 行级注释说明字段用途
   readyForGeneration?: boolean; // 当前是否满足生成条件（提示词 + 首尾帧至少一个） // 行级注释说明字段用途
   videoModel?: VideoModelType; // 视频生成模型（默认 veo3.1） // 行级注释说明字段用途
+  sora2Duration?: 10 | 15; // Sora2 视频时长（10 或 15 秒） // 行级注释说明字段用途
   hailuoTaskId?: string; // 海螺视频任务 ID（轮询时使用） // 行级注释说明字段用途
   generatedFrom?: {
     type: 'text' | 'image' | 'image-to-image' | 'upsample' | 'reshoot' | 'extend' | 'reference-images'; // 行级注释：reference-images 表示多图参考视频

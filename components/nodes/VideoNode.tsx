@@ -23,6 +23,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
   // 行级注释：视频模型选择（默认 veo3.1）
   const [videoModel, setVideoModel] = useState<VideoModelType>(videoData.videoModel || 'veo3.1');
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  // 行级注释：Sora2 时长选择（10 或 15 秒）
+  const [sora2Duration, setSora2Duration] = useState<10 | 15>(videoData.sora2Duration || 10);
   const videoRef = useRef<HTMLVideoElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const addElement = useCanvasStore((state) => state.addElement);
@@ -125,12 +127,24 @@ function VideoNode({ data, selected, id }: NodeProps) {
     }
   }, [videoData.videoModel]);
 
+  // 行级注释：同步外部更新的 sora2Duration
+  useEffect(() => {
+    if (videoData.sora2Duration && videoData.sora2Duration !== sora2Duration) {
+      setSora2Duration(videoData.sora2Duration);
+    }
+  }, [videoData.sora2Duration]);
+
+  // 行级注释：从 store 获取 API Key 配置
+  const hailuoApiKey = useCanvasStore((state) => state.apiConfig.hailuoApiKey);
+  const sora2ApiKey = useCanvasStore((state) => state.apiConfig.sora2ApiKey);
+
   // 行级注释：视频模型配置
-  const VIDEO_MODELS: Array<{ id: VideoModelType; name: string; supportsEndFrame: boolean }> = [
+  const VIDEO_MODELS: Array<{ id: VideoModelType; name: string; supportsEndFrame: boolean; disabled?: boolean; disabledReason?: string }> = [
     { id: 'veo3.1', name: 'Veo 3.1', supportsEndFrame: true },
-    { id: 'hailuo-2.3', name: '海螺 2.3', supportsEndFrame: false },
-    { id: 'hailuo-2.3-fast', name: '海螺 2.3 Fast', supportsEndFrame: false },
-    { id: 'hailuo-2.0', name: '海螺 2.0', supportsEndFrame: true },
+    { id: 'hailuo-2.3', name: '海螺 2.3', supportsEndFrame: false, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'hailuo-2.3-fast', name: '海螺 2.3 Fast', supportsEndFrame: false, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'hailuo-2.0', name: '海螺 2.0', supportsEndFrame: true, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'sora2', name: 'Sora 2', supportsEndFrame: false, disabled: !sora2ApiKey, disabledReason: '请先在设置中配置 Sora2 API Key' },
   ];
 
   // 行级注释：当前模型是否支持尾帧
@@ -138,6 +152,9 @@ function VideoNode({ data, selected, id }: NodeProps) {
   
   // 行级注释：当前模型是否是海螺模型
   const isHailuoModel = videoModel.startsWith('hailuo');
+
+  // 行级注释：当前模型是否是 Sora2 模型
+  const isSora2Model = videoModel === 'sora2';
 
   // 行级注释：canUpscale 已移至 useVideoOperations Hook
 
@@ -176,6 +193,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       promptText: promptInput.trim() || '', // 可以为空，VL 会自动分析
       generationCount: generationCount,
       videoModel: videoModel, // 行级注释：同步视频模型选择
+      sora2Duration: sora2Duration, // 行级注释：同步 Sora2 时长选择
       status: 'queued' // 行级注释：设置为 queued 状态，触发生成流程
     } as any);
 
@@ -210,6 +228,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       startImageId: videoData.startImageId, // 复制首帧图片 ID
       endImageId: videoData.endImageId, // 复制尾帧图片 ID
       videoModel: videoData.videoModel || 'veo3.1', // 复制视频模型
+      sora2Duration: videoData.sora2Duration || 10, // 复制 Sora2 时长设置
       generationCount: 1, // 重新生成默认 1 个
       readyForGeneration: true,
       generatedFrom: videoData.generatedFrom, // 复制生成来源信息
@@ -691,25 +710,28 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 {/* 行级注释：模型选择和数量选择 - 放在输入框下方 */}
                 <div className={`flex items-center justify-between gap-2 mt-2 pt-1 border-t border-gray-100 dark:border-slate-600 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
                   {/* 行级注释：模型选择下拉菜单 */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsModelMenuOpen(!isModelMenuOpen);
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      disabled={isGenerating}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all duration-200 ${
-                        isHailuoModel 
-                          ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400' 
-                          : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
-                      } hover:bg-gray-200 dark:hover:bg-slate-500`}
-                      title="选择视频模型"
-                    >
-                      <span className="max-w-[60px] truncate">{VIDEO_MODELS.find(m => m.id === videoModel)?.name || 'Veo 3.1'}</span>
-                      <ChevronDown className="w-2.5 h-2.5" />
-                    </button>
+                  <div className="flex items-center gap-1">
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsModelMenuOpen(!isModelMenuOpen);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        disabled={isGenerating}
+                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all duration-200 ${
+                          isHailuoModel 
+                            ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                            : isSora2Model
+                              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                              : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
+                        } hover:bg-gray-200 dark:hover:bg-slate-500`}
+                        title="选择视频模型"
+                      >
+                        <span className="max-w-[60px] truncate">{VIDEO_MODELS.find(m => m.id === videoModel)?.name || 'Veo 3.1'}</span>
+                        <ChevronDown className="w-2.5 h-2.5" />
+                      </button>
                     
                     {/* 行级注释：模型下拉菜单 */}
                     {isModelMenuOpen && (
@@ -723,23 +745,66 @@ function VideoNode({ data, selected, id }: NodeProps) {
                             key={model.id}
                             onClick={(e) => {
                               e.stopPropagation();
+                              // 行级注释：如果模型被禁用，显示提示并不切换
+                              if (model.disabled) {
+                                toast.error(model.disabledReason || '该模型不可用');
+                                return;
+                              }
                               setVideoModel(model.id);
                               setIsModelMenuOpen(false);
                             }}
+                            disabled={model.disabled}
                             className={`w-full text-left px-2 py-1 text-[9px] font-medium transition-colors ${
-                              videoModel === model.id
-                                ? model.id.startsWith('hailuo')
-                                  ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
-                                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+                              model.disabled
+                                ? 'text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-50'
+                                : videoModel === model.id
+                                  ? model.id.startsWith('hailuo')
+                                    ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                                    : model.id === 'sora2'
+                                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600'
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <span>{model.name}</span>
-                              {!model.supportsEndFrame && (
-                                <span className="text-[7px] text-orange-500" title="不支持首尾帧">无尾帧</span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {model.disabled && (
+                                  <span className="text-[7px] text-red-400" title={model.disabledReason}>未配置</span>
+                                )}
+                                {!model.supportsEndFrame && !model.disabled && (
+                                  <span className="text-[7px] text-orange-500" title="不支持首尾帧">无尾帧</span>
+                                )}
+                              </div>
                             </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </div>
+                    
+                    {/* 行级注释：Sora2 时长选择（仅在选择 Sora2 模型时显示） */}
+                    {isSora2Model && (
+                      <div className="flex items-center bg-purple-100 dark:bg-purple-900/30 rounded-md p-0.5 gap-0.5">
+                        {([10, 15] as const).map((dur) => (
+                          <button
+                            key={dur}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSora2Duration(dur);
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            disabled={isGenerating}
+                            className={`
+                              px-1.5 py-0.5 flex items-center justify-center rounded text-[8px] font-medium transition-all duration-200
+                              ${sora2Duration === dur
+                                ? 'bg-purple-500 text-white shadow-sm'
+                                : 'text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800/50'}
+                            `}
+                            title={`${dur} 秒视频`}
+                          >
+                            {dur}s
                           </button>
                         ))}
                       </div>
