@@ -301,10 +301,14 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：handleDownload, handleDelete, handleDuplicate 已移至 useImageOperations Hook
 
-  // 行级注释：Stack 模式 - 切换展开/收起状态
+  // 行级注释：Stack 模式 - 切换展开/收起状态（生成中禁止展开）
   const handleToggleExpand = useCallback(() => {
+    if (isProcessing) {
+      toast.info('图片生成中，请稍候...');
+      return;
+    }
     updateElement(id, { expanded: !isExpanded } as Partial<ImageElement>);
-  }, [id, isExpanded, updateElement]);
+  }, [id, isExpanded, isProcessing, updateElement]);
 
   // 行级注释：Stack 模式 - 设置主图
   const handleSetMainImage = useCallback((index: number) => {
