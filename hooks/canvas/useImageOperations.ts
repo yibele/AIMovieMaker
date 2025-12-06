@@ -94,14 +94,10 @@ export function useImageOperations(imageId: string): UseImageOperationsReturn {
     toast.success('图片已复制');
   }, [imageData, addElement, setSelection]);
 
-  // 删除图片
+  // 删除图片（不再限制处理中删除）
   const handleDelete = useCallback(() => {
-    if (!canDelete) {
-      toast.error('图片正在处理中，无法删除');
-      return;
-    }
     deleteElement(imageId);
-  }, [imageId, canDelete, deleteElement]);
+  }, [imageId, deleteElement]);
 
   // 入库
   const handleArchive = useCallback(async () => {

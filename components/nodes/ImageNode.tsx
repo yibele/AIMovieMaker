@@ -536,7 +536,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         <ToolbarButton icon={<FolderInput className="w-5 h-5" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
         <ToolbarDivider />
         <ToolbarButton icon={<Download className="w-5 h-5" />} label="下载" onClick={handleDownload} />
-        <ToolbarButton icon={<Trash2 className="w-5 h-5" />} label="删除" variant="danger" disabled={isProcessing} title={isProcessing ? "生成/处理中无法删除" : "删除"} onClick={handleDelete} />
+        <ToolbarButton icon={<Trash2 className="w-5 h-5" />} label="删除" variant="danger" onClick={handleDelete} />
       </NodeToolbar>
 
       {/* 行级注释：外层容器需要背景色，避免圆角处露出白边 */}
