@@ -13,7 +13,6 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
 
 export async function POST(request: Request) {
   if (!supabaseAdmin) {
-    console.error('Supabase Admin Client 初始化失败：缺少环境变量');
     return NextResponse.json({ error: '服务端配置错误' }, { status: 500 });
   }
 
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
       .single();
 
     if (inviteError || !invitation) {
-      console.error('邀请码查询失败:', inviteError);
       return NextResponse.json({ error: '无效的邀请码' }, { status: 400 });
     }
 
@@ -69,7 +67,6 @@ export async function POST(request: Request) {
       .single();
 
     if (credError || !credentials || !credentials.is_active) {
-      console.error('凭证查询失败:', credError);
       return NextResponse.json({ error: '该邀请码关联的系统资源已失效' }, { status: 403 });
     }
 
@@ -173,7 +170,6 @@ export async function GET(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('获取凭证失败:', error);
     return NextResponse.json(
       { error: '获取凭证服务暂时不可用' },
       { status: 500 }

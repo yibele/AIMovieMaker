@@ -139,12 +139,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
   const sora2ApiKey = useCanvasStore((state) => state.apiConfig.sora2ApiKey);
 
   // 行级注释：视频模型配置
-  const VIDEO_MODELS: Array<{ id: VideoModelType; name: string; supportsEndFrame: boolean; disabled?: boolean; disabledReason?: string }> = [
-    { id: 'veo3.1', name: 'Veo 3.1', supportsEndFrame: true },
-    { id: 'hailuo-2.3', name: '海螺 2.3', supportsEndFrame: false, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
-    { id: 'hailuo-2.3-fast', name: '海螺 2.3 Fast', supportsEndFrame: false, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
-    { id: 'hailuo-2.0', name: '海螺 2.0', supportsEndFrame: true, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
-    { id: 'sora2', name: 'Sora 2', supportsEndFrame: false, disabled: !sora2ApiKey, disabledReason: '请先在设置中配置 Sora2 API Key' },
+  const VIDEO_MODELS: Array<{ id: VideoModelType; name: string; supportsEndFrame: boolean; supportsStartFrame?: boolean; disabled?: boolean; disabledReason?: string }> = [
+    { id: 'veo3.1', name: 'Veo 3.1', supportsEndFrame: true, supportsStartFrame: true },
+    { id: 'hailuo-2.3', name: '海螺 2.3', supportsEndFrame: false, supportsStartFrame: true, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'hailuo-2.3-fast', name: '海螺 2.3 Fast', supportsEndFrame: false, supportsStartFrame: true, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'hailuo-2.0', name: '海螺 2.0', supportsEndFrame: true, supportsStartFrame: true, disabled: !hailuoApiKey, disabledReason: '请先在设置中配置海螺 API Key' },
+    { id: 'sora2', name: 'Sora 2', supportsEndFrame: false, supportsStartFrame: true, disabled: !sora2ApiKey, disabledReason: '请先在设置中配置 Sora2 API Key' },
   ];
 
   // 行级注释：当前模型是否支持尾帧

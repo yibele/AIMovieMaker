@@ -339,7 +339,7 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
           generationType = 'reference-images'; // 行级注释：多图参考视频类型
         } else if (isSora2Model) {
-          // 行级注释：Sora2 模型视频生成（纯文生视频）
+          // 行级注释：Sora2 模型视频生成（支持文生视频和图生视频）
           const sora2Duration = videoElement.sora2Duration || 10;
           console.log('🎬 使用 Sora2 模型生成视频, 时长:', sora2Duration, '秒');
           
@@ -348,12 +348,35 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             ? detectAspectRatio(videoElement.size.width, videoElement.size.height) as '16:9' | '9:16' | '1:1'
             : '16:9';
           
+          // 行级注释：获取首帧图片 URL（Sora2 图生视频模式）
+          let imageUrls: string[] | undefined;
+          
+          if (startImageId) {
+            const startImage = storeElements.find(el => el.id === startImageId) as ImageElement | undefined;
+            if (startImage?.src && (startImage.src.startsWith('http') || startImage.src.startsWith('https'))) {
+              imageUrls = [startImage.src];
+              combinedSourceIds.add(startImageId);
+              console.log('📷 Sora2 图生视频模式，首帧图片:', startImage.src.substring(0, 50) + '...');
+            }
+          }
+          
+          // 行级注释：如果没有首帧但有尾帧连接，把尾帧当首帧用
+          if (!imageUrls && endImageId) {
+            const endImage = storeElements.find(el => el.id === endImageId) as ImageElement | undefined;
+            if (endImage?.src && (endImage.src.startsWith('http') || endImage.src.startsWith('https'))) {
+              imageUrls = [endImage.src];
+              combinedSourceIds.add(endImageId);
+              console.log('📷 Sora2 使用尾帧作为首帧:', endImage.src.substring(0, 50) + '...');
+            }
+          }
+          
           // 行级注释：调用 Sora2 视频服务
           const sora2Result = await generateSora2Video(
             {
               prompt: promptText || '',
               duration: sora2Duration,
               aspectRatio,
+              imageUrls,
             },
             (stage, progress) => {
               // 行级注释：更新进度
@@ -368,7 +391,7 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             mediaGenerationId: sora2Result.taskId, // 使用 taskId 作为标识
           };
           
-          generationType = 'text-to-video';
+          generationType = imageUrls ? 'image-to-image' : 'text-to-video';
           
         } else if (isHailuoModel) {
           // 行级注释：海螺模型视频生成

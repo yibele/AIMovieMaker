@@ -29,12 +29,10 @@ export default function Home() {
   const syncCloudCredentials = useCallback(async (accessToken: string, userId: string, forceSync: boolean = false) => {
     // 行级注释：如果已经同步过且不是强制同步，则跳过
     if (hasSyncedRef.current && !forceSync) {
-      console.log('⏭️ API 授权已同步，跳过重复同步');
       return;
     }
     
     try {
-      console.log('🔄 自动同步云端 API 授权...');
       
       const response = await fetch('/api/activation/activate', {
         method: 'GET',
@@ -56,22 +54,18 @@ export default function Home() {
             isManaged: true,
             userId, // 行级注释：设置 userId，避免其他组件重复调用 getUser
           });
-          console.log('✅ API 授权同步成功');
           // 行级注释：标记已同步
           hasSyncedRef.current = true;
           toast.success('API 授权已自动同步');
         } else {
-          console.log('⚠️ 未找到有效的 API 授权');
           // 行级注释：即使没有凭证，也设置 userId
           setApiConfig({ userId });
         }
       } else {
-        console.error('❌ 同步 API 授权失败:', response.status);
         // 行级注释：即使失败，也设置 userId
         setApiConfig({ userId });
       }
     } catch (error) {
-      console.error('❌ 同步云端凭证出错:', error);
       // 行级注释：即使出错，也设置 userId
       setApiConfig({ userId });
     }

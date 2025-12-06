@@ -49,7 +49,7 @@ export const VIDEO_MODEL_CONFIG: Record<VideoModelType, {
   'sora2': {
     name: 'Sora 2',
     apiModel: 'sora-2',
-    supportsEndFrame: false,  // Sora2 文生视频，不支持首尾帧
+    supportsEndFrame: false,  // Sora2 不支持尾帧
     provider: 'sora2',
   },
 };

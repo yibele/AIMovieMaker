@@ -35,6 +35,7 @@ export interface Sora2VideoOptions {
   prompt: string;
   duration?: 10 | 15;      // 视频时长（秒），10 或 15，默认 10
   aspectRatio?: '16:9' | '9:16' | '1:1';  // 宽高比
+  imageUrls?: string[];    // 参考图片 URL（图生视频模式）
 }
 
 /**
@@ -87,22 +88,22 @@ function getSora2ApiKey(): string {
  * 提交 Sora2 视频生成任务
  */
 export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<string> {
-  const { prompt, duration = 10, aspectRatio = '16:9' } = options;
+  const { prompt, duration = 10, aspectRatio = '16:9', imageUrls } = options;
   const apiKey = getSora2ApiKey();
 
-  console.log('🎬 提交 Sora2 视频任务:', { 
-    prompt: prompt.substring(0, 50) + '...',
-    duration,
-    aspectRatio,
-  });
-
   // 行级注释：构建请求体
-  const requestBody = {
+  const requestBody: Record<string, any> = {
     model: 'sora-2',
     prompt,
     duration,
     aspect_ratio: aspectRatio,
   };
+
+  // 行级注释：如果有参考图片，添加到请求（图生视频模式）
+  if (imageUrls && imageUrls.length > 0) {
+    requestBody.image_urls = imageUrls;
+    console.log('📷 Sora2 图生视频模式，图片数量:', imageUrls.length);
+  }
 
   // 行级注释：调用 Sora2 API
   const response = await fetch(`${SORA2_API_BASE}/v1/videos/generations`, {
@@ -125,11 +126,9 @@ export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<
   // 行级注释：从响应中提取 task_id
   const taskId = data.data?.[0]?.task_id;
   if (!taskId) {
-    console.error('❌ Sora2 响应缺少 task_id:', data);
     throw new Error('Sora2 响应缺少 task_id');
   }
 
-  console.log('✅ Sora2 任务已提交:', taskId);
   return taskId;
 }
 
