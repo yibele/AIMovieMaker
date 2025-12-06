@@ -310,9 +310,15 @@ function ImageNode({ data, selected, id }: NodeProps) {
     updateElement(id, { expanded: !isExpanded } as Partial<ImageElement>);
   }, [id, isExpanded, isProcessing, updateElement]);
 
-  // 行级注释：Stack 模式 - 设置主图
+  // 行级注释：Stack 模式 - 设置主图或收起
   const handleSetMainImage = useCallback((index: number) => {
-    if (!isStackMode || index === mainIndex) return;
+    if (!isStackMode) return;
+    
+    // 行级注释：点击当前主图则收起
+    if (index === mainIndex) {
+      updateElement(id, { expanded: false } as Partial<ImageElement>);
+      return;
+    }
     
     const newMainImage = stackImages[index];
     if (!newMainImage) return;
