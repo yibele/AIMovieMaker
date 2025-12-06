@@ -4,7 +4,8 @@ import ImageSubmenu from './ImageSubmenu';
 import VideoSubmenu from './VideoSubmenu';
 import ImagePromptInput from './ImagePromptInput';
 import CameraControlSubmenu from './CameraControlSubmenu';
-import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft, Images } from 'lucide-react';
+import { Image as ImageIcon, Video as VideoIcon, Camera, Move, Sparkles, Clapperboard, MessageSquarePlus, ArrowLeft, Images, Ban } from 'lucide-react';
+import { toast } from 'sonner';
 
 // 行级注释：连线菜单根组件的 Props
 type ConnectionMenuRootProps = {
@@ -19,11 +20,15 @@ function MenuButton({
   label,
   color,
   onClick,
+  disabled,
+  disabledReason,
 }: {
   icon: React.ElementType;
   label: string;
   color: string;
   onClick: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   const colorClasses: Record<string, string> = {
     blue: 'text-blue-500 hover:bg-blue-500/10 dark:hover:bg-blue-500/20',
@@ -32,13 +37,26 @@ function MenuButton({
     orange: 'text-orange-500 hover:bg-orange-500/10 dark:hover:bg-orange-500/20',
   };
 
+  const handleClick = () => {
+    if (disabled && disabledReason) {
+      toast.error(disabledReason);
+      return;
+    }
+    onClick();
+  };
+
   return (
     <button
-      onClick={onClick}
-      className={`w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-all duration-150 text-left ${colorClasses[color]}`}
+      onClick={handleClick}
+      className={`w-full px-3 py-2 flex items-center gap-3 rounded-lg transition-all duration-150 text-left ${
+        disabled 
+          ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50' 
+          : colorClasses[color]
+      }`}
     >
       <Icon size={18} strokeWidth={2} />
       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</span>
+      {disabled && <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-auto">不支持</span>}
     </button>
   );
 }
@@ -111,26 +129,40 @@ export default function ConnectionMenuRoot({
               </>
             ) : (
               // 行级注释：视频节点的主菜单 - 镜头控制、镜头位置、延长视频
-              <>
-                <MenuButton
-                  icon={Camera}
-                  label="镜头控制"
-                  color="purple"
-                  onClick={callbacks.onShowCameraControlSubmenu}
-                />
-                <MenuButton
-                  icon={Move}
-                  label="镜头位置"
-                  color="purple"
-                  onClick={callbacks.onShowCameraPositionSubmenu}
-                />
-                <MenuButton
-                  icon={Sparkles}
-                  label="延长视频"
-                  color="purple"
-                  onClick={callbacks.onShowExtendVideoSubmenu}
-                />
-              </>
+              (() => {
+                // 行级注释：判断是否是海螺或 Sora2 模型（不支持镜头控制和延长视频）
+                const isHailuoOrSora2 = state.sourceVideoModel?.startsWith('hailuo') || state.sourceVideoModel === 'sora2';
+                const disabledReason = isHailuoOrSora2 ? '海螺和 Sora2 视频不支持此功能' : undefined;
+                
+                return (
+                  <>
+                    <MenuButton
+                      icon={Camera}
+                      label="镜头控制"
+                      color="purple"
+                      onClick={callbacks.onShowCameraControlSubmenu}
+                      disabled={isHailuoOrSora2}
+                      disabledReason={disabledReason}
+                    />
+                    <MenuButton
+                      icon={Move}
+                      label="镜头位置"
+                      color="purple"
+                      onClick={callbacks.onShowCameraPositionSubmenu}
+                      disabled={isHailuoOrSora2}
+                      disabledReason={disabledReason}
+                    />
+                    <MenuButton
+                      icon={Sparkles}
+                      label="延长视频"
+                      color="purple"
+                      onClick={callbacks.onShowExtendVideoSubmenu}
+                      disabled={isHailuoOrSora2}
+                      disabledReason={disabledReason}
+                    />
+                  </>
+                );
+              })()
             )}
           </div>
         )}

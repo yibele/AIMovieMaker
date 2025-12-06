@@ -3,7 +3,7 @@
 import { useCallback, useRef } from 'react';
 import { Connection, OnConnectStart, OnConnectEnd } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
-import { CanvasElement, ImageElement, VideoElement } from '@/lib/types';
+import { CanvasElement, ImageElement, VideoElement, VideoModelType } from '@/lib/types';
 
 // 行级注释：边缘样式常量
 const EDGE_DEFAULT_STYLE = { stroke: '#64748b', strokeWidth: 1 };
@@ -20,7 +20,7 @@ export interface UseConnectionHandlerOptions {
   setEdges: (updater: (edges: any[]) => any[]) => void;
   resetConnectionMenu: () => void;
   prepareConnectionMenu: (nodeId: string, nodeType: CanvasElement['type']) => void;
-  showConnectionMenu: (position: { x: number; y: number }, nodeId: string, nodeType: CanvasElement['type']) => void;
+  showConnectionMenu: (position: { x: number; y: number }, nodeId: string, nodeType: CanvasElement['type'], videoModel?: VideoModelType) => void;
   createTextNodeForVideo: (videoNode: VideoElement, flowPosition: { x: number; y: number }) => void;
   reactFlowInstance: any;
 }
@@ -140,11 +140,12 @@ export function useConnectionHandler(options: UseConnectionHandlerOptions): UseC
           return;
         }
 
-        // 行级注释：视频节点拉出连线，显示镜头控制菜单
+        // 行级注释：视频节点拉出连线，显示镜头控制菜单（传递视频模型信息）
         showConnectionMenu(
           { x: mouseEvent.clientX, y: mouseEvent.clientY },
           videoNode.id,
-          'video'
+          'video',
+          videoNode.videoModel
         );
         return;
       }

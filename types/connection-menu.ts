@@ -1,4 +1,4 @@
-import { CanvasElement, ReshootMotionType } from '@/lib/types';
+import { CanvasElement, ReshootMotionType, VideoModelType } from '@/lib/types';
 
 // 行级注释：图片连线阶段临时保存用户选择的比例和提示词
 export type ImagePromptConfig = {
@@ -12,6 +12,7 @@ export type ConnectionMenuState = {
   position: { x: number; y: number };
   sourceNodeId: string | null;
   sourceNodeType: CanvasElement['type'] | null;
+  sourceVideoModel?: VideoModelType; // 行级注释：视频节点的模型类型（用于判断是否支持镜头控制等功能）
   activeSubmenu: 'image' | 'video' | 'imagePrompt' | 'cameraControl' | 'cameraPosition' | 'extendVideo' | 'customNextShotInput' | 'autoNextShotCount' | null;
   pendingImageConfig: ImagePromptConfig | null;
   pendingExtendPrompt?: string; // 行级注释：延长视频的提示词

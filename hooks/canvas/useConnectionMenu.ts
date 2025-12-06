@@ -3,7 +3,7 @@ import {
   ConnectionMenuState,
   ImagePromptConfig,
 } from '@/types/connection-menu';
-import { CanvasElement } from '@/lib/types';
+import { CanvasElement, VideoModelType } from '@/lib/types';
 
 // 行级注释：创建初始的连线菜单状态
 const createConnectionMenuState = (): ConnectionMenuState => ({
@@ -11,6 +11,7 @@ const createConnectionMenuState = (): ConnectionMenuState => ({
   position: { x: 0, y: 0 },
   sourceNodeId: null,
   sourceNodeType: null,
+  sourceVideoModel: undefined,
   activeSubmenu: null,
   pendingImageConfig: null,
 });
@@ -34,13 +35,15 @@ export function useConnectionMenu() {
     (
       position: { x: number; y: number },
       sourceNodeId: string,
-      sourceNodeType: CanvasElement['type']
+      sourceNodeType: CanvasElement['type'],
+      sourceVideoModel?: VideoModelType
     ) => {
       setConnectionMenu({
         visible: true,
         position,
         sourceNodeId,
         sourceNodeType,
+        sourceVideoModel,
         activeSubmenu: null,
         pendingImageConfig: null,
       });
