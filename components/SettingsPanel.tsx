@@ -349,7 +349,7 @@ export default function SettingsPanel() {
                 <p className="text-xs text-slate-500 font-medium">
                   API Key for Sora 2 video generation. Get it from{' '}
                   <a 
-                    href="https://api.apimart.ai" 
+                    href="https://apimart.ai/register?aff=EqGJ" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-purple-600 hover:text-purple-700 underline"
