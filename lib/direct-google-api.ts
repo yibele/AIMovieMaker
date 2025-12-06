@@ -36,6 +36,37 @@ function isNetworkError(error: any): boolean {
 }
 
 /**
+ * 解析 Google API 错误，返回友好的中文提示
+ * @param errorData API 返回的错误数据
+ * @param statusCode HTTP 状态码
+ */
+function parseGoogleApiError(errorData: any, statusCode: number): string {
+  const errorMessage = errorData?.error?.message || errorData?.message || '';
+  const errorStatus = errorData?.error?.status || errorData?.status || '';
+  
+  // 行级注释：Internal error - 服务端问题，网络波动
+  if (
+    errorStatus === 'INTERNAL' ||
+    errorMessage.toLowerCase().includes('internal error') ||
+    statusCode === 500
+  ) {
+    return '网络波动，请稍后重试';
+  }
+  
+  // 行级注释：Invalid argument - 内容违规
+  if (
+    errorStatus === 'INVALID_ARGUMENT' ||
+    errorMessage.toLowerCase().includes('invalid argument') ||
+    statusCode === 400
+  ) {
+    return '提示词或图片内容违规，请修改后重试';
+  }
+  
+  // 行级注释：其他错误，返回通用提示
+  return `请求失败，请稍后重试`;
+}
+
+/**
  * 带重试的 fetch 请求
  * 
  * @param url 请求 URL
@@ -305,7 +336,8 @@ export async function generateImageDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ API 错误响应:', JSON.stringify(errorData, null, 2));
-      throw new Error(`Generate failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const rawData = await response.json();
@@ -453,7 +485,8 @@ export async function generateVideoTextDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ 文生视频失败:', errorData);
-      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
@@ -570,7 +603,8 @@ export async function generateVideoImageDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ 图生视频失败:', errorData);
-      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
@@ -639,7 +673,8 @@ export async function checkVideoStatusDirectly(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Status check failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
@@ -839,7 +874,8 @@ export async function generateVideoReshootDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ 镜头控制重拍失败:', errorData);
-      throw new Error(`Reshoot failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
@@ -962,7 +998,8 @@ export async function generateVideoReferenceImagesDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ 多图参考视频生成失败:', errorData);
-      throw new Error(`Video generation failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
@@ -1071,7 +1108,8 @@ export async function generateVideoExtendDirectly(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ 视频延长失败:', errorData);
-      throw new Error(`Video extend failed: ${response.status} ${response.statusText}`);
+      // 行级注释：使用友好的中文错误提示
+      throw new Error(parseGoogleApiError(errorData, response.status));
     }
 
     const data = await response.json();
