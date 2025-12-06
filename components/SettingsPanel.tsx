@@ -33,13 +33,17 @@ export default function SettingsPanel() {
   const [isSyncingCredentials, setIsSyncingCredentials] = useState(false);
   
   // 行级注释：彩蛋触发器 - 点击 5 次切换开发者模式
-  const handleEasterEggClick = () => {
+  const handleEasterEggClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
     // 清除之前的计时器
     if (clickTimerRef.current) {
       clearTimeout(clickTimerRef.current);
     }
     
     clickCountRef.current += 1;
+    console.log('[Easter Egg] Click count:', clickCountRef.current); // 调试日志
     
     if (clickCountRef.current >= 5) {
       // 切换开发者模式
@@ -56,6 +60,7 @@ export default function SettingsPanel() {
       // 2 秒内没有继续点击则重置计数
       clickTimerRef.current = setTimeout(() => {
         clickCountRef.current = 0;
+        console.log('[Easter Egg] Click count reset'); // 调试日志
       }, 2000);
     }
   };
@@ -183,12 +188,12 @@ export default function SettingsPanel() {
               <div className="flex items-center gap-3">
                 {/* 行级注释：彩蛋触发器 - 点击图标 5 次开启/关闭开发者模式 */}
                 <div 
-                  className={`p-2.5 rounded-xl cursor-pointer select-none transition-colors ${
+                  className={`p-2.5 rounded-xl cursor-pointer select-none transition-colors active:scale-95 ${
                     apiConfig.devMode 
                       ? 'bg-gradient-to-br from-amber-400 to-orange-500' 
-                      : 'bg-slate-100'
+                      : 'bg-slate-100 hover:bg-slate-200'
                   }`}
-                  onClick={handleEasterEggClick}
+                  onMouseDown={handleEasterEggClick}
                 >
                     {apiConfig.devMode ? (
                       <Zap className="w-5 h-5 text-white" />

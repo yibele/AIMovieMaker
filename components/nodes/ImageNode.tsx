@@ -3,7 +3,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
 import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput, Clapperboard } from 'lucide-react';
-import type { ImageElement, TextElement } from '@/lib/types';
+import type { ImageElement, ImageData, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
 import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-generator';
@@ -26,6 +26,27 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
   const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
+
+  // 行级注释：Stack 模式相关状态
+  const isStackMode = Array.isArray(imageData.images) && imageData.images.length > 1;
+  const stackImages = isStackMode ? imageData.images! : [];
+  const mainIndex = imageData.mainIndex ?? 0;
+  const isExpanded = imageData.expanded ?? false;
+  
+  // 行级注释：获取当前主图数据（Stack 模式下使用）
+  const currentMainImage: ImageData | null = isStackMode ? stackImages[mainIndex] : null;
+
+  // 行级注释：预加载 Stack 中的所有图片，避免展开时才加载
+  useEffect(() => {
+    if (isStackMode && stackImages.length > 0) {
+      stackImages.forEach((img) => {
+        if (img.src) {
+          const preloadImg = new Image();
+          preloadImg.src = img.src;
+        }
+      });
+    }
+  }, [isStackMode, stackImages]);
 
   const reactFlowInstance = useReactFlow();
 
@@ -280,6 +301,31 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：handleDownload, handleDelete, handleDuplicate 已移至 useImageOperations Hook
 
+  // 行级注释：Stack 模式 - 切换展开/收起状态
+  const handleToggleExpand = useCallback(() => {
+    updateElement(id, { expanded: !isExpanded } as Partial<ImageElement>);
+  }, [id, isExpanded, updateElement]);
+
+  // 行级注释：Stack 模式 - 设置主图
+  const handleSetMainImage = useCallback((index: number) => {
+    if (!isStackMode || index === mainIndex) return;
+    
+    const newMainImage = stackImages[index];
+    if (!newMainImage) return;
+    
+    // 行级注释：更新主图索引和顶层属性
+    updateElement(id, {
+      mainIndex: index,
+      src: newMainImage.src,
+      base64: newMainImage.base64,
+      mediaId: newMainImage.mediaId,
+      mediaGenerationId: newMainImage.mediaGenerationId,
+      expanded: false, // 选择后自动收起
+    } as Partial<ImageElement>);
+    
+    toast.success('已设为主图');
+  }, [id, isStackMode, mainIndex, stackImages, updateElement]);
+
   // 再次生成
   const handleRegenerate = useCallback(async () => {
     let originalPrompt = '';
@@ -502,7 +548,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
           />
         )}
 
-        <div className="absolute inset-0 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-700">
+        <div className={`absolute inset-0 rounded-xl bg-slate-200 dark:bg-slate-700 ${isStackMode && isExpanded ? '' : 'overflow-hidden'}`}>
 
           {/* 1. Loading Layer - 绝对定位，通过 opacity 控制显示 */}
           <div
@@ -514,28 +560,99 @@ function ImageNode({ data, selected, id }: NodeProps) {
             </div>
           </div>
 
-          {/* 2. Image Layer - 绝对定位，通过 opacity 控制显示 */}
-          <div
-            className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
-            style={{
-              opacity: imageOpacity,
-              transform: showBaseImage ? 'scale(1)' : 'scale(1.05)', // 图片出现时轻微缩小归位
-              pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none'
-            }}
-          >
-            {imageData.src && (
-              <img
-                src={imageData.src}
-                alt={imageData.alt || '生成的图片'}
-                loading="lazy"
-                className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
-                draggable={false}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            )}
-          </div>
+          {/* 2. Image Layer - Stack 模式：所有图片绝对定位，通过 transform 控制位置 */}
+          {isStackMode ? (
+            <>
+              {/* 行级注释：Stack 模式 - 渲染所有图片，通过 transform 控制展开/收起 */}
+              {/* 行级注释：收起时只渲染主图，展开时渲染所有图片 */}
+              {isExpanded ? (
+                // 展开状态：渲染所有图片
+                stackImages.map((img, index) => {
+                  const col = index % 2;
+                  const row = Math.floor(index / 2);
+                  const nodeWidth = imageData.size?.width || 320;
+                  const nodeHeight = imageData.size?.height || 180;
+                  const gap = 10;
+                  
+                  const offsetX = col * (nodeWidth + gap);
+                  const offsetY = row * (nodeHeight + gap);
+                  const isMain = index === mainIndex;
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="absolute inset-0 rounded-xl overflow-hidden cursor-pointer"
+                      style={{
+                        transform: `translate(${offsetX}px, ${offsetY}px)`,
+                        transition: 'transform 0.3s ease-out, box-shadow 0.2s',
+                        zIndex: 1,
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                        border: isMain ? '3px solid #22c55e' : '2px solid #555',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSetMainImage(index);
+                      }}
+                    >
+                      <img
+                        src={img.src}
+                        alt={`图片 ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                      {isMain && (
+                        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
+                          主图
+                        </div>
+                      )}
+                      {!isMain && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors">
+                          <span className="text-white text-sm font-medium opacity-0 hover:opacity-100 bg-black/60 px-3 py-1.5 rounded transition-opacity">
+                            设为主图
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                // 收起状态：只渲染主图（无动画，直接显示）
+                <div className="absolute inset-0 rounded-xl overflow-hidden">
+                  <img
+                    src={imageData.src}
+                    alt={imageData.alt || '生成的图片'}
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            // 行级注释：普通单图模式
+            <div
+              className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
+              style={{
+                opacity: imageOpacity,
+                transform: showBaseImage ? 'scale(1)' : 'scale(1.05)',
+                pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none'
+              }}
+            >
+              {imageData.src && (
+                <img
+                  src={imageData.src}
+                  alt={imageData.alt || '生成的图片'}
+                  loading="lazy"
+                  className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
+                  draggable={false}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
+          )}
+          
+          {/* 行级注释：Stack 模式数量徽章已移到外层容器 */}
 
           {/* 3. Empty State Layer - 等待内容 */}
           <div
@@ -567,6 +684,25 @@ function ImageNode({ data, selected, id }: NodeProps) {
           style={{ right: '-6px', top: '50%' }}
           isConnectable={true}
         />
+        
+        {/* 行级注释：Stack 模式数量徽章（放在外层容器内，但不受 overflow 影响） */}
+        {isStackMode && !isExpanded && !isProcessing && (
+          <div
+            className="absolute z-[100] flex items-center gap-0.5 bg-black/80 hover:bg-black text-white text-xs font-medium rounded-md cursor-pointer transition-all shadow-md backdrop-blur-sm border border-white/10"
+            style={{
+              top: 8,
+              right: 8,
+              padding: '4px 8px',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleExpand();
+            }}
+          >
+            <span>{stackImages.length}</span>
+            <span className="text-[10px] opacity-70">张</span>
+          </div>
+        )}
       </div>
 
       {shouldRenderBelowPanel && (

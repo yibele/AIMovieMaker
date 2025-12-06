@@ -67,10 +67,21 @@ export interface CanvasElement {
   sourceImageIds?: string[]; // 多图生成时的源图片 ID
 }
 
-// 图片元素
+// 图片元素（单图属性）
+export interface ImageData {
+  src: string; // 图片 URL
+  base64?: string; // 图片 base64 数据
+  mediaId?: string; // Flow 返回的 mediaId
+  mediaGenerationId?: string; // Flow 返回的 mediaGenerationId
+  caption?: string; // 描述
+  uploadState?: 'local' | 'syncing' | 'synced' | 'error'; // 同步状态
+  uploadMessage?: string; // 同步状态提示信息
+}
+
+// 图片元素（Stack 节点）
 export interface ImageElement extends CanvasElement {
   type: 'image';
-  src: string; // 图片 URL
+  src: string; // 主图 URL（兼容旧逻辑）
   base64?: string; // 图片 base64 数据（用于图片编辑，避免重新下载）
   alt?: string;
   caption?: string; // 上传图片时保存的 Caption 描述 // 行级注释说明字段用途
@@ -84,6 +95,10 @@ export interface ImageElement extends CanvasElement {
     sourceIds?: string[]; // 源节点 ID（文本节点或图片节点）
     prompt?: string; // 生成提示词
   };
+  // 行级注释：Stack 模式（多图）
+  images?: ImageData[]; // 子图片数组（Stack 模式时使用）
+  mainIndex?: number; // 当前主图索引（默认 0）
+  expanded?: boolean; // 是否展开显示四宫格
 }
 
 // 文本元素

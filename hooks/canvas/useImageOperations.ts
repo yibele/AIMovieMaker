@@ -71,13 +71,17 @@ export function useImageOperations(imageId: string): UseImageOperationsReturn {
     return !isProcessing;
   }, [isProcessing]);
 
-  // 复制图片
+  // 复制图片（只复制主图，不带附图）
   const handleDuplicate = useCallback(() => {
     if (!imageData) return;
 
     const newNodeId = `image-${Date.now()}`;
+    
+    // 行级注释：解构移除 Stack 相关字段，只复制主图属性
+    const { images, mainIndex, expanded, ...mainImageData } = imageData;
+    
     const newNode: ImageElement = {
-      ...imageData,
+      ...mainImageData,
       id: newNodeId,
       position: {
         x: imageData.position.x + (imageData.size?.width || 400) + 50,

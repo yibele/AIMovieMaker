@@ -10,6 +10,7 @@
 import { useCanvasStore } from '@/lib/store';
 import {
   ImageElement,
+  ImageData,
   VideoElement,
   TextElement,
   NoteElement,
@@ -336,16 +337,16 @@ export function createUpsampleVideoPlaceholder(
  * 批量创建图片 Placeholder 节点
  * 
  * @param count 创建数量
- * @param centerPosition 中心位置（节点会围绕此位置水平排列）
+ * @param centerPosition 中心位置
  * @param aspectRatio 宽高比
  * @param options 额外选项
- * @returns 创建的节点 ID 数组
+ * @returns 创建的节点 ID 数组（多图时只返回一个 Stack 节点 ID）
  * 
  * @example
- * // 文生图：创建 3 个 placeholder
+ * // 文生图：创建 1 个 Stack 节点（包含 count 张图片的占位）
  * const ids = createImagePlaceholders(3, position, '16:9', { prompt: '...' });
  * 
- * // 图生图：创建 1 个 placeholder，关联源图片
+ * // 图生图：创建 1 个 placeholder
  * const ids = createImagePlaceholders(1, position, '16:9', { 
  *   prompt: '...', 
  *   sourceIds: [sourceImageId],
@@ -360,14 +361,51 @@ export function createImagePlaceholders(
     prompt?: string;
     generatedFromType?: ImageGeneratedFromType;
     sourceIds?: string[];
-    spacing?: number; // 节点间距，默认 20
+    spacing?: number; // 节点间距，默认 20（单图水平排列时使用）
+    disableStack?: boolean; // 禁用 Stack 模式（分镜等场景）
   }
 ): string[] {
   const { addElement } = useCanvasStore.getState();
   const size = getImageNodeSize(aspectRatio);
-  const spacing = options?.spacing ?? 20;
   
-  // 行级注释：计算总宽度和起始位置，使节点围绕中心位置排列
+  // 行级注释：多图时使用 Stack 模式（一个节点包含多张图）
+  const useStack = count > 1 && !options?.disableStack;
+  
+  if (useStack) {
+    // 行级注释：Stack 模式 - 创建一个节点，包含 count 个图片占位
+    const nodeId = generateNodeId('image');
+    
+    // 行级注释：创建空的 images 数组（等待填充）
+    const emptyImages: ImageData[] = Array.from({ length: count }, () => ({
+      src: '',
+      uploadState: 'syncing' as const,
+    }));
+    
+    const stackNode: ImageElement = {
+      id: nodeId,
+      type: 'image',
+      src: '', // 主图 URL（会在 updateImagePlaceholders 时更新）
+      alt: options?.prompt || '生成中的图片',
+      position: centerPosition,
+      size,
+      uploadState: 'syncing',
+      generatedFrom: {
+        type: options?.generatedFromType || 'input',
+        sourceIds: options?.sourceIds,
+        prompt: options?.prompt,
+      },
+      // 行级注释：Stack 模式字段
+      images: emptyImages,
+      mainIndex: 0,
+      expanded: false,
+    };
+    
+    addElement(stackNode);
+    return [nodeId];
+  }
+  
+  // 行级注释：单图模式 - 保持原有逻辑
+  const spacing = options?.spacing ?? 20;
   const totalWidth = count * size.width + (count - 1) * spacing;
   const startX = centerPosition.x - totalWidth / 2;
   
@@ -380,14 +418,14 @@ export function createImagePlaceholders(
     const placeholderImage: ImageElement = {
       id: nodeId,
       type: 'image',
-      src: '', // 行级注释：空 src，等待填充
+      src: '',
       alt: options?.prompt || '生成中的图片',
       position: {
         x: startX + i * (size.width + spacing),
         y: centerPosition.y,
       },
       size,
-      uploadState: 'syncing', // 行级注释：标记为同步中状态
+      uploadState: 'syncing',
       generatedFrom: {
         type: options?.generatedFromType || 'input',
         sourceIds: options?.sourceIds,
@@ -475,8 +513,41 @@ export function updateImagePlaceholders(
     mediaGenerationId?: string;
   }>
 ): void {
-  const { updateElement } = useCanvasStore.getState();
+  const { updateElement, elements } = useCanvasStore.getState();
   
+  // 行级注释：检查是否为 Stack 模式（只有一个节点但多张图片）
+  if (placeholderIds.length === 1 && images.length > 1) {
+    const nodeId = placeholderIds[0];
+    const existingNode = elements.find(el => el.id === nodeId) as ImageElement | undefined;
+    
+    if (existingNode?.images) {
+      // 行级注释：Stack 模式 - 更新 images 数组
+      const updatedImages: ImageData[] = images.map(img => ({
+        src: img.imageUrl || (img.base64 ? `data:image/png;base64,${img.base64}` : ''),
+        base64: img.base64,
+        mediaId: img.mediaId,
+        mediaGenerationId: img.mediaGenerationId,
+        uploadState: 'synced' as const,
+      }));
+      
+      // 行级注释：主图使用第一张图片的数据
+      const mainImage = updatedImages[0];
+      
+      updateElement(nodeId, {
+        src: mainImage.src,
+        base64: mainImage.base64,
+        mediaId: mainImage.mediaId,
+        mediaGenerationId: mainImage.mediaGenerationId,
+        uploadState: 'synced',
+        images: updatedImages,
+        mainIndex: 0,
+      } as Partial<ImageElement>);
+      
+      return;
+    }
+  }
+  
+  // 行级注释：普通模式 - 每个 placeholder 对应一张图片
   placeholderIds.forEach((id, index) => {
     const imageData = images[index];
     if (!imageData) return;
