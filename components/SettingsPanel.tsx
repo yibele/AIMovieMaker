@@ -26,7 +26,7 @@ export default function SettingsPanel() {
   const [hailuoApiKey, setHailuoApiKey] = useState(apiConfig.hailuoApiKey || ''); // 海螺 API Key
   const [sora2ApiKey, setSora2ApiKey] = useState(apiConfig.sora2ApiKey || ''); // Sora2 API Key
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
-  const [projectId, setProjectId] = useState(apiConfig.projectId || '');
+  // 行级注释：projectId 从 URL 自动获取，不再由用户手动设置
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
   const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
@@ -104,7 +104,7 @@ export default function SettingsPanel() {
             apiKey: creds.apiKey || '',
             bearerToken: creds.bearerToken || '',
             cookie: creds.cookie || '',
-            projectId: creds.projectId || '',
+            // 行级注释：不设置 projectId，它从 URL 自动获取
             isManaged: true,
             // 行级注释：不再强制覆盖以下设置，保留用户的选择
             // accountTier: 保留用户设置
@@ -143,6 +143,7 @@ export default function SettingsPanel() {
   };
 
   // 保存设置 - 只更新修改的字段，保留其他配置
+  // 行级注释：projectId 不在这里设置，它从 URL 自动获取
   const handleSave = () => {
     setApiConfig({
       apiKey: apiKey.trim(),
@@ -152,7 +153,7 @@ export default function SettingsPanel() {
       hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
       sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
       proxy: proxy.trim(),
-      projectId: projectId.trim(),
+      // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
       workflowId: workflowId.trim(),
       sessionId: sessionId.trim(),
       accountTier,
