@@ -21,17 +21,22 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const isError = uploadState === 'error';
   const hasMediaId = Boolean(imageData.mediaGenerationId);
   const showBaseImage = Boolean(imageData.src);
-  // isProcessing 状态下显示 Loading，否则显示图片或 Empty 状态
-  const isProcessing = !isError && (isSyncing || !hasMediaId || !showBaseImage);
-
-  // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
-  const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
-
+  
   // 行级注释：Stack 模式相关状态
   const isStackMode = Array.isArray(imageData.images) && imageData.images.length > 1;
   const stackImages = isStackMode ? imageData.images! : [];
   const mainIndex = imageData.mainIndex ?? 0;
   const isExpanded = imageData.expanded ?? false;
+  
+  // 行级注释：Stack 模式下，只要有任何一张图片有 src 就不算 processing（可以展开）
+  const hasAnyImageSrc = isStackMode && stackImages.some(img => img.src);
+  
+  // isProcessing 状态下显示 Loading，否则显示图片或 Empty 状态
+  // Stack 模式下，只要有图片生成完就不算 processing
+  const isProcessing = !isError && !hasAnyImageSrc && (isSyncing || !hasMediaId || !showBaseImage);
+
+  // 行级注释：只有从文本节点生成或图生图时才显示输入点，从输入框直接生成的图片不显示
+  const shouldShowInputHandle = imageData.generatedFrom?.type !== 'input';
   
   // 行级注释：获取当前主图数据（Stack 模式下使用）
   const currentMainImage: ImageData | null = isStackMode ? stackImages[mainIndex] : null;
@@ -336,6 +341,76 @@ function ImageNode({ data, selected, id }: NodeProps) {
     toast.success('已设为主图');
   }, [id, isStackMode, mainIndex, stackImages, updateElement]);
 
+  // 行级注释：Stack 模式 - 取出图片（从组里分离出来创建独立节点）
+  const handleExtractImage = useCallback((index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isStackMode) return;
+    
+    const imgToExtract = stackImages[index];
+    if (!imgToExtract || !imgToExtract.src) {
+      toast.error('该图片还未生成完成');
+      return;
+    }
+    
+    // 行级注释：创建新的独立图片节点
+    const newNodeId = `image-${Date.now()}`;
+    const newNode: ImageElement = {
+      id: newNodeId,
+      type: 'image',
+      src: imgToExtract.src,
+      base64: imgToExtract.base64,
+      mediaId: imgToExtract.mediaId,
+      mediaGenerationId: imgToExtract.mediaGenerationId,
+      caption: imgToExtract.caption,
+      uploadState: imgToExtract.uploadState || 'synced',
+      position: {
+        x: imageData.position.x + (imageData.size?.width || 320) + 30,
+        y: imageData.position.y,
+      },
+      size: imageData.size,
+      generatedFrom: imageData.generatedFrom,
+    };
+    
+    addElement(newNode);
+    
+    // 行级注释：从原组中移除该图片
+    const newImages = stackImages.filter((_, i) => i !== index);
+    
+    if (newImages.length <= 1) {
+      // 行级注释：只剩一张图片，解散组
+      const lastImage = newImages[0];
+      updateElement(id, {
+        images: undefined,
+        mainIndex: undefined,
+        expanded: undefined,
+        src: lastImage?.src || imageData.src,
+        base64: lastImage?.base64 || imageData.base64,
+        mediaId: lastImage?.mediaId || imageData.mediaId,
+        mediaGenerationId: lastImage?.mediaGenerationId || imageData.mediaGenerationId,
+      } as Partial<ImageElement>);
+    } else {
+      // 行级注释：调整主图索引
+      let newMainIndex = mainIndex;
+      if (index === mainIndex) {
+        newMainIndex = 0;
+      } else if (index < mainIndex) {
+        newMainIndex = mainIndex - 1;
+      }
+      
+      const newMain = newImages[newMainIndex];
+      updateElement(id, {
+        images: newImages,
+        mainIndex: newMainIndex,
+        src: newMain?.src || '',
+        base64: newMain?.base64,
+        mediaId: newMain?.mediaId,
+        mediaGenerationId: newMain?.mediaGenerationId,
+      } as Partial<ImageElement>);
+    }
+    
+    toast.success('已取出图片');
+  }, [id, isStackMode, stackImages, mainIndex, imageData, addElement, updateElement]);
+
   // 再次生成
   const handleRegenerate = useCallback(async () => {
     let originalPrompt = '';
@@ -611,15 +686,26 @@ function ImageNode({ data, selected, id }: NodeProps) {
                         loading="eager"
                         draggable={false}
                       />
+                      {/* 行级注释：主图标记 */}
                       {isMain && (
                         <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
                           主图
                         </div>
                       )}
+                      {/* 行级注释：取出按钮（右上角） */}
+                      {img.src && (
+                        <button
+                          className="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow transition-colors"
+                          onClick={(e) => handleExtractImage(index, e)}
+                        >
+                          取出
+                        </button>
+                      )}
+                      {/* 行级注释：设为主图提示 */}
                       {!isMain && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors">
-                          <span className="text-white text-sm font-medium opacity-0 hover:opacity-100 bg-black/60 px-3 py-1.5 rounded transition-opacity">
-                            设为主图
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
+                          <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded opacity-70">
+                            点击设为主图
                           </span>
                         </div>
                       )}
