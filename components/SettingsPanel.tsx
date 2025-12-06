@@ -70,7 +70,7 @@ export default function SettingsPanel() {
       setHailuoApiKey(apiConfig.hailuoApiKey || ''); // 同步海螺 API Key
       setSora2ApiKey(apiConfig.sora2ApiKey || ''); // 同步 Sora2 API Key
       setProxy(apiConfig.proxy || '');
-      setProjectId(apiConfig.projectId || '');
+      // 行级注释：projectId 从 URL 自动获取，不需要同步
       setWorkflowId(apiConfig.workflowId || '');
       setSessionId(apiConfig.sessionId || '');
       setAccountTier(apiConfig.accountTier || 'pro');
