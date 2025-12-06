@@ -44,6 +44,14 @@ function parseGoogleApiError(errorData: any, statusCode: number): string {
   const errorMessage = errorData?.error?.message || errorData?.message || '';
   const errorStatus = errorData?.error?.status || errorData?.status || '';
   
+  // 行级注释：高流量错误 - 服务繁忙
+  if (
+    errorMessage.includes('HIGH_TRAFFIC') ||
+    errorMessage.includes('PUBLIC_ERROR_HIGH_TRAFFIC')
+  ) {
+    return '服务繁忙，请稍后重试';
+  }
+  
   // 行级注释：Internal error - 服务端问题，网络波动
   if (
     errorStatus === 'INTERNAL' ||
@@ -64,6 +72,39 @@ function parseGoogleApiError(errorData: any, statusCode: number): string {
   
   // 行级注释：其他错误，返回通用提示
   return `请求失败，请稍后重试`;
+}
+
+/**
+ * 解析视频轮询中的操作错误，返回友好的中文提示
+ * @param operation 视频操作对象
+ */
+export function parseVideoOperationError(operation: any): string {
+  const errorMessage = operation?.operation?.error?.message || '';
+  const errorCode = operation?.operation?.error?.code;
+  
+  // 行级注释：高流量错误 - 服务繁忙
+  if (
+    errorMessage.includes('HIGH_TRAFFIC') ||
+    errorMessage.includes('PUBLIC_ERROR_HIGH_TRAFFIC')
+  ) {
+    return '服务繁忙，请稍后重试';
+  }
+  
+  // 行级注释：code 13 通常是内部错误
+  if (errorCode === 13) {
+    return '服务繁忙，请稍后重试';
+  }
+  
+  // 行级注释：Invalid argument - 内容违规
+  if (
+    errorMessage.toLowerCase().includes('invalid') ||
+    errorMessage.toLowerCase().includes('argument')
+  ) {
+    return '提示词或图片内容违规，请修改后重试';
+  }
+  
+  // 行级注释：其他错误
+  return '视频生成失败，请稍后重试';
 }
 
 /**
@@ -690,6 +731,13 @@ export async function checkVideoStatusDirectly(
     // 解析视频数据
     const metadata = operation?.metadata || operation?.operation?.metadata;
     const videoData = operation?.video || metadata?.video;
+    
+    // 行级注释：解析错误信息，使用友好的中文提示
+    const rawError = operation?.operation?.error || operation?.error || metadata?.error;
+    let errorMessage: string | undefined;
+    if (rawError) {
+      errorMessage = parseVideoOperationError(operation);
+    }
 
     return {
       status,
@@ -697,7 +745,7 @@ export async function checkVideoStatusDirectly(
       thumbnailUrl: videoData?.servingBaseUri || videoData?.thumbnailUrl || '',
       duration: videoData?.durationSeconds || 0,
       mediaGenerationId: videoData?.mediaGenerationId || operation?.mediaGenerationId,
-      error: operation?.error || metadata?.error,
+      error: errorMessage, // 行级注释：返回解析后的友好错误信息
       remainingCredits: data.remainingCredits, // 行级注释：返回剩余积分
     };
   } catch (error) {
