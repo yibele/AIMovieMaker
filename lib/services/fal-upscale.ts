@@ -20,10 +20,21 @@ interface UpscaleResult {
 /**
  * 检查高清放大功能是否启用
  * 注意：API Key 在服务端验证，客户端只检查开关
+ * 彩蛋模式（devMode）下强制启用
  *
  * @returns 是否启用
  */
 export function isUpscaleEnabled(): boolean {
+  // 行级注释：彩蛋模式下强制启用高清放大
+  if (typeof window !== 'undefined') {
+    try {
+      const { useCanvasStore } = require('@/lib/store');
+      const devMode = useCanvasStore.getState().apiConfig.devMode;
+      if (devMode) return true;
+    } catch {
+      // 忽略错误
+    }
+  }
   return ENABLE_STORYBOARD_UPSCALE;
 }
 

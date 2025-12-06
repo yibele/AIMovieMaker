@@ -628,14 +628,16 @@ function ImageNode({ data, selected, id }: NodeProps) {
                 })
               ) : (
                 // 收起状态：只渲染主图（无动画，直接显示）
-                <div className="absolute inset-0 rounded-xl overflow-hidden">
-                  <img
-                    src={imageData.src}
-                    alt={imageData.alt || '生成的图片'}
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                  />
-                </div>
+                imageData.src && (
+                  <div className="absolute inset-0 rounded-xl overflow-hidden">
+                    <img
+                      src={imageData.src}
+                      alt={imageData.alt || '生成的图片'}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                )
               )}
             </>
           ) : (
