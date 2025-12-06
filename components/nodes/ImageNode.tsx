@@ -688,11 +688,11 @@ function ImageNode({ data, selected, id }: NodeProps) {
         {/* 行级注释：Stack 模式数量徽章（放在外层容器内，但不受 overflow 影响） */}
         {isStackMode && !isExpanded && !isProcessing && (
           <div
-            className="absolute z-[100] flex items-center gap-0.5 bg-black/80 hover:bg-black text-white text-xs font-medium rounded-md cursor-pointer transition-all shadow-md backdrop-blur-sm border border-white/10"
+            className="absolute z-[100] flex items-center gap-1 bg-black/80 hover:bg-black text-white text-base font-semibold rounded-lg cursor-pointer transition-all shadow-lg backdrop-blur-sm border border-white/20 hover:scale-105"
             style={{
-              top: 8,
-              right: 8,
-              padding: '4px 8px',
+              top: 12,
+              right: 12,
+              padding: '6px 12px',
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -700,7 +700,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
             }}
           >
             <span>{stackImages.length}</span>
-            <span className="text-[10px] opacity-70">张</span>
+            <span className="text-sm opacity-80">张</span>
           </div>
         )}
       </div>
