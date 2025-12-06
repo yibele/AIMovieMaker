@@ -352,7 +352,21 @@ function VideoNode({ data, selected, id }: NodeProps) {
 
     } catch (error) {
       console.error('❌ 超清放大失败:', error);
-      alert(`超清放大失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      // 行级注释：如果在创建节点后发生错误，需要将节点标记为错误状态
+      // 这样用户才能删除这个节点
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      // 行级注释：尝试找到刚创建的超清节点并标记为错误
+      const elements = useCanvasStore.getState().elements;
+      const upsampleNode = elements.find(
+        (el) => el.type === 'video' && 
+        (el as VideoElement).generatedFrom?.type === 'upsample' && 
+        (el as VideoElement).generatedFrom?.sourceIds?.includes(id) &&
+        (el as VideoElement).status === 'generating'
+      );
+      if (upsampleNode) {
+        markPlaceholdersAsError([upsampleNode.id], errorMsg);
+      }
+      alert(`超清放大失败: ${errorMsg}`);
     }
   }, [videoData, canUpscale, id, updateElement, setEdges]);
 
