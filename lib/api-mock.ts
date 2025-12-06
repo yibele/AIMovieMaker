@@ -443,9 +443,9 @@ export async function generateImage(
     fifeUrl?: string;
   }>;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
-  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
-  if (isGeneratingImage) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingImage, setIsGeneratingImage, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingImage && !storeConfig.devMode) {
     throw new Error('已有图片生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingImage(true);
@@ -610,9 +610,9 @@ export async function runImageRecipe(
     fifeUrl?: string;
   }>;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
-  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
-  if (isGeneratingImage) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingImage, setIsGeneratingImage, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingImage && !storeConfig.devMode) {
     throw new Error('已有图片生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingImage(true);
@@ -718,9 +718,9 @@ export async function imageToImage(
     fifeUrl?: string;
   }>;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个图片生成任务
-  const { isGeneratingImage, setIsGeneratingImage } = useCanvasStore.getState();
-  if (isGeneratingImage) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingImage, setIsGeneratingImage, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingImage && !storeConfig.devMode) {
     throw new Error('已有图片生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingImage(true);
@@ -819,9 +819,9 @@ export async function generateVideoFromText(
   promptId: string;
   mediaGenerationId?: string;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
-  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
-  if (isGeneratingVideo) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingVideo, setIsGeneratingVideo, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingVideo && !storeConfig.devMode) {
     throw new Error('已有视频生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingVideo(true);
@@ -917,9 +917,9 @@ export async function generateVideoFromImages(
   promptId: string;
   mediaGenerationId?: string;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
-  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
-  if (isGeneratingVideo) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingVideo, setIsGeneratingVideo, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingVideo && !storeConfig.devMode) {
     throw new Error('已有视频生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingVideo(true);
@@ -1148,9 +1148,9 @@ export async function generateVideoFromReferenceImages(
   status: string;
   remainingCredits?: number;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
-  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
-  if (isGeneratingVideo) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingVideo, setIsGeneratingVideo, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingVideo && !storeConfig.devMode) {
     throw new Error('已有视频生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingVideo(true);
@@ -1247,9 +1247,9 @@ export async function generateVideoExtend(
   status: string;
   remainingCredits?: number;
 }> {
-  // 行级注释：并发限制检查 - 同时只能有一个视频生成任务
-  const { isGeneratingVideo, setIsGeneratingVideo } = useCanvasStore.getState();
-  if (isGeneratingVideo) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingVideo, setIsGeneratingVideo, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingVideo && !storeConfig.devMode) {
     throw new Error('已有视频生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingVideo(true);

@@ -448,9 +448,9 @@ export async function generateSmartStoryboard(
   addPromptHistory: (history: any) => void,
   setEdges: any
 ) {
-  // 行级注释：并发限制检查 - 同时只能有一个分镜生成任务
-  const { isGeneratingStoryboard, setIsGeneratingStoryboard } = useCanvasStore.getState();
-  if (isGeneratingStoryboard) {
+  // 行级注释：并发限制检查（devMode 下跳过）
+  const { isGeneratingStoryboard, setIsGeneratingStoryboard, apiConfig: storeConfig } = useCanvasStore.getState();
+  if (isGeneratingStoryboard && !storeConfig.devMode) {
     throw new Error('已有分镜生成任务进行中，请等待完成后再试');
   }
   setIsGeneratingStoryboard(true);

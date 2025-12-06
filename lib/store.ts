@@ -31,6 +31,7 @@ interface ApiConfig {
   isManaged?: boolean; // 是否为托管模式
   userId?: string; // 用户ID
   credentialMode?: 'cloud' | 'local'; // 凭证模式：cloud=云端同步（邀请码用户），local=本地开发者模式
+  devMode?: boolean; // 开发者模式：关闭并发限制（彩蛋功能）
 }
 
 // 状态接口定义
@@ -141,6 +142,7 @@ const loadApiConfig = (): ApiConfig => {
       videoModel: 'fast', // 行级注释：邀请码用户只能使用 fast 模式
       credentialMode: 'cloud', // 行级注释：只支持云端模式
       isManaged: true, // 行级注释：始终为托管模式
+      devMode: false, // 行级注释：开发者模式默认关闭
     };
   }
 
@@ -188,6 +190,7 @@ const loadApiConfig = (): ApiConfig => {
     videoModel: 'fast', // 行级注释：邀请码用户只能使用 fast 模式
     isManaged: true, // 行级注释：始终为托管模式
     credentialMode: 'cloud', // 行级注释：只支持云端模式
+    devMode: false, // 行级注释：开发者模式默认关闭
   };
 };
 

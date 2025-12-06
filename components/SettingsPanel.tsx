@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Settings, X, Shield, Globe, Workflow, RefreshCw, Save, Cloud, Loader2, Zap } from 'lucide-react';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { supabase, getCachedSession } from '@/lib/supabaseClient';
@@ -11,6 +11,10 @@ export default function SettingsPanel() {
   const setIsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
   const setApiConfig = useCanvasStore((state) => state.setApiConfig);
+  
+  // 行级注释：彩蛋 - 点击 Settings 图标 5 次开启/关闭开发者模式
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
   const regenerateFlowContext = useCanvasStore(
     (state) => state.regenerateFlowContext
   );
@@ -26,6 +30,34 @@ export default function SettingsPanel() {
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
   const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
   const [isSyncingCredentials, setIsSyncingCredentials] = useState(false);
+  
+  // 行级注释：彩蛋触发器 - 点击 5 次切换开发者模式
+  const handleEasterEggClick = () => {
+    // 清除之前的计时器
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+    }
+    
+    clickCountRef.current += 1;
+    
+    if (clickCountRef.current >= 5) {
+      // 切换开发者模式
+      const newDevMode = !apiConfig.devMode;
+      setApiConfig({ devMode: newDevMode });
+      clickCountRef.current = 0;
+      
+      if (newDevMode) {
+        toast.success('🚀 开发者模式已开启', { description: '并发限制已关闭' });
+      } else {
+        toast('开发者模式已关闭', { description: '并发限制已恢复' });
+      }
+    } else {
+      // 2 秒内没有继续点击则重置计数
+      clickTimerRef.current = setTimeout(() => {
+        clickCountRef.current = 0;
+      }, 2000);
+    }
+  };
 
   // 同步本地状态 - 当面板打开或 apiConfig 变化时同步
   useEffect(() => {
@@ -145,12 +177,26 @@ export default function SettingsPanel() {
             {/* 标题栏 */}
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-slate-100 rounded-xl">
-                    <Settings className="w-5 h-5 text-slate-900" />
+                {/* 行级注释：彩蛋触发器 - 点击图标 5 次开启/关闭开发者模式 */}
+                <div 
+                  className={`p-2.5 rounded-xl cursor-pointer select-none transition-colors ${
+                    apiConfig.devMode 
+                      ? 'bg-gradient-to-br from-amber-400 to-orange-500' 
+                      : 'bg-slate-100'
+                  }`}
+                  onClick={handleEasterEggClick}
+                >
+                    {apiConfig.devMode ? (
+                      <Zap className="w-5 h-5 text-white" />
+                    ) : (
+                      <Settings className="w-5 h-5 text-slate-900" />
+                    )}
                 </div>
                 <div>
                     <h2 className="text-lg font-bold text-slate-900">Settings</h2>
-                    <p className="text-xs text-slate-500 font-medium">Configure your API preferences</p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {apiConfig.devMode ? '🚀 Dev Mode Active' : 'Configure your API preferences'}
+                    </p>
                 </div>
               </div>
               <button
