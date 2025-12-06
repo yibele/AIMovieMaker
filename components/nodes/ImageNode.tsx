@@ -353,6 +353,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
     }
     
     // 行级注释：创建新的独立图片节点
+    // 如果有 src 就认为是可用的，uploadState 设为 synced 或 local
     const newNodeId = `image-${Date.now()}`;
     const newNode: ImageElement = {
       id: newNodeId,
@@ -362,7 +363,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
       mediaId: imgToExtract.mediaId,
       mediaGenerationId: imgToExtract.mediaGenerationId,
       caption: imgToExtract.caption,
-      uploadState: imgToExtract.uploadState || 'synced',
+      // 行级注释：有 mediaId 就是 synced，否则是 local（不继承 error 状态）
+      uploadState: imgToExtract.mediaId || imgToExtract.mediaGenerationId ? 'synced' : 'local',
       position: {
         x: imageData.position.x + (imageData.size?.width || 320) + 30,
         y: imageData.position.y,
