@@ -10,7 +10,6 @@ import { generateVideoFromText, generateVideoFromImages, generateVideoFromRefere
 import { generateNodeId } from '@/lib/services/node-management.service';
 import { generateHailuoVideo } from '@/lib/services/hailuo-video.service';
 import { generateSora2Video } from '@/lib/services/sora2-video.service';
-import { toast } from 'sonner';
 
 // 行级注释：边缘样式常量
 const EDGE_GENERATING_STYLE = { stroke: '#a855f7', strokeWidth: 1 };
