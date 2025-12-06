@@ -1,6 +1,6 @@
 // 行级注释：从输入框生成图片的业务逻辑（从 AIInputPanel 中抽取）
 import { useCanvasStore } from './store';
-import { ImageElement } from './types';
+import { ImageElement, ImageData } from './types';
 import { generateImage, imageToImage, runImageRecipe, registerUploadedImage } from './api-mock';
 import {
   createImagePlaceholders,
@@ -459,52 +459,51 @@ export async function generateSmartStoryboard(
   const gridConfig = GRID_PRESETS[gridPreset];
   const { rows, cols } = gridConfig;
   const slicesPerGrid = rows * cols; // 每张网格图切割出的小图数量
-  const totalSlices = count * slicesPerGrid; // 总分镜数量
 
   // 行级注释：构造网格 Prompt
   const gridPrompt = buildGridPrompt(prompt, { rows, cols });
 
-  // 行级注释：计算 placeholder 节点的尺寸
+  // 行级注释：使用标准图片节点尺寸（Stack 模式）
   const nodeSize = getImageNodeSize(aspectRatio);
-  const slicedNodeSize = {
-    width: Math.floor(nodeSize.width / cols),
-    height: Math.floor(nodeSize.height / rows),
-  };
+  const nodeGap = 30; // Stack 节点间距
 
-  // 行级注释：创建所有 placeholder 节点（count × slicesPerGrid 个）
+  // 行级注释：创建 Stack 节点（每组网格图一个 Stack）
   const placeholderIds: string[] = [];
-  const gap = 20; // 节点间距
-  const gridGap = 40; // 网格组之间的间距
 
-  for (let g = 0; g < count; g++) { // 每张网格图
-    for (let r = 0; r < rows; r++) { // 行
-      for (let c = 0; c < cols; c++) { // 列
-        const nodeId = `image-${Date.now()}-${g}-${r}-${c}`;
-        const nodePosition = {
-          // 行级注释：每组网格图水平排列，组内按 2×2 排列
-          x: position.x + g * (cols * (slicedNodeSize.width + gap) + gridGap) + c * (slicedNodeSize.width + gap),
-          y: position.y + r * (slicedNodeSize.height + gap),
-        };
+  for (let g = 0; g < count; g++) {
+    const nodeId = `image-${Date.now()}-storyboard-${g}`;
+    const nodePosition = {
+      x: position.x + g * (nodeSize.width + nodeGap),
+      y: position.y,
+    };
 
-        const placeholder: ImageElement = {
-          id: nodeId,
-          type: 'image',
-          position: nodePosition,
-          size: slicedNodeSize,
-          src: '',
-          uploadState: 'syncing',
-          uploadMessage: `正在生成分镜...`,
-          generatedFrom: {
-            type: selectedImages.length > 0 ? 'image-to-image' : 'input',
-            prompt: prompt,
-            sourceIds: selectedImages.map(img => img.id),
-          },
-        };
+    // 行级注释：创建空的 images 数组（Stack 模式）
+    const emptyImages: ImageData[] = Array.from({ length: slicesPerGrid }, () => ({
+      src: '',
+      uploadState: 'syncing' as const,
+    }));
 
-        addElement(placeholder);
-        placeholderIds.push(nodeId);
-      }
-    }
+    const placeholder: ImageElement = {
+      id: nodeId,
+      type: 'image',
+      position: nodePosition,
+      size: nodeSize,
+      src: '',
+      uploadState: 'syncing',
+      uploadMessage: `正在生成分镜...`,
+      generatedFrom: {
+        type: selectedImages.length > 0 ? 'image-to-image' : 'input',
+        prompt: prompt,
+        sourceIds: selectedImages.map(img => img.id),
+      },
+      // 行级注释：Stack 模式字段
+      images: emptyImages,
+      mainIndex: 0,
+      expanded: false,
+    };
+
+    addElement(placeholder);
+    placeholderIds.push(nodeId);
   }
 
   // 行级注释：如果有参考图，创建连线
@@ -630,11 +629,10 @@ export async function generateSmartStoryboard(
         const imageUrlForUpscale = gridImage.fifeUrl || gridImage.url;
         
         if (imageUrlForUpscale && imageUrlForUpscale.startsWith('http')) {
-          placeholderIds.slice(g * slicesPerGrid, (g + 1) * slicesPerGrid).forEach(nodeId => {
-            updateElement(nodeId, {
-              uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
-            } as Partial<ImageElement>);
-          });
+          // 行级注释：更新对应 Stack 节点的消息
+          updateElement(placeholderIds[g], {
+            uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
+          } as Partial<ImageElement>);
 
           console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}`);
 
@@ -662,41 +660,50 @@ export async function generateSmartStoryboard(
     };
     const flowAspectRatio = flowAspectRatioMap[aspectRatio];
 
-    // 行级注释：并行上传（每次 2 张）
-    const BATCH_SIZE = 2;
-    for (let i = 0; i < allSlicedImages.length; i += BATCH_SIZE) {
-      const batch = allSlicedImages.slice(i, Math.min(i + BATCH_SIZE, allSlicedImages.length));
+    // 行级注释：按 Stack 节点分组上传切片
+    for (let g = 0; g < count; g++) {
+      const stackNodeId = placeholderIds[g];
+      const stackSlices = allSlicedImages.slice(g * slicesPerGrid, (g + 1) * slicesPerGrid);
       
-      // 行级注释：并行处理当前批次
-      await Promise.all(batch.map(async (slicedBase64, batchIndex) => {
-        const globalIndex = i + batchIndex;
-        if (globalIndex >= placeholderIds.length) return;
+      // 行级注释：并行上传当前 Stack 的所有切片
+      const uploadedImages: ImageData[] = await Promise.all(
+        stackSlices.map(async (slicedBase64, index) => {
+          try {
+            const pureBase64 = extractBase64FromDataUrl(slicedBase64);
+            const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
 
-        const nodeId = placeholderIds[globalIndex];
+            return {
+              src: slicedBase64,
+              base64: pureBase64,
+              mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
+              mediaGenerationId: uploadResult.mediaGenerationId || undefined,
+              caption: uploadResult.caption,
+              uploadState: 'synced' as const,
+            };
+          } catch (uploadError) {
+            console.error(`上传分镜 ${g * slicesPerGrid + index + 1} 失败:`, uploadError);
+            return {
+              src: slicedBase64,
+              uploadState: 'error' as const,
+              uploadMessage: '上传失败',
+            };
+          }
+        })
+      );
 
-        try {
-          const pureBase64 = extractBase64FromDataUrl(slicedBase64);
-          const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
-
-          // 行级注释：同时保存 mediaId 和 mediaGenerationId，确保首尾帧生成可用
-          updateElement(nodeId, {
-            src: slicedBase64,
-            base64: pureBase64,
-            mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
-            mediaGenerationId: uploadResult.mediaGenerationId || undefined,
-            caption: uploadResult.caption,
-            uploadState: 'synced',
-            uploadMessage: undefined,
-          } as Partial<ImageElement>);
-        } catch (uploadError) {
-          console.error(`上传分镜 ${globalIndex + 1} 失败:`, uploadError);
-          updateElement(nodeId, {
-            src: slicedBase64,
-            uploadState: 'error',
-            uploadMessage: '上传失败',
-          } as Partial<ImageElement>);
-        }
-      }));
+      // 行级注释：更新 Stack 节点，设置 images 数组和主图属性
+      const mainImage = uploadedImages[0];
+      updateElement(stackNodeId, {
+        src: mainImage.src,
+        base64: mainImage.base64,
+        mediaId: mainImage.mediaId,
+        mediaGenerationId: mainImage.mediaGenerationId,
+        caption: mainImage.caption,
+        uploadState: 'synced',
+        uploadMessage: undefined,
+        images: uploadedImages,
+        mainIndex: 0,
+      } as Partial<ImageElement>);
     }
 
     // 行级注释：停止连线动画
