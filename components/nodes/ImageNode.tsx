@@ -598,6 +598,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
                         src={img.src}
                         alt={`图片 ${index + 1}`}
                         className="w-full h-full object-cover"
+                        loading="eager"
                         draggable={false}
                       />
                       {isMain && (
@@ -685,8 +686,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
           isConnectable={true}
         />
         
-        {/* 行级注释：Stack 模式数量徽章（放在外层容器内，但不受 overflow 影响） */}
-        {isStackMode && !isExpanded && !isProcessing && (
+        {/* 行级注释：Stack 模式数量徽章（放在外层容器内，placeholder 时也显示） */}
+        {isStackMode && !isExpanded && (
           <div
             className="absolute z-[100] flex items-center gap-1 bg-black/80 hover:bg-black text-white text-base font-semibold rounded-lg cursor-pointer transition-all shadow-lg backdrop-blur-sm border border-white/20 hover:scale-105"
             style={{
