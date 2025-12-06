@@ -634,15 +634,18 @@ export async function generateSmartStoryboard(
             uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
           } as Partial<ImageElement>);
 
-          console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}`);
+          console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}, URL: ${imageUrlForUpscale}`);
 
           const upscaleResult = await upscaleImage(imageUrlForUpscale, STORYBOARD_UPSCALE_RESOLUTION);
+          console.log(`📦 放大结果:`, upscaleResult);
+          
           if (upscaleResult.success && upscaleResult.imageUrl) {
             // 行级注释：fal.ai 返回的 URL 可以跨域访问
             imageSourceForSlicing = upscaleResult.imageUrl;
-            console.log(`✅ 网格图 ${g + 1} 放大完成`);
+            console.log(`✅ 网格图 ${g + 1} 放大完成, 使用放大后的 URL: ${imageSourceForSlicing}`);
           } else {
-            console.error(`❌ 网格图 ${g + 1} 放大失败: ${upscaleResult.error}，使用原图 base64`);
+            console.error(`❌ 网格图 ${g + 1} 放大失败: ${upscaleResult.error}，使用原图`);
+            console.log(`⚠️ 使用原图进行切割: ${imageSourceForSlicing.substring(0, 100)}...`);
           }
         }
       }

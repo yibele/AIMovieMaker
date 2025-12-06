@@ -66,7 +66,7 @@ export async function upscaleImage(
     }
 
     // 行级注释：API Key 在服务端从环境变量读取，不从客户端传递
-    const response = await fetch('/api/fal/upscale', {
+    const response: Response = await fetch('/api/fal/upscale', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -82,18 +82,25 @@ export async function upscaleImage(
     }
 
     const result = await response.json();
+    
+    console.log('📦 fal.ai 返回结果:', JSON.stringify(result, null, 2));
 
-    if (!result.success || !result.data?.imageUrl) {
-      throw new Error('放大返回数据异常');
+    if (!result.success) {
+      throw new Error('放大请求失败');
+    }
+    
+    const upscaledUrl = result.data?.imageUrl;
+    if (!upscaledUrl) {
+      throw new Error('放大返回的 imageUrl 为空');
     }
 
     if (DEBUG_MODE) {
-      console.log(`✅ 图片放大完成: ${result.data.width}x${result.data.height}`);
+      console.log(`✅ 图片放大完成: ${result.data.width}x${result.data.height}, URL: ${upscaledUrl}`);
     }
 
     return {
       success: true,
-      imageUrl: result.data.imageUrl,
+      imageUrl: upscaledUrl,
     };
   } catch (error: any) {
     console.error('❌ 图片放大失败:', error);

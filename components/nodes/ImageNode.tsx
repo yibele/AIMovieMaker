@@ -28,8 +28,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
   const mainIndex = imageData.mainIndex ?? 0;
   const isExpanded = imageData.expanded ?? false;
   
-  // 行级注释：Stack 模式下，只要有任何一张图片有 src 就不算 processing（可以展开）
-  const hasAnyImageSrc = isStackMode && stackImages.some(img => img.src);
+  // 行级注释：Stack 模式下，只要有任何一张图片有 src 或 base64 就不算 processing（可以展开）
+  const hasAnyImageSrc = isStackMode && stackImages.some(img => img.src || img.base64);
   
   // isProcessing 状态下显示 Loading，否则显示图片或 Empty 状态
   // Stack 模式下，只要有图片生成完就不算 processing
@@ -45,9 +45,10 @@ function ImageNode({ data, selected, id }: NodeProps) {
   useEffect(() => {
     if (isStackMode && stackImages.length > 0) {
       stackImages.forEach((img) => {
-        if (img.src) {
+        const imgSrc = img.src || (img.base64?.startsWith('data:') ? img.base64 : img.base64 ? `data:image/png;base64,${img.base64}` : '');
+        if (imgSrc) {
           const preloadImg = new Image();
-          preloadImg.src = img.src;
+          preloadImg.src = imgSrc;
         }
       });
     }
@@ -341,29 +342,30 @@ function ImageNode({ data, selected, id }: NodeProps) {
     toast.success('已设为主图');
   }, [id, isStackMode, mainIndex, stackImages, updateElement]);
 
-  // 行级注释：Stack 模式 - 取出图片（从组里分离出来创建独立节点）
+  // 行级注释：Stack 模式 - 取出图片（复制一份到新节点，不修改原组）
   const handleExtractImage = useCallback((index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isStackMode) return;
     
     const imgToExtract = stackImages[index];
-    if (!imgToExtract || !imgToExtract.src) {
+    // 行级注释：分镜用的是 base64，普通图片用的是 src
+    const hasImage = imgToExtract?.src || imgToExtract?.base64;
+    if (!imgToExtract || !hasImage) {
       toast.error('该图片还未生成完成');
       return;
     }
     
-    // 行级注释：创建新的独立图片节点
-    // 如果有 src 就认为是可用的，uploadState 设为 synced 或 local
+    // 行级注释：创建新的独立图片节点（复制当前图片属性）
+    // 分镜的 src 是 base64 格式的 data URL
     const newNodeId = `image-${Date.now()}`;
     const newNode: ImageElement = {
       id: newNodeId,
       type: 'image',
-      src: imgToExtract.src,
+      src: imgToExtract.src || (imgToExtract.base64?.startsWith('data:') ? imgToExtract.base64 : `data:image/png;base64,${imgToExtract.base64}`),
       base64: imgToExtract.base64,
       mediaId: imgToExtract.mediaId,
       mediaGenerationId: imgToExtract.mediaGenerationId,
       caption: imgToExtract.caption,
-      // 行级注释：有 mediaId 就是 synced，否则是 local（不继承 error 状态）
       uploadState: imgToExtract.mediaId || imgToExtract.mediaGenerationId ? 'synced' : 'local',
       position: {
         x: imageData.position.x + (imageData.size?.width || 320) + 30,
@@ -374,44 +376,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
     };
     
     addElement(newNode);
-    
-    // 行级注释：从原组中移除该图片
-    const newImages = stackImages.filter((_, i) => i !== index);
-    
-    if (newImages.length <= 1) {
-      // 行级注释：只剩一张图片，解散组
-      const lastImage = newImages[0];
-      updateElement(id, {
-        images: undefined,
-        mainIndex: undefined,
-        expanded: undefined,
-        src: lastImage?.src || imageData.src,
-        base64: lastImage?.base64 || imageData.base64,
-        mediaId: lastImage?.mediaId || imageData.mediaId,
-        mediaGenerationId: lastImage?.mediaGenerationId || imageData.mediaGenerationId,
-      } as Partial<ImageElement>);
-    } else {
-      // 行级注释：调整主图索引
-      let newMainIndex = mainIndex;
-      if (index === mainIndex) {
-        newMainIndex = 0;
-      } else if (index < mainIndex) {
-        newMainIndex = mainIndex - 1;
-      }
-      
-      const newMain = newImages[newMainIndex];
-      updateElement(id, {
-        images: newImages,
-        mainIndex: newMainIndex,
-        src: newMain?.src || '',
-        base64: newMain?.base64,
-        mediaId: newMain?.mediaId,
-        mediaGenerationId: newMain?.mediaGenerationId,
-      } as Partial<ImageElement>);
-    }
-    
     toast.success('已取出图片');
-  }, [id, isStackMode, stackImages, mainIndex, imageData, addElement, updateElement]);
+  }, [isStackMode, stackImages, imageData, addElement]);
 
   // 再次生成
   const handleRegenerate = useCallback(async () => {
@@ -681,8 +647,9 @@ function ImageNode({ data, selected, id }: NodeProps) {
                         handleSetMainImage(index);
                       }}
                     >
+                      {/* 行级注释：分镜用 base64，普通图片用 src */}
                       <img
-                        src={img.src}
+                        src={img.src || (img.base64?.startsWith('data:') ? img.base64 : img.base64 ? `data:image/png;base64,${img.base64}` : '')}
                         alt={`图片 ${index + 1}`}
                         className="w-full h-full object-cover"
                         loading="eager"
@@ -695,7 +662,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
                         </div>
                       )}
                       {/* 行级注释：取出按钮（右上角） */}
-                      {img.src && (
+                      {(img.src || img.base64) && (
                         <button
                           className="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow transition-colors"
                           onClick={(e) => handleExtractImage(index, e)}

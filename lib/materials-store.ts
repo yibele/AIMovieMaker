@@ -373,10 +373,36 @@ export const useMaterialsStore = create<MaterialsStore>()(
     }),
     {
       name: 'materials-storage',
-      storage: createJSONStorage(() => localStorage),
+      // 行级注释：自定义 storage，处理 QuotaExceededError
+      storage: createJSONStorage(() => ({
+        getItem: (name) => localStorage.getItem(name),
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch (e) {
+            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+              console.warn('⚠️ localStorage 已满，清理废片库...');
+              // 行级注释：存储满时清空废片库
+              try {
+                const data = JSON.parse(value);
+                if (data.state?.trash) {
+                  data.state.trash = []; // 清空废片
+                }
+                localStorage.setItem(name, JSON.stringify(data));
+                console.log('✅ 废片库已清理');
+              } catch {
+                // 如果还是失败，清空整个存储
+                localStorage.removeItem(name);
+                console.log('✅ 本地存储已重置');
+              }
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      })),
       // 行级注释：持久化 trash 和 UI 状态，不持久化 materials (云端同步)
       partialize: (state) => ({
-        trash: state.trash, // 废片库本地持久化
+        trash: state.trash.slice(0, 50), // 行级注释：限制废片库最多 50 条
         materials: state.materials, // 缓存精选素材
         currentUserId: state.currentUserId, // 缓存所属用户
         activeTab: state.activeTab,
