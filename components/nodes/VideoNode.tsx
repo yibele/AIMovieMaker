@@ -440,13 +440,13 @@ function VideoNode({ data, selected, id }: NodeProps) {
             onClick={() => handleUpscale()}
           />
 
-          {/* 删除 - 生成中禁用 */}
+          {/* 删除 */}
           <ToolbarButton
             icon={<Trash2 className="w-5 h-5" />}
             label="删除"
-            title={isGenerating ? "生成中无法删除" : "删除"}
+            title="删除"
             variant="danger"
-            disabled={isGenerating}
+            disabled={false}
             onClick={() => handleDelete()}
           />
         </NodeToolbar>

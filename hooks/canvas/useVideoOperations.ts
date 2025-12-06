@@ -67,9 +67,8 @@ export function useVideoOperations(videoId: string): UseVideoOperationsReturn {
     return videoData.status === 'generating' || videoData.status === 'queued';
   }, [videoData]);
 
-  const canDelete = useMemo(() => {
-    return !isGenerating;
-  }, [isGenerating]);
+  // 行级注释：移除生成中的删除限制，用户可以随时删除节点
+  const canDelete = true;
 
   // 是否可以超清（只有 16:9 支持）
   const canUpscale = useMemo(() => {
@@ -240,12 +239,8 @@ export function useVideoOperations(videoId: string): UseVideoOperationsReturn {
 
   // 删除
   const handleDelete = useCallback(() => {
-    if (!canDelete) {
-      toast.error('视频正在生成中，无法删除');
-      return;
-    }
     deleteElement(videoId);
-  }, [videoId, canDelete, deleteElement]);
+  }, [videoId, deleteElement]);
 
   // 入库
   const handleArchive = useCallback(async () => {
