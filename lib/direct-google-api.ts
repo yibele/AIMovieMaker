@@ -52,13 +52,13 @@ function parseGoogleApiError(errorData: any, statusCode: number): string {
     return '服务繁忙，请稍后重试';
   }
   
-  // 行级注释：Internal error - 服务端问题，网络波动
+  // 行级注释：Internal error - 服务端问题，需要更换节点
   if (
     errorStatus === 'INTERNAL' ||
     errorMessage.toLowerCase().includes('internal error') ||
     statusCode === 500
   ) {
-    return '网络波动，请稍后重试';
+    return '网络报错，请更换节点重试';
   }
   
   // 行级注释：Invalid argument - 内容违规
