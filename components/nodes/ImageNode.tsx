@@ -449,6 +449,44 @@ function ImageNode({ data, selected, id }: NodeProps) {
     setIsUpscaling(true);
     const toastId = toast.loading('正在高清放大...');
 
+    // 行级注释：先创建 placeholder 节点
+    const newNodeId = `image-${Date.now()}`;
+    const placeholderNode: ImageElement = {
+      id: newNodeId,
+      type: 'image',
+      src: '',
+      caption: imageData.caption ? `${imageData.caption} (高清)` : '高清图片',
+      uploadState: 'syncing',
+      uploadMessage: '高清放大中...',
+      position: {
+        x: imageData.position.x + (imageData.size?.width || 320) + 30,
+        y: imageData.position.y,
+      },
+      size: imageData.size,
+      generatedFrom: {
+        type: 'image-to-image',
+        sourceIds: [id],
+        prompt: '高清放大',
+      },
+    };
+
+    addElement(placeholderNode);
+
+    // 行级注释：创建连线（原图 -> 高清图）
+    setTimeout(() => {
+      const edgeId = `edge-${id}-${newNodeId}-upscale`;
+      reactFlowInstance.addEdges({
+        id: edgeId,
+        source: id,
+        sourceHandle: 'right',
+        target: newNodeId,
+        type: 'default',
+        style: { stroke: '#22c55e', strokeWidth: 2 },
+        animated: true,
+        label: '高清',
+      });
+    }, 100);
+
     try {
       // 行级注释：调用 fal.ai 放大接口，优先使用 base64（质量更高）
       const upscaleResult = await upscaleImage(imageSource, '2K', apiConfig.falApiKey);
@@ -474,53 +512,28 @@ function ImageNode({ data, selected, id }: NodeProps) {
       // 行级注释：上传到云端（会抛出异常如果失败）
       const uploadResult = await uploadToFlow(base64Data);
 
-      // 行级注释：创建新的高清图片节点（直接创建完整节点，不使用 placeholder）
-      const newNodeId = `image-${Date.now()}`;
-      const newNode: ImageElement = {
-        id: newNodeId,
-        type: 'image',
+      // 行级注释：更新 placeholder 为完整图片
+      updateElement(newNodeId, {
         src: upscaleResult.imageUrl,
         base64: base64Data,
         mediaId: uploadResult.mediaId || undefined,
         mediaGenerationId: uploadResult.mediaGenerationId || undefined,
-        caption: imageData.caption ? `${imageData.caption} (高清)` : '高清图片',
         uploadState: 'synced',
-        position: {
-          x: imageData.position.x + (imageData.size?.width || 320) + 30,
-          y: imageData.position.y,
-        },
-        size: imageData.size,
-        generatedFrom: {
-          type: 'image-to-image',
-          sourceIds: [id],
-          prompt: '高清放大',
-        },
-      };
-
-      addElement(newNode);
-
-      // 行级注释：创建连线（原图 -> 高清图）
-      setTimeout(() => {
-        const edgeId = `edge-${id}-${newNodeId}-upscale`;
-        reactFlowInstance.addEdges({
-          id: edgeId,
-          source: id,
-          sourceHandle: 'right',
-          target: newNodeId,
-          type: 'default',
-          style: { stroke: '#22c55e', strokeWidth: 2 },
-          animated: true,
-          label: '高清',
-        });
-      }, 200);
+        uploadMessage: undefined,
+      } as Partial<ImageElement>);
 
       toast.success('高清放大完成', { id: toastId });
     } catch (error: any) {
+      // 行级注释：失败时更新 placeholder 状态
+      updateElement(newNodeId, {
+        uploadState: 'error',
+        uploadMessage: error.message || '高清放大失败',
+      } as Partial<ImageElement>);
       toast.error(error.message || '高清放大失败', { id: toastId });
     } finally {
       setIsUpscaling(false);
     }
-  }, [id, imageData, addElement, reactFlowInstance]);
+  }, [id, imageData, addElement, updateElement, reactFlowInstance]);
 
   // 视觉识别
   const [isAnalyzing, setIsAnalyzing] = useState(false);
