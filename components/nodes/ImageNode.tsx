@@ -679,8 +679,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
           icon={isUpscaling ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />} 
           label="高清放大" 
           onClick={handleUpscale} 
-          disabled={isUpscaling || isAnalyzing || !showBaseImage}
-          title="放大到 2K 高清"
+          disabled={isUpscaling || isAnalyzing || !showBaseImage || !useCanvasStore.getState().apiConfig.falApiKey}
+          title={useCanvasStore.getState().apiConfig.falApiKey ? "放大到 2K 高清" : "请先在设置中配置 fal.ai API Key"}
         />
         <ToolbarButton icon={<Square className="w-5 h-5" />} label="复制" onClick={handleDuplicate} />
         <ToolbarButton icon={<FolderInput className="w-5 h-5" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
