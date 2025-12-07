@@ -436,8 +436,12 @@ function ImageNode({ data, selected, id }: NodeProps) {
       return;
     }
 
-    // 检查图片源
-    if (!imageData.src) {
+    // 检查图片源 - 优先使用 base64
+    const imageSource = imageData.base64 
+      ? (imageData.base64.startsWith('data:') ? imageData.base64 : `data:image/png;base64,${imageData.base64}`)
+      : imageData.src;
+    
+    if (!imageSource) {
       toast.error('图片内容为空，无法放大');
       return;
     }
@@ -446,8 +450,8 @@ function ImageNode({ data, selected, id }: NodeProps) {
     const toastId = toast.loading('正在高清放大...');
 
     try {
-      // 行级注释：调用 fal.ai 放大接口，传入用户的 API Key
-      const upscaleResult = await upscaleImage(imageData.src, '2K', apiConfig.falApiKey);
+      // 行级注释：调用 fal.ai 放大接口，优先使用 base64（质量更高）
+      const upscaleResult = await upscaleImage(imageSource, '2K', apiConfig.falApiKey);
       
       if (!upscaleResult.success || !upscaleResult.imageUrl) {
         throw new Error(upscaleResult.error || '放大失败');
