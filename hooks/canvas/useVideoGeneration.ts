@@ -186,6 +186,7 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             promptText: promptText,
             startImageId: startImageId,
             endImageId: endImageId,
+            referenceImageIds: videoElement.referenceImageIds, // 行级注释：复制多图参考视频的参考图片 ID
             videoModel: videoElement.videoModel || 'veo3.1', // 行级注释：复制视频模型
             sora2Duration: videoElement.sora2Duration || 10, // 行级注释：复制 Sora2 时长
             generationCount: 1,
@@ -210,6 +211,24 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
                   label: videoElement.generatedFrom?.type === 'extend' ? '延长' : '镜头控制',
                 },
               ]);
+            }
+          } else if (videoElement.generatedFrom?.type === 'reference-images') {
+            // 行级注释：多图参考视频 - 为每个参考图片创建连线
+            const referenceIds = videoElement.referenceImageIds || [];
+            const handleIds = ['ref-image-1', 'ref-image-2', 'ref-image-3'];
+            const newEdges = referenceIds
+              .filter((refId): refId is string => Boolean(refId))
+              .map((refId, index) => ({
+                id: `edge-${refId}-${newVideoId}-ref-${index + 1}`,
+                source: refId,
+                target: newVideoId,
+                targetHandle: handleIds[index],
+                type: 'default',
+                animated: true,
+                style: EDGE_GENERATING_STYLE,
+              }));
+            if (newEdges.length > 0) {
+              setEdges((eds: any[]) => [...eds, ...newEdges]);
             }
           } else if (startImageId) {
             setEdges((eds: any[]) => [

@@ -227,6 +227,7 @@ function VideoNode({ data, selected, id }: NodeProps) {
       promptText: videoData.promptText || '', // 复制提示词
       startImageId: videoData.startImageId, // 复制首帧图片 ID
       endImageId: videoData.endImageId, // 复制尾帧图片 ID
+      referenceImageIds: videoData.referenceImageIds, // 复制多图参考视频的参考图片 ID
       videoModel: videoData.videoModel || 'veo3.1', // 复制视频模型
       sora2Duration: videoData.sora2Duration || 10, // 复制 Sora2 时长设置
       generationCount: 1, // 重新生成默认 1 个
