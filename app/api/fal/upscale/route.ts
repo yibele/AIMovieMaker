@@ -42,16 +42,17 @@ export async function POST(request: NextRequest) {
       imageUrl,
       resolution = '2K',
       syncMode = true,
+      apiKey: userApiKey, // 行级注释：用户传入的 API Key
     } = body;
 
-    // 行级注释：从环境变量读取 API Key
-    const falApiKey = process.env.FAL_API_KEY;
+    // 行级注释：优先使用用户传入的 API Key，其次使用环境变量
+    const falApiKey = userApiKey || process.env.FAL_API_KEY;
 
     // 行级注释：验证 API Key 配置
     if (!falApiKey) {
       return NextResponse.json(
-        { error: '服务端未配置 FAL_API_KEY 环境变量' },
-        { status: 500 }
+        { error: '请在设置中配置 fal.ai API Key，或联系管理员配置服务端环境变量' },
+        { status: 400 }
       );
     }
 

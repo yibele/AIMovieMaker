@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps, NodeToolbar, useReactFlow } from '@xyflow/react';
-import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput, Clapperboard } from 'lucide-react';
+import { RefreshCw, Copy, Download, Trash2, Square, Edit3, Eye, Loader2, FolderInput, Clapperboard, Sparkles } from 'lucide-react';
 import type { ImageElement, ImageData, TextElement } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { imageToImage, registerUploadedImage, editImage } from '@/lib/api-mock';
@@ -10,6 +10,8 @@ import { generateFromInput, imageToImageFromInput } from '@/lib/input-panel-gene
 import { ToolbarButton, ToolbarDivider } from './ToolbarButton';
 import { VisionAnalysisModal } from '../VisionAnalysisModal';
 import { toast } from 'sonner';
+import { upscaleImage } from '@/lib/services/fal-upscale';
+import { registerUploadedImage as uploadToFlow } from '@/lib/api-mock';
 import { IMAGE_NODE_DEFAULT_SIZE, TEXT_NODE_DEFAULT_SIZE, detectAspectRatio } from '@/lib/constants/node-sizes';
 import { useImageOperations } from '@/hooks/canvas';
 
@@ -422,6 +424,104 @@ function ImageNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：handleArchive 已移至 useImageOperations Hook
 
+  // 行级注释：高清放大状态
+  const [isUpscaling, setIsUpscaling] = useState(false);
+
+  // 行级注释：高清放大功能 - 放大后重新上传到 Flow
+  const handleUpscale = useCallback(async () => {
+    // 检查 fal.ai API Key
+    const apiConfig = useCanvasStore.getState().apiConfig;
+    if (!apiConfig.falApiKey) {
+      toast.error('请先在设置中配置 fal.ai API Key');
+      return;
+    }
+
+    // 检查图片源
+    if (!imageData.src) {
+      toast.error('图片内容为空，无法放大');
+      return;
+    }
+
+    setIsUpscaling(true);
+    const toastId = toast.loading('正在高清放大...');
+
+    try {
+      // 行级注释：调用 fal.ai 放大接口，传入用户的 API Key
+      const upscaleResult = await upscaleImage(imageData.src, '2K', apiConfig.falApiKey);
+      
+      if (!upscaleResult.success || !upscaleResult.imageUrl) {
+        throw new Error(upscaleResult.error || '放大失败');
+      }
+
+      toast.loading('正在上传到 Flow...', { id: toastId });
+
+      // 行级注释：下载放大后的图片并转为 base64，用于上传到 Flow
+      const response = await fetch(upscaleResult.imageUrl);
+      const blob = await response.blob();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          // 去掉 data:image/xxx;base64, 前缀
+          const base64Only = result.split(',')[1] || result;
+          resolve(base64Only);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      // 行级注释：上传到 Flow（会抛出异常如果失败）
+      const uploadResult = await uploadToFlow(base64Data);
+
+      // 行级注释：创建新的高清图片节点
+      const newNodeId = `image-${Date.now()}`;
+      const newNode: ImageElement = {
+        id: newNodeId,
+        type: 'image',
+        src: upscaleResult.imageUrl,
+        base64: base64Data,
+        mediaId: uploadResult.mediaId || undefined,
+        mediaGenerationId: uploadResult.mediaGenerationId || undefined,
+        caption: imageData.caption ? `${imageData.caption} (高清放大)` : '高清放大图片',
+        uploadState: 'synced',
+        position: {
+          x: imageData.position.x + (imageData.size?.width || 320) + 30,
+          y: imageData.position.y,
+        },
+        size: imageData.size,
+        generatedFrom: {
+          type: 'image-to-image',
+          sourceIds: [id],
+          prompt: '高清放大',
+        },
+      };
+
+      addElement(newNode);
+
+      // 行级注释：创建连线（原图 -> 高清图）
+      setTimeout(() => {
+        const edgeId = `edge-${id}-${newNodeId}-upscale`;
+        reactFlowInstance.addEdges({
+          id: edgeId,
+          source: id,
+          sourceHandle: 'right',
+          target: newNodeId,
+          type: 'default',
+          style: { stroke: '#22c55e', strokeWidth: 2 },
+          animated: true,
+          label: '高清放大',
+        });
+      }, 200);
+
+      toast.success('高清放大完成', { id: toastId });
+    } catch (error: any) {
+      console.error('高清放大失败:', error);
+      toast.error(error.message || '高清放大失败', { id: toastId });
+    } finally {
+      setIsUpscaling(false);
+    }
+  }, [id, imageData, addElement, reactFlowInstance]);
+
   // 视觉识别
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isVisionModalOpen, setIsVisionModalOpen] = useState(false);
@@ -571,10 +671,17 @@ function ImageNode({ data, selected, id }: NodeProps) {
           e.stopPropagation();
         }}
       >
-        <ToolbarButton icon={<RefreshCw className="w-5 h-5" />} label="再次生成" onClick={handleRegenerate} disabled={isAnalyzing} />
+        <ToolbarButton icon={<RefreshCw className="w-5 h-5" />} label="再次生成" onClick={handleRegenerate} disabled={isAnalyzing || isUpscaling} />
         <ToolbarButton icon={<Clapperboard className="w-5 h-5" />} label="下一分镜" onClick={() => { }} disabled={true} className="hidden" /> {/* Hidden/Removed */}
-        <ToolbarButton icon={<Edit3 className="w-5 h-5" />} label="图片编辑" onClick={handleAnnotate} disabled={isAnalyzing} />
-        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing} />
+        <ToolbarButton icon={<Edit3 className="w-5 h-5" />} label="图片编辑" onClick={handleAnnotate} disabled={isAnalyzing || isUpscaling} />
+        <ToolbarButton icon={isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />} label="视觉识别" onClick={openVisionModal} disabled={isAnalyzing || isUpscaling} />
+        <ToolbarButton 
+          icon={isUpscaling ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />} 
+          label="高清放大" 
+          onClick={handleUpscale} 
+          disabled={isUpscaling || isAnalyzing || !showBaseImage}
+          title="放大到 2K 高清"
+        />
         <ToolbarButton icon={<Square className="w-5 h-5" />} label="复制" onClick={handleDuplicate} />
         <ToolbarButton icon={<FolderInput className="w-5 h-5" />} label="入库" onClick={handleArchive} title="保存到精选素材库" />
         <ToolbarDivider />
@@ -697,27 +804,27 @@ function ImageNode({ data, selected, id }: NodeProps) {
             </>
           ) : (
             // 行级注释：普通单图模式
-            <div
-              className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
-              style={{
-                opacity: imageOpacity,
+          <div
+            className="absolute inset-0 z-10 transition-all duration-700 ease-out transform origin-center"
+            style={{
+              opacity: imageOpacity,
                 transform: showBaseImage ? 'scale(1)' : 'scale(1.05)',
-                pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none'
-              }}
-            >
-              {imageData.src && (
-                <img
-                  src={imageData.src}
-                  alt={imageData.alt || '生成的图片'}
-                  loading="lazy"
-                  className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
-                  draggable={false}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-            </div>
+              pointerEvents: imageOpacity > 0.5 ? 'auto' : 'none'
+            }}
+          >
+            {imageData.src && (
+              <img
+                src={imageData.src}
+                alt={imageData.alt || '生成的图片'}
+                loading="lazy"
+                className="h-full w-full object-cover pointer-events-none select-none animate-in fade-in zoom-in-95 duration-500"
+                draggable={false}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
+          </div>
           )}
           
           {/* 行级注释：Stack 模式数量徽章已移到外层容器 */}

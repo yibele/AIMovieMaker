@@ -725,27 +725,27 @@ function VideoNode({ data, selected, id }: NodeProps) {
                 <div className={`flex items-center justify-between gap-2 mt-2 pt-1 border-t border-gray-100 dark:border-slate-600 ${isGenerating ? 'opacity-50 pointer-events-none' : ''}`}>
                   {/* 行级注释：模型选择下拉菜单 */}
                   <div className="flex items-center gap-1">
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsModelMenuOpen(!isModelMenuOpen);
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        disabled={isGenerating}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all duration-200 ${
-                          isHailuoModel 
-                            ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModelMenuOpen(!isModelMenuOpen);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={isGenerating}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all duration-200 ${
+                        isHailuoModel 
+                          ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400' 
                             : isSora2Model
                               ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                              : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
-                        } hover:bg-gray-200 dark:hover:bg-slate-500`}
-                        title="选择视频模型"
-                      >
-                        <span className="max-w-[60px] truncate">{VIDEO_MODELS.find(m => m.id === videoModel)?.name || 'Veo 3.1'}</span>
-                        <ChevronDown className="w-2.5 h-2.5" />
-                      </button>
+                          : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
+                      } hover:bg-gray-200 dark:hover:bg-slate-500`}
+                      title="选择视频模型"
+                    >
+                      <span className="max-w-[60px] truncate">{VIDEO_MODELS.find(m => m.id === videoModel)?.name || 'Veo 3.1'}</span>
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    </button>
                     
                     {/* 行级注释：模型下拉菜单 */}
                     {isModelMenuOpen && (
@@ -772,12 +772,12 @@ function VideoNode({ data, selected, id }: NodeProps) {
                               model.disabled
                                 ? 'text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-50'
                                 : videoModel === model.id
-                                  ? model.id.startsWith('hailuo')
-                                    ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                                ? model.id.startsWith('hailuo')
+                                  ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
                                     : model.id === 'sora2'
                                       ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                  : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+                                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600'
                             }`}
                           >
                             <div className="flex items-center justify-between">
@@ -787,8 +787,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
                                   <span className="text-[7px] text-red-400" title={model.disabledReason}>未配置</span>
                                 )}
                                 {!model.supportsEndFrame && !model.disabled && (
-                                  <span className="text-[7px] text-orange-500" title="不支持首尾帧">无尾帧</span>
-                                )}
+                                <span className="text-[7px] text-orange-500" title="不支持首尾帧">无尾帧</span>
+                              )}
                               </div>
                             </div>
                           </button>

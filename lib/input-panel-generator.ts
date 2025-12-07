@@ -472,7 +472,7 @@ export async function generateSmartStoryboard(
 
   for (let g = 0; g < count; g++) {
     const nodeId = `image-${Date.now()}-storyboard-${g}`;
-    const nodePosition = {
+        const nodePosition = {
       x: position.x + g * (nodeSize.width + nodeGap),
       y: position.y,
     };
@@ -483,27 +483,27 @@ export async function generateSmartStoryboard(
       uploadState: 'syncing' as const,
     }));
 
-    const placeholder: ImageElement = {
-      id: nodeId,
-      type: 'image',
-      position: nodePosition,
+        const placeholder: ImageElement = {
+          id: nodeId,
+          type: 'image',
+          position: nodePosition,
       size: nodeSize,
-      src: '',
-      uploadState: 'syncing',
-      uploadMessage: `正在生成分镜...`,
-      generatedFrom: {
-        type: selectedImages.length > 0 ? 'image-to-image' : 'input',
-        prompt: prompt,
-        sourceIds: selectedImages.map(img => img.id),
-      },
+          src: '',
+          uploadState: 'syncing',
+          uploadMessage: `正在生成分镜...`,
+          generatedFrom: {
+            type: selectedImages.length > 0 ? 'image-to-image' : 'input',
+            prompt: prompt,
+            sourceIds: selectedImages.map(img => img.id),
+          },
       // 行级注释：Stack 模式字段
       images: emptyImages,
       mainIndex: 0,
       expanded: false,
-    };
+        };
 
-    addElement(placeholder);
-    placeholderIds.push(nodeId);
+        addElement(placeholder);
+        placeholderIds.push(nodeId);
   }
 
   // 行级注释：如果有参考图，创建连线
@@ -631,8 +631,8 @@ export async function generateSmartStoryboard(
         if (imageUrlForUpscale && imageUrlForUpscale.startsWith('http')) {
           // 行级注释：更新对应 Stack 节点的消息
           updateElement(placeholderIds[g], {
-            uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
-          } as Partial<ImageElement>);
+              uploadMessage: `正在高清放大 (${g + 1}/${gridImages.length})...`,
+            } as Partial<ImageElement>);
 
           console.log(`📸 正在放大网格图 ${g + 1}/${gridImages.length}, URL: ${imageUrlForUpscale}`);
 
@@ -671,16 +671,16 @@ export async function generateSmartStoryboard(
       // 行级注释：并行上传当前 Stack 的所有切片
       const uploadedImages: ImageData[] = await Promise.all(
         stackSlices.map(async (slicedBase64, index) => {
-          try {
-            const pureBase64 = extractBase64FromDataUrl(slicedBase64);
-            const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
+        try {
+          const pureBase64 = extractBase64FromDataUrl(slicedBase64);
+          const uploadResult = await registerUploadedImage(pureBase64, flowAspectRatio);
 
             return {
-              src: slicedBase64,
-              base64: pureBase64,
-              mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
-              mediaGenerationId: uploadResult.mediaGenerationId || undefined,
-              caption: uploadResult.caption,
+            src: slicedBase64,
+            base64: pureBase64,
+            mediaId: uploadResult.mediaId || uploadResult.mediaGenerationId || undefined,
+            mediaGenerationId: uploadResult.mediaGenerationId || undefined,
+            caption: uploadResult.caption,
               uploadState: 'synced' as const,
             };
           } catch (uploadError) {
@@ -702,11 +702,11 @@ export async function generateSmartStoryboard(
         mediaId: mainImage.mediaId,
         mediaGenerationId: mainImage.mediaGenerationId,
         caption: mainImage.caption,
-        uploadState: 'synced',
-        uploadMessage: undefined,
+            uploadState: 'synced',
+            uploadMessage: undefined,
         images: uploadedImages,
         mainIndex: 0,
-      } as Partial<ImageElement>);
+          } as Partial<ImageElement>);
     }
 
     // 行级注释：停止连线动画

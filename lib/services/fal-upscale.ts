@@ -43,11 +43,13 @@ export function isUpscaleEnabled(): boolean {
  *
  * @param imageUrl 原始图片 URL
  * @param resolution 目标分辨率 ('2K' | '4K')
+ * @param apiKey 可选的用户 API Key（优先使用用户的，其次服务端环境变量）
  * @returns 放大后的图片 URL
  */
 export async function upscaleImage(
   imageUrl: string,
-  resolution: '2K' | '4K' = STORYBOARD_UPSCALE_RESOLUTION
+  resolution: '2K' | '4K' = STORYBOARD_UPSCALE_RESOLUTION,
+  apiKey?: string
 ): Promise<UpscaleResult> {
   // 行级注释：如果功能未启用，直接返回原图
   if (!isUpscaleEnabled()) {
@@ -65,7 +67,7 @@ export async function upscaleImage(
       console.log(`📸 开始放大图片到 ${resolution}...`);
     }
 
-    // 行级注释：API Key 在服务端从环境变量读取，不从客户端传递
+    // 行级注释：如果有用户 API Key 则传递，否则使用服务端环境变量
     const response: Response = await fetch('/api/fal/upscale', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,6 +75,7 @@ export async function upscaleImage(
         imageUrl,
         resolution,
         syncMode: true,
+        apiKey, // 行级注释：传递用户的 API Key（可选）
       }),
     });
 
@@ -82,7 +85,7 @@ export async function upscaleImage(
     }
 
     const result = await response.json();
-    
+
     console.log('📦 fal.ai 返回结果:', JSON.stringify(result, null, 2));
 
     if (!result.success) {

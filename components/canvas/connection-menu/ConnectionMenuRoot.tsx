@@ -135,32 +135,32 @@ export default function ConnectionMenuRoot({
                 const disabledReason = isHailuoOrSora2 ? '海螺和 Sora2 视频不支持此功能' : undefined;
                 
                 return (
-                  <>
-                    <MenuButton
-                      icon={Camera}
-                      label="镜头控制"
-                      color="purple"
-                      onClick={callbacks.onShowCameraControlSubmenu}
+              <>
+                <MenuButton
+                  icon={Camera}
+                  label="镜头控制"
+                  color="purple"
+                  onClick={callbacks.onShowCameraControlSubmenu}
                       disabled={isHailuoOrSora2}
                       disabledReason={disabledReason}
-                    />
-                    <MenuButton
-                      icon={Move}
-                      label="镜头位置"
-                      color="purple"
-                      onClick={callbacks.onShowCameraPositionSubmenu}
+                />
+                <MenuButton
+                  icon={Move}
+                  label="镜头位置"
+                  color="purple"
+                  onClick={callbacks.onShowCameraPositionSubmenu}
                       disabled={isHailuoOrSora2}
                       disabledReason={disabledReason}
-                    />
-                    <MenuButton
-                      icon={Sparkles}
-                      label="延长视频"
-                      color="purple"
-                      onClick={callbacks.onShowExtendVideoSubmenu}
+                />
+                <MenuButton
+                  icon={Sparkles}
+                  label="延长视频"
+                  color="purple"
+                  onClick={callbacks.onShowExtendVideoSubmenu}
                       disabled={isHailuoOrSora2}
                       disabledReason={disabledReason}
-                    />
-                  </>
+                />
+              </>
                 );
               })()
             )}
