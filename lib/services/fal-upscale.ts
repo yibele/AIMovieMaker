@@ -7,7 +7,6 @@
 import {
   ENABLE_STORYBOARD_UPSCALE,
   STORYBOARD_UPSCALE_RESOLUTION,
-  DEBUG_MODE,
 } from '@/lib/config/features';
 
 // 行级注释：放大结果类型
@@ -55,9 +54,6 @@ export async function upscaleImage(
   const shouldUpscale = apiKey ? true : isUpscaleEnabled();
   
   if (!shouldUpscale) {
-    if (DEBUG_MODE) {
-      console.log('⚠️ 高清放大功能未启用，返回原图');
-    }
     return {
       success: true,
       imageUrl: imageUrl,
@@ -65,10 +61,6 @@ export async function upscaleImage(
   }
 
   try {
-    if (DEBUG_MODE) {
-      console.log(`📸 开始放大图片到 ${resolution}...`);
-    }
-
     // 行级注释：如果有用户 API Key 则传递，否则使用服务端环境变量
     const response: Response = await fetch('/api/fal/upscale', {
       method: 'POST',
@@ -77,7 +69,7 @@ export async function upscaleImage(
         imageUrl,
         resolution,
         syncMode: true,
-        apiKey, // 行级注释：传递用户的 API Key（可选）
+        apiKey,
       }),
     });
 
@@ -88,8 +80,6 @@ export async function upscaleImage(
 
     const result = await response.json();
 
-    console.log('📦 fal.ai 返回结果:', JSON.stringify(result, null, 2));
-
     if (!result.success) {
       throw new Error('放大请求失败');
     }
@@ -99,19 +89,14 @@ export async function upscaleImage(
       throw new Error('放大返回的 imageUrl 为空');
     }
 
-    if (DEBUG_MODE) {
-      console.log(`✅ 图片放大完成: ${result.data.width}x${result.data.height}, URL: ${upscaledUrl}`);
-    }
-
     return {
       success: true,
       imageUrl: upscaledUrl,
     };
   } catch (error: any) {
-    console.error('❌ 图片放大失败:', error);
     return {
       success: false,
-      imageUrl: imageUrl,  // 行级注释：失败时返回原图，保证流程继续
+      imageUrl: imageUrl,
       error: error.message,
     };
   }

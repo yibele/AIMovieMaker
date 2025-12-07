@@ -457,16 +457,13 @@ function ImageNode({ data, selected, id }: NodeProps) {
         throw new Error(upscaleResult.error || '放大失败');
       }
 
-      toast.loading('正在上传到 Flow...', { id: toastId });
-
-      // 行级注释：下载放大后的图片并转为 base64，用于上传到 Flow
+      // 行级注释：下载放大后的图片并转为 base64
       const response = await fetch(upscaleResult.imageUrl);
       const blob = await response.blob();
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
-          // 去掉 data:image/xxx;base64, 前缀
           const base64Only = result.split(',')[1] || result;
           resolve(base64Only);
         };
@@ -474,10 +471,10 @@ function ImageNode({ data, selected, id }: NodeProps) {
         reader.readAsDataURL(blob);
       });
 
-      // 行级注释：上传到 Flow（会抛出异常如果失败）
+      // 行级注释：上传到云端（会抛出异常如果失败）
       const uploadResult = await uploadToFlow(base64Data);
 
-      // 行级注释：创建新的高清图片节点
+      // 行级注释：创建新的高清图片节点（直接创建完整节点，不使用 placeholder）
       const newNodeId = `image-${Date.now()}`;
       const newNode: ImageElement = {
         id: newNodeId,
@@ -486,7 +483,7 @@ function ImageNode({ data, selected, id }: NodeProps) {
         base64: base64Data,
         mediaId: uploadResult.mediaId || undefined,
         mediaGenerationId: uploadResult.mediaGenerationId || undefined,
-        caption: imageData.caption ? `${imageData.caption} (高清放大)` : '高清放大图片',
+        caption: imageData.caption ? `${imageData.caption} (高清)` : '高清图片',
         uploadState: 'synced',
         position: {
           x: imageData.position.x + (imageData.size?.width || 320) + 30,
@@ -513,13 +510,12 @@ function ImageNode({ data, selected, id }: NodeProps) {
           type: 'default',
           style: { stroke: '#22c55e', strokeWidth: 2 },
           animated: true,
-          label: '高清放大',
+          label: '高清',
         });
       }, 200);
 
       toast.success('高清放大完成', { id: toastId });
     } catch (error: any) {
-      console.error('高清放大失败:', error);
       toast.error(error.message || '高清放大失败', { id: toastId });
     } finally {
       setIsUpscaling(false);
