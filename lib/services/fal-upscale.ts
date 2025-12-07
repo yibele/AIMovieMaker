@@ -51,8 +51,10 @@ export async function upscaleImage(
   resolution: '2K' | '4K' = STORYBOARD_UPSCALE_RESOLUTION,
   apiKey?: string
 ): Promise<UpscaleResult> {
-  // 行级注释：如果功能未启用，直接返回原图
-  if (!isUpscaleEnabled()) {
+  // 行级注释：用户传入 apiKey 时直接启用，否则检查系统配置
+  const shouldUpscale = apiKey ? true : isUpscaleEnabled();
+  
+  if (!shouldUpscale) {
     if (DEBUG_MODE) {
       console.log('⚠️ 高清放大功能未启用，返回原图');
     }
