@@ -11,11 +11,54 @@ import { createPortal } from 'react-dom';
 // 行级注释：音频节点默认尺寸
 const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 200 };
 
-// 行级注释：预设的音色列表
-const VOICE_OPTIONS: AudioVoice[] = [
-  { id: 'hunyin_6', name: '浑音6号', description: '成熟男声' },
-  { id: 'Arrogant_Miss', name: '傲娇小姐', description: '傲娇女声' },
+// 行级注释：音色分组类型
+type VoiceGroup = {
+  label: string;
+  items: AudioVoice[];
+};
+
+// 行级注释：预设的音色分组列表
+const VOICE_GROUPS: VoiceGroup[] = [
+  {
+    label: '男生',
+    items: [
+      { id: 'Chinese (Mandarin)_Reliable_Executive', name: '沉稳高管', description: '沉稳可靠/值得信赖' },
+      { id: 'Chinese (Mandarin)_Unrestrained_Young_Man', name: '不羁青年', description: '潇洒不羁/个性' },
+      { id: 'Chinese (Mandarin)_Radio_Host', name: '电台男主播', description: '富有诗意/引人入胜' },
+      { id: 'Chinese (Mandarin)_Gentleman', name: '温润男声', description: '温润磁性/标准' },
+      { id: 'Chinese (Mandarin)_Stubborn_Friend', name: '嘴硬竹马', description: '嘴硬心软/角色' },
+    ]
+  },
+  {
+    label: '女生',
+    items: [
+      { id: 'Arrogant_Miss', name: '嚣张小姐', description: '嚣张自信/优越感' },
+      { id: 'Chinese (Mandarin)_News_Anchor', name: '新闻女声', description: '专业播音/标准' },
+      { id: 'Chinese (Mandarin)_Sweet_Lady', name: '甜美女声', description: '温柔甜美/亲切' },
+      { id: 'Chinese (Mandarin)_Gentle_Senior', name: '温柔学姐', description: '温暖温柔/知性' },
+      { id: 'Chinese (Mandarin)_Mature_Woman', name: '傲娇御姐', description: '妩媚成熟/御姐' },
+    ]
+  },
+  {
+    label: '少年/特色',
+    items: [
+      { id: 'Chinese (Mandarin)_Pure-hearted_Boy', name: '清澈邻家弟弟', description: '认真清澈/少年' },
+      { id: 'Chinese (Mandarin)_Cute_Spirit', name: '憨憨萌兽', description: '呆萌可爱/角色' },
+      { id: 'Robot_Armor', name: '机械战甲', description: '电子音/科幻' },
+      { id: 'Chinese (Mandarin)_Southern_Young_Man', name: '南方小哥', description: '质朴/南方口音' },
+    ]
+  },
+  {
+    label: '长辈',
+    items: [
+      { id: 'Chinese (Mandarin)_Humorous_Elder', name: '搞笑大爷', description: '爽朗幽默/北方口音' },
+      { id: 'Chinese (Mandarin)_Kind-hearted_Elder', name: '花甲奶奶', description: '慈祥和蔼/温暖' },
+    ]
+  }
 ];
+
+// 行级注释：扁平化的音色列表，用于查找
+const ALL_VOICES = VOICE_GROUPS.flatMap(group => group.items);
 
 // 行级注释：情绪选项
 const EMOTION_OPTIONS: Array<{ id: string; name: string }> = [
@@ -36,7 +79,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [textInput, setTextInput] = useState(audioData.text || '');
-  const [selectedVoice, setSelectedVoice] = useState(audioData.voiceId || VOICE_OPTIONS[0].id);
+  const [selectedVoice, setSelectedVoice] = useState(audioData.voiceId || ALL_VOICES[0].id);
   const [selectedEmotion, setSelectedEmotion] = useState<string>(audioData.emotion || 'calm');
   const [isVoiceMenuOpen, setIsVoiceMenuOpen] = useState(false);
   const [isEmotionMenuOpen, setIsEmotionMenuOpen] = useState(false);
@@ -56,7 +99,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
 
   // 行级注释：获取当前选中的音色信息
   const currentVoice = useMemo(() => {
-    return VOICE_OPTIONS.find(v => v.id === selectedVoice) || VOICE_OPTIONS[0];
+    return ALL_VOICES.find(v => v.id === selectedVoice) || ALL_VOICES[0];
   }, [selectedVoice]);
 
   // 行级注释：获取当前选中的情绪信息
@@ -516,29 +559,37 @@ function AudioNode({ data, selected, id }: NodeProps) {
       {isVoiceMenuOpen && voiceMenuPosition && typeof document !== 'undefined' && createPortal(
         <div
           data-dropdown-menu="voice"
-          className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
+          className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
           style={{
             top: voiceMenuPosition.top - 4,
             left: voiceMenuPosition.left,
-            width: voiceMenuPosition.width,
+            width: voiceMenuPosition.width * 1.5, // 加宽一点以显示完整信息
+            minWidth: 160,
             transform: 'translateY(-100%)',
             zIndex: 9999,
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          {VOICE_OPTIONS.map((voice) => (
-            <button
-              key={voice.id}
-              onClick={() => handleVoiceSelect(voice.id)}
-              className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 ${
-                selectedVoice === voice.id ? 'bg-violet-50 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300' : 'text-gray-700 dark:text-slate-300'
-              }`}
-            >
-              <div className="font-medium">{voice.name}</div>
-              {voice.description && (
-                <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{voice.description}</div>
-              )}
-            </button>
+          {VOICE_GROUPS.map((group, groupIndex) => (
+            <div key={group.label} className={groupIndex > 0 ? 'border-t border-gray-100 dark:border-white/5' : ''}>
+              <div className="px-3 py-1.5 text-[9px] font-semibold text-gray-400 dark:text-slate-500 bg-gray-50/80 dark:bg-slate-900/50 sticky top-0 z-10 backdrop-blur-sm">
+                {group.label}
+              </div>
+              {group.items.map((voice) => (
+                <button
+                  key={voice.id}
+                  onClick={() => handleVoiceSelect(voice.id)}
+                  className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border-b border-gray-50 dark:border-white/5 last:border-0 ${
+                    selectedVoice === voice.id ? 'bg-violet-50 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300' : 'text-gray-700 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="font-medium">{voice.name}</div>
+                  {voice.description && (
+                    <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{voice.description}</div>
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
         </div>,
         document.body
