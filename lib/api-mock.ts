@@ -266,6 +266,7 @@ async function generateImageWithFlow(params: {
 
   return {
     imageUrl,
+    base64: primaryImage.encodedImage, // 行级注释：顶层也返回 base64，供单图兼容格式使用
     mediaId: primaryImage.mediaId ?? data.mediaId,
     mediaGenerationId:
       primaryImage.mediaGenerationId ?? data.mediaGenerationId,
@@ -273,9 +274,10 @@ async function generateImageWithFlow(params: {
     sessionId: data.sessionId ?? sessionId,
     translatedPrompt: primaryImage.prompt || prompt,
     seed: primaryImage.seed ?? seed,
-    // 行级注释：批量生成的图片列表，优先使用 fifeUrl
+    // 行级注释：批量生成的图片列表，优先使用 fifeUrl，同时保留 base64 供持久化存储
     images: mappedImages.map((img) => ({
       imageUrl: img.fifeUrl || `data:${img.mimeType};base64,${img.encodedImage}`,
+      base64: img.encodedImage, // 行级注释：保留 base64 数据，避免远程 URL 过期后图片无法加载
       mediaId: img.mediaId,
       mediaGenerationId: img.mediaGenerationId,
       workflowId: img.workflowId,

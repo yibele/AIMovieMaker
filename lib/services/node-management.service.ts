@@ -522,8 +522,9 @@ export function updateImagePlaceholders(
     
     if (existingNode?.images) {
       // 行级注释：Stack 模式 - 更新 images 数组
+      // 行级注释：优先使用 base64 作为 src，避免远程 URL 过期导致图片无法加载
       const updatedImages: ImageData[] = images.map(img => ({
-        src: img.imageUrl || (img.base64 ? `data:image/png;base64,${img.base64}` : ''),
+        src: img.base64 ? `data:image/png;base64,${img.base64}` : (img.imageUrl || ''),
         base64: img.base64,
         mediaId: img.mediaId,
         mediaGenerationId: img.mediaGenerationId,
@@ -552,8 +553,9 @@ export function updateImagePlaceholders(
     const imageData = images[index];
     if (!imageData) return;
     
+    // 行级注释：优先使用 base64 作为 src，避免远程 URL 过期导致图片无法加载
     updateElement(id, {
-      src: imageData.imageUrl || (imageData.base64 ? `data:image/png;base64,${imageData.base64}` : ''),
+      src: imageData.base64 ? `data:image/png;base64,${imageData.base64}` : (imageData.imageUrl || ''),
       base64: imageData.base64,
       mediaId: imageData.mediaId,
       mediaGenerationId: imageData.mediaGenerationId,

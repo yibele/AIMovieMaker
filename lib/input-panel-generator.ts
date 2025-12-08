@@ -91,9 +91,10 @@ export async function generateFromInput(
         }
       });
     } else {
-      // 行级注释：兼容单图返回格式
+      // 行级注释：兼容单图返回格式，同时传递 base64 供持久化存储
       updateImagePlaceholders([placeholderIds[0]], [{
         imageUrl: result.imageUrl,
+        base64: (result as any).base64, // 行级注释：传递 base64 数据
         mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
         mediaGenerationId: result.mediaGenerationId,
       }]);
@@ -222,9 +223,10 @@ export async function imageToImageFromInput(
         ));
       }
     } else {
-      // 行级注释：兼容单图返回格式
+      // 行级注释：兼容单图返回格式，同时传递 base64 供持久化存储
       updateImagePlaceholders([placeholderIds[0]], [{
         imageUrl: result.imageUrl,
+        base64: (result as any).base64, // 行级注释：传递 base64 数据
         mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
         mediaGenerationId: result.mediaGenerationId,
       }]);
@@ -364,9 +366,10 @@ export async function multiImageRecipeFromInput(
         );
       }
     } else {
-      // 行级注释：兼容单图返回格式
+      // 行级注释：兼容单图返回格式，同时传递 base64 供持久化存储
       updateImagePlaceholders([placeholderIds[0]], [{
         imageUrl: result.imageUrl,
+        base64: (result as any).base64, // 行级注释：传递 base64 数据
         mediaId: resolveMediaId(result.mediaId, result.mediaGenerationId),
         mediaGenerationId: result.mediaGenerationId,
       }]);

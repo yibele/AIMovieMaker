@@ -5,12 +5,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Edge } from '@xyflow/react';
-import { CanvasElement } from '@/lib/types';
+import { CanvasElement, VideoElement } from '@/lib/types';
 import {
   saveCanvasSnapshot,
   loadCanvasSnapshot,
   CanvasSnapshot,
 } from '@/lib/canvas-db';
+import { useCanvasStore } from '@/lib/store';
+import { refreshVideoUrls } from '@/lib/services/video-url-refresh.service';
 
 // 行级注释：Hook 配置选项
 interface UseCanvasPersistenceOptions {
@@ -123,6 +125,16 @@ export function useCanvasPersistence(
           onRestore(snapshot.elements, snapshot.edges);
           setLastSaved(snapshot.updatedAt);
           hasLoadedRef.current = true;
+
+          // 行级注释：【关键】画布恢复后，异步刷新视频 URL（不阻塞画布加载）
+          const videoNodes = snapshot.elements.filter(
+            (el): el is VideoElement => el.type === 'video' && el.status === 'ready'
+          );
+
+          if (videoNodes.length > 0) {
+            // 行级注释：异步执行，不阻塞
+            refreshVideoUrlsInBackground(videoNodes);
+          }
         } else {
           console.log(`ℹ️ 无保存的画布数据: ${projectId}，清空画布`);
           // 行级注释：关键修复！新项目没有数据时，必须清空画布，避免显示其他项目的内容
@@ -139,6 +151,36 @@ export function useCanvasPersistence(
 
     loadAndRestore();
   }, [projectId, onRestore]);
+
+  // 行级注释：后台刷新视频 URL（不阻塞画布加载）
+  const refreshVideoUrlsInBackground = useCallback(async (videoNodes: VideoElement[]) => {
+    const { apiConfig, updateElement } = useCanvasStore.getState();
+    const { cookie, projectId: flowProjectId } = apiConfig;
+
+    // 行级注释：检查是否配置了 cookie 和 projectId
+    if (!cookie?.trim() || !flowProjectId?.trim()) {
+      console.log('ℹ️ 未配置 Cookie 或 Project ID，跳过视频 URL 刷新');
+      return;
+    }
+
+    console.log(`🔄 后台刷新 ${videoNodes.length} 个视频的 URL...`);
+
+    try {
+      await refreshVideoUrls(
+        videoNodes,
+        flowProjectId,
+        cookie,
+        (videoId, updates) => {
+          // 行级注释：只更新 src 和 thumbnail，其他字段不动
+          updateElement(videoId, updates as Partial<VideoElement>);
+        },
+        4 // 行级注释：4 个并发
+      );
+    } catch (error) {
+      console.error('❌ 视频 URL 刷新失败:', error);
+      // 行级注释：刷新失败不影响画布使用，静默处理
+    }
+  }, []);
 
   // 行级注释：自动保存逻辑（带防抖）
   useEffect(() => {
