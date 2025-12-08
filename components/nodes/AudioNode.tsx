@@ -3,10 +3,9 @@
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Play, Pause, Volume2, Send, Trash2, ChevronDown, Loader2 } from 'lucide-react';
-import type { AudioElement, AudioVoice, AUDIO_VOICES } from '@/lib/types';
+import type { AudioElement, AudioVoice } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { getCachedSession } from '@/lib/supabaseClient';
 
 // 行级注释：音频节点默认尺寸
 const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 160 };
@@ -87,7 +86,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
     };
   }, []);
 
-  // 行级注释：生成语音
+  // 行级注释：生成语音（直接从客户端调用 MiniMax API，不走服务器）
   const handleGenerate = useCallback(async () => {
     const text = textInput.trim();
     if (!text) {
@@ -95,7 +94,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       return;
     }
 
-    // 行级注释：检查 API Key
+    // 行级注释：检查 API Key（保存在本地）
     const minimaxApiKey = apiConfig.minimaxApiKey;
     if (!minimaxApiKey?.trim()) {
       toast.error('请先在设置中配置 MiniMax API Key');
@@ -110,28 +109,71 @@ function AudioNode({ data, selected, id }: NodeProps) {
     } as Partial<AudioElement>);
 
     try {
-      const response = await fetch('/api/tts/minimax', {
+      // 行级注释：直接调用 MiniMax TTS API
+      const payload = {
+        model: 'speech-02-hd',  // 行级注释：使用稳定的模型版本
+        text: text,
+        stream: false,
+        voice_setting: {
+          voice_id: selectedVoice,
+          speed: 1,
+          vol: 1,
+          pitch: 0,
+        },
+        audio_setting: {
+          sample_rate: 32000,
+          bitrate: 128000,
+          format: 'mp3',
+          channel: 1,
+        },
+        output_format: 'url',  // 行级注释：返回 URL，有效期 24 小时
+      };
+
+      console.log('🎤 MiniMax TTS 请求:', { voiceId: selectedVoice, textLength: text.length });
+
+      const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          voiceId: selectedVoice,
-          apiKey: minimaxApiKey,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${minimaxApiKey}`,
+        },
+        body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || '语音合成失败');
+      // 行级注释：检查返回状态
+      if (data.base_resp?.status_code !== 0) {
+        const errorMsg = data.base_resp?.status_msg || '语音合成失败';
+        console.error('❌ MiniMax TTS 错误:', data.base_resp);
+        throw new Error(errorMsg);
       }
+
+      // 行级注释：提取音频数据
+      const audioData = data.data;
+      const extraInfo = data.extra_info || {};
+
+      if (!audioData?.audio) {
+        throw new Error('未返回音频数据');
+      }
+
+      console.log('✅ MiniMax TTS 成功:', {
+        duration: extraInfo.audio_length,
+        wordCount: extraInfo.word_count,
+      });
 
       // 行级注释：更新节点数据
       updateElement(id, {
         status: 'ready',
-        src: result.audioUrl,
-        duration: result.duration,
-        audioInfo: result.audioInfo,
+        src: audioData.audio,  // output_format=url 时返回的是 URL
+        duration: extraInfo.audio_length || 0,  // 毫秒
+        audioInfo: {
+          sampleRate: extraInfo.audio_sample_rate,
+          bitrate: extraInfo.bitrate,
+          format: extraInfo.audio_format || 'mp3',
+          wordCount: extraInfo.word_count,
+          audioSize: extraInfo.audio_size,
+        },
       } as Partial<AudioElement>);
 
       toast.success('语音合成完成');
