@@ -10,12 +10,11 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
   : null;
 
 // 行级注释：API Key 配置字段映射（前端字段名 -> 数据库字段名）
+// 行级注释：只保存用户自己配置的 API Key，不包含平台提供的 dashScopeApiKey 和 accountTier
 const API_KEY_FIELDS = {
-  dashScopeApiKey: 'dashscope_api_key',
   hailuoApiKey: 'hailuo_api_key',
   sora2ApiKey: 'sora2_api_key',
   falApiKey: 'fal_api_key',
-  accountTier: 'account_tier',
 } as const;
 
 // 行级注释：反向映射（数据库字段名 -> 前端字段名）

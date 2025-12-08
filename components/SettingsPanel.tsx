@@ -6,13 +6,11 @@ import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
-// 行级注释：从云端加载用户的 API Key 配置
+// 行级注释：从云端加载用户的 API Key 配置（只加载用户自己配置的 Key）
 async function loadApiKeysFromCloud(accessToken: string): Promise<{
-  dashScopeApiKey?: string;
   hailuoApiKey?: string;
   sora2ApiKey?: string;
   falApiKey?: string;
-  accountTier?: 'pro' | 'ultra';
 } | null> {
   try {
     const response = await fetch('/api/user/apikey', {
@@ -35,15 +33,13 @@ async function loadApiKeysFromCloud(accessToken: string): Promise<{
   }
 }
 
-// 行级注释：保存用户的 API Key 配置到云端
+// 行级注释：保存用户的 API Key 配置到云端（只保存用户自己配置的 Key）
 async function saveApiKeysToCloud(
   accessToken: string,
   apiKeys: {
-    dashScopeApiKey?: string;
     hailuoApiKey?: string;
     sora2ApiKey?: string;
     falApiKey?: string;
-    accountTier?: string;
   }
 ): Promise<boolean> {
   try {
@@ -105,13 +101,9 @@ export default function SettingsPanel() {
       
       const cloudKeys = await loadApiKeysFromCloud(session.access_token);
       if (cloudKeys) {
-        // 行级注释：用云端配置更新本地（只更新云端有值的字段）
+        // 行级注释：用云端配置更新本地（只更新云端有值且本地没有的字段）
         const updates: Record<string, string> = {};
         
-        if (cloudKeys.dashScopeApiKey && !apiConfig.dashScopeApiKey) {
-          updates.dashScopeApiKey = cloudKeys.dashScopeApiKey;
-          setDashScopeApiKey(cloudKeys.dashScopeApiKey);
-        }
         if (cloudKeys.hailuoApiKey && !apiConfig.hailuoApiKey) {
           updates.hailuoApiKey = cloudKeys.hailuoApiKey;
           setHailuoApiKey(cloudKeys.hailuoApiKey);
@@ -123,10 +115,6 @@ export default function SettingsPanel() {
         if (cloudKeys.falApiKey && !apiConfig.falApiKey) {
           updates.falApiKey = cloudKeys.falApiKey;
           setFalApiKey(cloudKeys.falApiKey);
-        }
-        if (cloudKeys.accountTier) {
-          updates.accountTier = cloudKeys.accountTier;
-          setAccountTier(cloudKeys.accountTier);
         }
         
         if (Object.keys(updates).length > 0) {
@@ -283,13 +271,11 @@ export default function SettingsPanel() {
       // 2. 同步 API Key 到云端（后台执行，不阻塞）
       const session = await getCachedSession();
       if (session) {
-        // 行级注释：只同步用户自己配置的 API Key，不包含 bearerToken/cookie 等托管凭证
+        // 行级注释：只同步用户自己配置的 API Key（海螺/Sora2/fal.ai）
         saveApiKeysToCloud(session.access_token, {
-          dashScopeApiKey: dashScopeApiKey.trim(),
           hailuoApiKey: hailuoApiKey.trim(),
           sora2ApiKey: sora2ApiKey.trim(),
           falApiKey: falApiKey.trim(),
-          accountTier,
         }).then((success) => {
           if (success) {
             console.log('✅ API Key 已同步到云端');
