@@ -326,9 +326,10 @@ function AudioNode({ data, selected, id }: NodeProps) {
   return (
     <div
       className={`
-        group relative rounded-xl overflow-hidden bg-slate-900 shadow-md border border-white/5
+        group relative rounded-xl overflow-hidden shadow-md border 
+        bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700
         transition-all duration-200
-        ${selected ? 'ring-2 ring-violet-500/50' : 'hover:border-white/10'}
+        ${selected ? 'ring-2 ring-violet-500/50' : 'hover:border-gray-300 dark:hover:border-slate-600'}
       `}
       style={{
         width: audioData.size?.width || AUDIO_NODE_DEFAULT_SIZE.width,
@@ -347,7 +348,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       {/* 顶部工具栏 - 极简常驻 */}
       <div className="absolute top-0 left-0 right-0 p-2 flex items-center justify-between z-20 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <div className="px-1.5 py-0.5 bg-black/20 backdrop-blur-sm rounded text-[10px] font-medium text-white/80 flex items-center gap-1">
+          <div className="px-1.5 py-0.5 bg-gray-100 dark:bg-black/20 backdrop-blur-sm rounded text-[10px] font-medium text-gray-600 dark:text-white/80 flex items-center gap-1">
             <Music className="w-3 h-3" />
             <span>TTS</span>
           </div>
@@ -356,7 +357,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
           {audioData.status === 'ready' && (
             <button
               onClick={handleDownload}
-              className="p-1 hover:bg-black/20 rounded text-white/70 hover:text-white transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-black/20 rounded text-gray-500 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition-colors"
               title="下载音频"
             >
               <Download className="w-3.5 h-3.5" />
@@ -364,7 +365,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
           )}
           <button
             onClick={handleDelete}
-            className="p-1 hover:bg-red-500/20 rounded text-white/70 hover:text-red-400 transition-colors"
+            className="p-1 hover:bg-red-50 dark:hover:bg-red-500/20 rounded text-gray-500 dark:text-white/70 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             title="删除节点"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -373,7 +374,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       </div>
 
       {/* 主内容区 */}
-      <div className="relative w-full h-full flex flex-col bg-slate-900">
+      <div className="relative w-full h-full flex flex-col bg-transparent">
         
         {shouldShowInputPanel ? (
           // 1. 生成前：文本输入 + 音色选择 + 情绪选择
@@ -383,7 +384,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder="输入要合成的文本..."
-                className="w-full h-full bg-transparent text-white/90 placeholder:text-white/30 text-xs resize-none focus:outline-none custom-scrollbar"
+                className="w-full h-full bg-transparent text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 text-xs resize-none focus:outline-none custom-scrollbar"
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               />
@@ -396,11 +397,11 @@ function AudioNode({ data, selected, id }: NodeProps) {
                 <button
                   ref={voiceButtonRef}
                   onClick={toggleVoiceMenu}
-                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-[10px] text-white/90 transition-colors border border-white/5"
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md text-[10px] text-gray-700 dark:text-white/90 transition-colors border border-gray-200 dark:border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentVoice.name}</span>
-                  <ChevronDown className={`w-3 h-3 ml-1 text-white/50 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className="w-3 h-3 ml-1 text-gray-400 dark:text-white/50 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}" />
                 </button>
               </div>
 
@@ -409,11 +410,11 @@ function AudioNode({ data, selected, id }: NodeProps) {
                 <button
                   ref={emotionButtonRef}
                   onClick={toggleEmotionMenu}
-                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-[10px] text-white/90 transition-colors border border-white/5"
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md text-[10px] text-gray-700 dark:text-white/90 transition-colors border border-gray-200 dark:border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentEmotion.name}</span>
-                  <ChevronDown className={`w-3 h-3 ml-1 text-white/50 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className="w-3 h-3 ml-1 text-gray-400 dark:text-white/50 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}" />
                 </button>
               </div>
 
@@ -439,11 +440,11 @@ function AudioNode({ data, selected, id }: NodeProps) {
             
             {/* 文本预览 */}
             <div className="flex-1 overflow-hidden relative">
-              <p className="text-xs text-white/80 font-medium leading-relaxed h-full overflow-y-auto custom-scrollbar pr-1">
+              <p className="text-xs text-gray-700 dark:text-white/80 font-medium leading-relaxed h-full overflow-y-auto custom-scrollbar pr-1">
                 {audioData.text}
               </p>
               {/* 底部渐变遮罩，提示可滚动 */}
-              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white dark:from-slate-800 to-transparent pointer-events-none" />
             </div>
 
             {/* 播放控制区 */}
@@ -462,13 +463,13 @@ function AudioNode({ data, selected, id }: NodeProps) {
 
               {/* 进度条 */}
               <div className="flex-1 flex flex-col justify-center gap-1">
-                <div className="relative h-1 bg-white/10 rounded-full overflow-hidden w-full">
+                <div className="relative h-1 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden w-full">
                   <div
                     className="absolute left-0 top-0 bottom-0 bg-violet-500 transition-all duration-100 rounded-full"
                     style={{ width: `${audioData.duration ? (currentTime / audioData.duration) * 100 : 0}%` }}
                   />
                 </div>
-                <div className="flex justify-between items-center text-[9px] font-mono text-white/40">
+                <div className="flex justify-between items-center text-[9px] font-mono text-gray-400 dark:text-white/40">
                   <span>{formatDuration(currentTime)}</span>
                   <span>{formatDuration(audioData.duration || 0)}</span>
                 </div>
@@ -515,7 +516,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       {isVoiceMenuOpen && voiceMenuPosition && typeof document !== 'undefined' && createPortal(
         <div
           data-dropdown-menu="voice"
-          className="fixed bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
+          className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
           style={{
             top: voiceMenuPosition.top - 4,
             left: voiceMenuPosition.left,
@@ -529,13 +530,13 @@ function AudioNode({ data, selected, id }: NodeProps) {
             <button
               key={voice.id}
               onClick={() => handleVoiceSelect(voice.id)}
-              className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
-                selectedVoice === voice.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+              className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 ${
+                selectedVoice === voice.id ? 'bg-violet-50 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300' : 'text-gray-700 dark:text-slate-300'
               }`}
             >
               <div className="font-medium">{voice.name}</div>
               {voice.description && (
-                <div className="text-[10px] text-slate-500 mt-0.5">{voice.description}</div>
+                <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{voice.description}</div>
               )}
             </button>
           ))}
@@ -547,7 +548,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       {isEmotionMenuOpen && emotionMenuPosition && typeof document !== 'undefined' && createPortal(
         <div
           data-dropdown-menu="emotion"
-          className="fixed bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
+          className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
           style={{
             top: emotionMenuPosition.top - 4,
             left: emotionMenuPosition.left,
@@ -561,8 +562,8 @@ function AudioNode({ data, selected, id }: NodeProps) {
             <button
               key={emotion.id}
               onClick={() => handleEmotionSelect(emotion.id)}
-              className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
-                selectedEmotion === emotion.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+              className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-100 dark:hover:bg-white/10 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 ${
+                selectedEmotion === emotion.id ? 'bg-violet-50 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300' : 'text-gray-700 dark:text-slate-300'
               }`}
             >
               <div className="font-medium">{emotion.name}</div>
