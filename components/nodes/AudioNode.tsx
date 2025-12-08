@@ -326,9 +326,9 @@ function AudioNode({ data, selected, id }: NodeProps) {
   return (
     <div
       className={`
-        group relative rounded-[20px] overflow-hidden bg-white shadow-xl
-        transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-        ${selected ? 'ring-4 ring-violet-500/30 scale-[1.02]' : 'hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1'}
+        group relative rounded-xl overflow-hidden bg-slate-900 shadow-md border border-white/5
+        transition-all duration-200
+        ${selected ? 'ring-2 ring-violet-500/50' : 'hover:border-white/10'}
       `}
       style={{
         width: audioData.size?.width || AUDIO_NODE_DEFAULT_SIZE.width,
@@ -344,19 +344,19 @@ function AudioNode({ data, selected, id }: NodeProps) {
         isConnectable={true}
       />
 
-      {/* 顶部工具栏 */}
-      <div className="absolute top-0 left-0 right-0 p-3 flex items-center justify-between z-20 bg-gradient-to-b from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <div className="flex items-center gap-2">
-          <div className="px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium text-white flex items-center gap-1">
+      {/* 顶部工具栏 - 极简常驻 */}
+      <div className="absolute top-0 left-0 right-0 p-2 flex items-center justify-between z-20 pointer-events-none">
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="px-1.5 py-0.5 bg-black/20 backdrop-blur-sm rounded text-[10px] font-medium text-white/80 flex items-center gap-1">
             <Music className="w-3 h-3" />
             <span>TTS</span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 pointer-events-auto">
           {audioData.status === 'ready' && (
             <button
               onClick={handleDownload}
-              className="p-1.5 bg-black/40 backdrop-blur-md hover:bg-black/60 rounded-lg text-white transition-colors"
+              className="p-1 hover:bg-black/20 rounded text-white/70 hover:text-white transition-colors"
               title="下载音频"
             >
               <Download className="w-3.5 h-3.5" />
@@ -364,7 +364,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
           )}
           <button
             onClick={handleDelete}
-            className="p-1.5 bg-black/40 backdrop-blur-md hover:bg-red-500/80 rounded-lg text-white transition-colors"
+            className="p-1 hover:bg-red-500/20 rounded text-white/70 hover:text-red-400 transition-colors"
             title="删除节点"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -373,125 +373,105 @@ function AudioNode({ data, selected, id }: NodeProps) {
       </div>
 
       {/* 主内容区 */}
-      <div className="relative w-full h-full flex flex-col bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="relative w-full h-full flex flex-col bg-slate-900">
         
         {shouldShowInputPanel ? (
           // 1. 生成前：文本输入 + 音色选择 + 情绪选择
-          <div className="flex-1 flex flex-col p-4">
-            <div className="flex-1 relative">
+          <div className="flex-1 flex flex-col p-3 pt-8">
+            <div className="flex-1 relative mb-2">
               <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder="输入要合成的文本..."
-                className="w-full h-full bg-transparent text-white/90 placeholder:text-white/30 text-sm resize-none focus:outline-none custom-scrollbar"
+                className="w-full h-full bg-transparent text-white/90 placeholder:text-white/30 text-xs resize-none focus:outline-none custom-scrollbar"
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               />
             </div>
             
-            {/* 音色 + 情绪选择器 */}
-            <div className="mt-2 flex items-center gap-2">
+            {/* 底部控制栏 */}
+            <div className="flex items-center gap-2 h-8">
               {/* 音色选择 */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <button
                   ref={voiceButtonRef}
                   onClick={toggleVoiceMenu}
-                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-[10px] text-white/90 transition-colors border border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentVoice.name}</span>
-                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 ml-1 text-white/50 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
               </div>
 
               {/* 情绪选择 */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <button
                   ref={emotionButtonRef}
                   onClick={toggleEmotionMenu}
-                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-[10px] text-white/90 transition-colors border border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentEmotion.name}</span>
-                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 ml-1 text-white/50 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
               </div>
-            </div>
 
-            {/* 生成按钮 */}
-            <div className="mt-2">
+              {/* 生成按钮 - 极简 Icon */}
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !textInput.trim()}
-                className="w-full px-4 py-2 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all flex items-center justify-center gap-2 text-sm"
+                className="w-8 h-8 flex-shrink-0 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md shadow-lg shadow-violet-500/20 transition-all flex items-center justify-center"
                 onMouseDown={(e) => e.stopPropagation()}
+                title="合成语音"
               >
                 {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>生成中...</span>
-                  </>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>合成语音</span>
-                  </>
+                  <Send className="w-4 h-4" />
                 )}
               </button>
             </div>
           </div>
         ) : (
-          // 2. 生成后：播放器视图
-          <div className="flex-1 flex flex-col relative">
-            {/* 音频可视化背景（模拟） */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-              <div className="flex gap-1 items-end h-16">
-                {[...Array(12)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-3 bg-violet-400 rounded-t-sm transition-all duration-300 ${
-                      isPlaying ? 'animate-pulse' : ''
-                    }`}
-                    style={{
-                      height: `${30 + Math.random() * 70}%`,
-                      animationDelay: `${i * 0.1}s`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
+          // 2. 生成后：播放器视图 - 极简无动效
+          <div className="flex-1 flex flex-col relative p-3 pt-8">
+            
             {/* 文本预览 */}
-            <div className="relative z-10 p-4 pb-0">
-              <p className="text-xs text-white/70 line-clamp-2 font-medium leading-relaxed">
+            <div className="flex-1 overflow-hidden relative">
+              <p className="text-xs text-white/80 font-medium leading-relaxed h-full overflow-y-auto custom-scrollbar pr-1">
                 {audioData.text}
               </p>
+              {/* 底部渐变遮罩，提示可滚动 */}
+              <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
             </div>
 
-            {/* 播放控制 */}
-            <div className="flex-1 flex items-center justify-center relative z-10">
+            {/* 播放控制区 */}
+            <div className="mt-3 flex items-center gap-3">
               <button
                 onClick={handlePlayPause}
-                className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all group/btn border border-white/10"
+                className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-violet-500 hover:bg-violet-600 rounded-full text-white transition-all shadow-lg shadow-violet-500/20"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 {isPlaying ? (
-                  <Pause className="w-6 h-6 fill-current" />
+                  <Pause className="w-3.5 h-3.5 fill-current" />
                 ) : (
-                  <Play className="w-6 h-6 ml-1 fill-current" />
+                  <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />
                 )}
               </button>
-            </div>
 
-            {/* 进度条 */}
-            <div className="relative h-1 bg-white/10 w-full">
-              <div
-                className="absolute left-0 top-0 bottom-0 bg-violet-500 transition-all duration-100"
-                style={{ width: `${audioData.duration ? (currentTime / audioData.duration) * 100 : 0}%` }}
-              />
-              {/* 时间提示 */}
-              <div className="absolute bottom-2 left-3 text-[10px] font-mono text-white/50">
-                {formatDuration(currentTime)} / {formatDuration(audioData.duration || 0)}
+              {/* 进度条 */}
+              <div className="flex-1 flex flex-col justify-center gap-1">
+                <div className="relative h-1 bg-white/10 rounded-full overflow-hidden w-full">
+                  <div
+                    className="absolute left-0 top-0 bottom-0 bg-violet-500 transition-all duration-100 rounded-full"
+                    style={{ width: `${audioData.duration ? (currentTime / audioData.duration) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-mono text-white/40">
+                  <span>{formatDuration(currentTime)}</span>
+                  <span>{formatDuration(audioData.duration || 0)}</span>
+                </div>
               </div>
             </div>
 
