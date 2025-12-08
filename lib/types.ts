@@ -156,8 +156,10 @@ export interface AudioVoice {
 
 // 行级注释：预设的音色列表（MiniMax TTS）
 export const AUDIO_VOICES: AudioVoice[] = [
-  { id: 'hunyin_6', name: '浑音6号', description: '成熟男声' },
-  { id: 'Arrogant_Miss', name: '傲娇小姐', description: '傲娇女声' },
+  { id: 'Chinese (Mandarin)_Reliable_Executive', name: '沉稳高管', description: '沉稳可靠/值得信赖' },
+  { id: 'Chinese (Mandarin)_Unrestrained_Young_Man', name: '不羁青年', description: '潇洒不羁/个性' },
+  { id: 'Arrogant_Miss', name: '嚣张小姐', description: '嚣张自信/优越感' },
+  { id: 'Chinese (Mandarin)_News_Anchor', name: '新闻女声', description: '专业播音/标准' },
 ];
 
 // 音频情绪类型

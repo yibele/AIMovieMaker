@@ -76,9 +76,32 @@ function AudioNode({ data, selected, id }: NodeProps) {
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const voiceButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldAutoPlayRef = useRef(false); // 行级注释：标记是否应该自动播放（仅本次生成后触发）
   const updateElement = useCanvasStore((state) => state.updateElement);
   const deleteElement = useCanvasStore((state) => state.deleteElement);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
+
+  // 行级注释：同步外部 voiceId 到本地状态（保留用户的音色选择）
+  useEffect(() => {
+    if (audioData.voiceId && audioData.voiceId !== selectedVoice) {
+      setSelectedVoice(audioData.voiceId);
+    }
+  }, [audioData.voiceId]);
+
+  // 行级注释：生成完成后自动播放
+  useEffect(() => {
+    if (shouldAutoPlayRef.current && audioData.status === 'ready' && audioData.src && audioRef.current) {
+      shouldAutoPlayRef.current = false; // 重置标记
+      // 延迟一点播放，确保 audio 元素已加载
+      setTimeout(() => {
+        audioRef.current?.play().then(() => {
+          setIsPlaying(true);
+        }).catch(err => {
+          console.error('自动播放失败:', err);
+        });
+      }, 100);
+    }
+  }, [audioData.status, audioData.src]);
 
   // 行级注释：获取当前选中的音色信息
   const currentVoice = useMemo(() => {
@@ -153,6 +176,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
     }
 
     setIsGenerating(true);
+    shouldAutoPlayRef.current = true; // 行级注释：标记本次生成后需要自动播放
     updateElement(id, {
       status: 'generating',
       text,
