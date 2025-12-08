@@ -128,7 +128,7 @@ export function useCanvasPersistence(
 
           // 行级注释：【关键】画布恢复后，异步刷新视频 URL（不阻塞画布加载）
           const videoNodes = snapshot.elements.filter(
-            (el): el is VideoElement => el.type === 'video' && el.status === 'ready'
+            (el): el is VideoElement => el.type === 'video' && (el as VideoElement).status === 'ready'
           );
 
           if (videoNodes.length > 0) {
