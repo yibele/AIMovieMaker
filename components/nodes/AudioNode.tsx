@@ -229,10 +229,24 @@ function AudioNode({ data, selected, id }: NodeProps) {
         throw new Error('未返回音频数据');
       }
 
-      // 行级注释：将 hex 转换为 base64
+      // 行级注释：将 hex 转换为 base64 (使用分块处理避免栈溢出)
       const hexString = audioResult.audio;
-      const bytes = new Uint8Array(hexString.match(/.{1,2}/g).map((byte: string) => parseInt(byte, 16)));
-      const base64String = btoa(String.fromCharCode(...bytes));
+      const match = hexString.match(/.{1,2}/g);
+      if (!match) throw new Error('无效的音频数据');
+
+      const bytes = new Uint8Array(match.map((byte: string) => parseInt(byte, 16)));
+      
+      // 行级注释：分块转换，防止长音频导致 Maximum call stack size exceeded
+      let binary = '';
+      const len = bytes.byteLength;
+      const CHUNK_SIZE = 8192; // 8KB 分块
+      
+      for (let i = 0; i < len; i += CHUNK_SIZE) {
+        const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      
+      const base64String = btoa(binary);
       const dataUrl = `data:audio/mp3;base64,${base64String}`;
 
       console.log('✅ MiniMax TTS 成功:', {
