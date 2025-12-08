@@ -1,5 +1,5 @@
 // 画布元素类型定义
-export type ElementType = 'image' | 'text' | 'video' | 'note';
+export type ElementType = 'image' | 'text' | 'video' | 'note' | 'audio';
 
 // 宽高比类型（统一定义，避免多处重复）
 export type AspectRatio = '16:9' | '9:16' | '1:1';
@@ -145,6 +145,39 @@ export interface VideoElement extends CanvasElement {
   generationCount?: number; // 行级注释：生成数量 (1-4)
   // 行级注释：多图参考视频的参考图片 ID（最多 3 张）
   referenceImageIds?: string[];
+}
+
+// 音频音色配置
+export interface AudioVoice {
+  id: string;       // 音色 ID
+  name: string;     // 显示名称
+  description?: string; // 音色描述
+}
+
+// 行级注释：预设的音色列表（MiniMax TTS）
+export const AUDIO_VOICES: AudioVoice[] = [
+  { id: 'hunyin_6', name: '浑音6号', description: '成熟男声' },
+  { id: 'Arrogant_Miss', name: '傲娇小姐', description: '傲娇女声' },
+];
+
+// 音频元素
+export interface AudioElement extends CanvasElement {
+  type: 'audio';
+  src: string;                  // 音频 URL 或 base64 data URL
+  duration: number;             // 时长（毫秒）
+  text: string;                 // 合成的文本内容
+  voiceId: string;              // 音色 ID
+  status: 'pending' | 'generating' | 'ready' | 'error';
+  progress?: number;            // 生成进度 0-100
+  errorMessage?: string;        // 错误信息
+  // 行级注释：MiniMax TTS 返回的附加信息
+  audioInfo?: {
+    sampleRate?: number;        // 采样率
+    bitrate?: number;           // 比特率
+    format?: string;            // 格式（mp3/wav）
+    wordCount?: number;         // 字数
+    audioSize?: number;         // 音频大小（字节）
+  };
 }
 
 // 提示词历史记录

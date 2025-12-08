@@ -17,13 +17,14 @@ import {
   createTextNode,
   createNoteNode,
   createEmptyVideoNode,
+  createEmptyAudioNode,
   createImagePlaceholder,
   createVideoFromImage,
   createStartEndVideoNode,
   getScreenCenterPosition,
   NodePosition,
 } from '@/lib/services/node-management.service';
-import { ImageElement, VideoElement } from '@/lib/types';
+import { ImageElement, VideoElement, AudioElement } from '@/lib/types';
 
 /**
  * 通用节点操作 Hook 返回值
@@ -33,6 +34,7 @@ export interface UseNodeOperationsReturn {
   addTextNode: (options?: { text?: string; position?: NodePosition }) => string;
   addNoteNode: (options?: { content?: string; title?: string; position?: NodePosition }) => string;
   addVideoNode: (options?: { aspectRatio?: '16:9' | '9:16'; position?: NodePosition }) => string;
+  addAudioNode: (options?: { text?: string; voiceId?: string; position?: NodePosition }) => string;
   addImagePlaceholder: (options: {
     aspectRatio?: '16:9' | '9:16' | '1:1';
     position: NodePosition;
@@ -105,6 +107,21 @@ export function useNodeOperations(): UseNodeOperationsReturn {
     return node.id;
   }, [addElement, screenToFlowPosition]);
 
+  // 行级注释：添加空音频节点
+  const addAudioNode = useCallback((options?: {
+    text?: string;
+    voiceId?: string;
+    position?: NodePosition;
+  }): string => {
+    const position = options?.position || getScreenCenterPosition(screenToFlowPosition);
+    const node = createEmptyAudioNode(position, {
+      text: options?.text,
+      voiceId: options?.voiceId,
+    });
+    addElement(node);
+    return node.id;
+  }, [addElement, screenToFlowPosition]);
+
   // 行级注释：添加图片占位符节点
   const addImagePlaceholder = useCallback((options: {
     aspectRatio?: '16:9' | '9:16' | '1:1';
@@ -146,6 +163,7 @@ export function useNodeOperations(): UseNodeOperationsReturn {
     addTextNode,
     addNoteNode,
     addVideoNode,
+    addAudioNode,
     addImagePlaceholder,
     createVideoFromImageNode,
     createStartEndVideo,

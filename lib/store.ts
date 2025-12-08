@@ -22,6 +22,7 @@ interface ApiConfig {
   hailuoApiKey: string; // 海螺 Hailuo API Key（DMXAPI）
   sora2ApiKey: string; // Sora2 API Key（apimart.ai）
   falApiKey: string; // fal.ai API Key（高清放大）
+  minimaxApiKey: string; // MiniMax API Key（语音合成）
   proxy: string; // 代理地址，例如 http://127.0.0.1:10808
   projectId: string;
   workflowId: string;
@@ -136,6 +137,7 @@ const loadApiConfig = (): ApiConfig => {
       hailuoApiKey: '', // 海螺 Hailuo API Key
       sora2ApiKey: '', // Sora2 API Key
       falApiKey: '', // fal.ai API Key（高清放大）
+      minimaxApiKey: '', // MiniMax API Key（语音合成）
       proxy: '',
       projectId: '',
       workflowId: context.workflowId,
@@ -163,6 +165,7 @@ const loadApiConfig = (): ApiConfig => {
         hailuoApiKey: parsed?.hailuoApiKey || '', // 海螺 Hailuo API Key
         sora2ApiKey: parsed?.sora2ApiKey || '', // Sora2 API Key
         falApiKey: parsed?.falApiKey || '', // fal.ai API Key（高清放大）
+        minimaxApiKey: parsed?.minimaxApiKey || '', // MiniMax API Key（语音合成）
         proxy: parsed?.proxy || '',
         projectId: parsed?.projectId || '',
         workflowId: parsed?.workflowId || context.workflowId,
@@ -188,6 +191,7 @@ const loadApiConfig = (): ApiConfig => {
     hailuoApiKey: '', // 海螺 Hailuo API Key
     sora2ApiKey: '', // Sora2 API Key
     falApiKey: '', // fal.ai API Key（高清放大）
+    minimaxApiKey: '', // MiniMax API Key（语音合成）
     proxy: '',
     projectId: '',
     workflowId: context.workflowId,

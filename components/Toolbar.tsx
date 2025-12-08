@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { MousePointer2, Type, Upload, Video, FileText } from 'lucide-react';
+import { MousePointer2, Type, Upload, Video, FileText, Volume2 } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '@/lib/store';
 import { ImageElement } from '@/lib/types';
@@ -23,7 +23,7 @@ export default function Toolbar() {
   const { screenToFlowPosition } = useReactFlow();
 
   // 行级注释：使用节点操作 Hook
-  const { addTextNode, addVideoNode, addNoteNode } = useNodeOperations();
+  const { addTextNode, addVideoNode, addAudioNode, addNoteNode } = useNodeOperations();
 
   type CropperState = {
     open: boolean;
@@ -93,6 +93,14 @@ export default function Toolbar() {
           action: () => addVideoNode(), // 行级注释：使用 Hook
           isActive: false,
           dotColor: 'bg-orange-500'
+        },
+        {
+          id: 'audio' as const,
+          icon: Volume2,
+          label: '音频节点',
+          action: () => addAudioNode(), // 行级注释：使用 Hook
+          isActive: false,
+          dotColor: 'bg-violet-500'
         },
         {
           id: 'note' as const,

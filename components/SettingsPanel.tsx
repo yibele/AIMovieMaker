@@ -79,6 +79,7 @@ export default function SettingsPanel() {
   const [hailuoApiKey, setHailuoApiKey] = useState(apiConfig.hailuoApiKey || ''); // 海螺 API Key
   const [sora2ApiKey, setSora2ApiKey] = useState(apiConfig.sora2ApiKey || ''); // Sora2 API Key
   const [falApiKey, setFalApiKey] = useState(apiConfig.falApiKey || ''); // fal.ai API Key
+  const [minimaxApiKey, setMinimaxApiKey] = useState(apiConfig.minimaxApiKey || ''); // MiniMax API Key
   const [proxy, setProxy] = useState(apiConfig.proxy || '');
   // 行级注释：projectId 从 URL 自动获取，不再由用户手动设置
   const [workflowId, setWorkflowId] = useState(apiConfig.workflowId || '');
@@ -170,6 +171,7 @@ export default function SettingsPanel() {
       setHailuoApiKey(apiConfig.hailuoApiKey || ''); // 同步海螺 API Key
       setSora2ApiKey(apiConfig.sora2ApiKey || ''); // 同步 Sora2 API Key
       setFalApiKey(apiConfig.falApiKey || ''); // 同步 fal.ai API Key
+      setMinimaxApiKey(apiConfig.minimaxApiKey || ''); // 同步 MiniMax API Key
       setProxy(apiConfig.proxy || '');
       // 行级注释：projectId 从 URL 自动获取，不需要同步
       setWorkflowId(apiConfig.workflowId || '');
@@ -258,6 +260,7 @@ export default function SettingsPanel() {
         hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
         sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
         falApiKey: falApiKey.trim(), // 保存 fal.ai API Key
+        minimaxApiKey: minimaxApiKey.trim(), // 保存 MiniMax API Key
         proxy: proxy.trim(),
         // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
         workflowId: workflowId.trim(),
@@ -517,6 +520,32 @@ export default function SettingsPanel() {
                   value={falApiKey}
                   onChange={(e) => setFalApiKey(e.target.value)}
                   placeholder="fal_..."
+                  className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
+                />
+              </div>
+
+              {/* MiniMax TTS Configuration */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <span className="w-4 h-4 flex items-center justify-center text-[10px] bg-violet-500 text-white rounded font-mono">M</span>
+                  MiniMax (语音合成)
+                </label>
+                <p className="text-xs text-slate-500 font-medium">
+                  API Key for TTS speech synthesis. Get it from{' '}
+                  <a 
+                    href="https://platform.minimaxi.com/user-center/basic-information/interface-key" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-violet-600 hover:text-violet-700 underline"
+                  >
+                    platform.minimaxi.com
+                  </a>
+                </p>
+                <input
+                  type="password"
+                  value={minimaxApiKey}
+                  onChange={(e) => setMinimaxApiKey(e.target.value)}
+                  placeholder="eyJh..."
                   className="w-full px-4 py-3.5 bg-slate-50 border-transparent focus:bg-white border focus:border-slate-200 rounded-xl outline-none text-sm font-mono text-slate-600 placeholder:text-slate-400 transition-all"
                 />
               </div>

@@ -25,6 +25,7 @@ import ImageNode from './nodes/ImageNode';
 import TextNode from './nodes/TextNode';
 import VideoNode from './nodes/VideoNode';
 import NoteNode from './nodes/NoteNode';
+import AudioNode from './nodes/AudioNode';
 import CanvasNavigation from './CanvasNavigation';
 import RightToolbar from './RightToolbar';
 import AIInputPanel from './AIInputPanel';
@@ -75,6 +76,7 @@ const nodeTypes: NodeTypes = {
   text: TextNode,
   video: VideoNode,
   note: NoteNode, // 行级注释：记事本节点（剧本、分镜等长文本）
+  audio: AudioNode, // 行级注释：音频节点（MiniMax TTS 语音合成）
 };
 
 // 行级注释：统一的边缘样式常量

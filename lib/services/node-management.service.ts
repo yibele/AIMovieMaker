@@ -14,7 +14,9 @@ import {
   VideoElement,
   TextElement,
   NoteElement,
+  AudioElement,
   CanvasElement,
+  AUDIO_VOICES,
 } from '@/lib/types';
 import {
   TEXT_NODE_DEFAULT_SIZE,
@@ -189,6 +191,34 @@ export function createEmptyVideoNode(
     size,
     readyForGeneration: false,
     generationCount: 1,
+  };
+}
+
+// 行级注释：音频节点默认尺寸
+const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 160 };
+
+/**
+ * 创建音频节点（空节点，待配置）
+ */
+export function createEmptyAudioNode(
+  position: NodePosition,
+  options?: {
+    text?: string;
+    voiceId?: string;
+  }
+): AudioElement {
+  const size = AUDIO_NODE_DEFAULT_SIZE;
+  
+  return {
+    id: generateNodeId('audio'),
+    type: 'audio',
+    src: '',
+    duration: 0,
+    text: options?.text || '',
+    voiceId: options?.voiceId || AUDIO_VOICES[0]?.id || 'hunyin_6',
+    status: 'pending',
+    position: getCenteredPosition(position, size),
+    size,
   };
 }
 
