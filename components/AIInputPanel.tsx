@@ -36,6 +36,8 @@ export default function AIInputPanel() {
   const generationCount = apiConfig.generationCount || 1;
   const imageModel = apiConfig.imageModel || 'nanobanana';
   const videoModel = apiConfig.videoModel || 'quality';
+  // 彩蛋（devMode）下允许 Quality，并自动放开 Ultra 能力
+  const canUseQuality = apiConfig.accountTier === 'ultra' || apiConfig.devMode;
 
   // 行级注释：获取选中的图片用于显示缩略图
   const selectedImages = elements
@@ -311,19 +313,29 @@ export default function AIInputPanel() {
                   </button>
                 </div>
 
-                {/* 视频模型 - Pro 只能用 Fast，Ultra 可以选 Quality/Fast */}
+                {/* 视频模型 - Ultra 可选 Quality/Fast；彩蛋模式强制放开 Quality */}
                 <div className="flex bg-gray-50/80 dark:bg-slate-700/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-600 h-[62px] items-center">
-                  {apiConfig.accountTier === 'ultra' ? (
+                  {canUseQuality ? (
                     <>
                       <button
-                        onClick={() => !apiConfig.isManaged && setApiConfig({ videoModel: 'quality' })}
-                        disabled={apiConfig.isManaged}
-                        title={apiConfig.isManaged ? "托管模式下仅支持快速模型" : "高质量生成"}
+                        onClick={() => {
+                          // devMode 下即便托管也允许切换，并把套餐提升到 ultra 以避免被强制降级
+                          setApiConfig({
+                            videoModel: 'quality',
+                            accountTier: 'ultra',
+                          });
+                        }}
+                        disabled={apiConfig.isManaged && !apiConfig.devMode}
+                        title={
+                          apiConfig.isManaged && !apiConfig.devMode
+                            ? "托管模式下仅支持快速模型"
+                            : "高质量生成"
+                        }
                         className={`
                           flex-1 h-full flex items-center justify-center gap-2 rounded-xl text-xs font-medium transition-all duration-200
                           ${videoModel === 'quality'
                             ? 'bg-white dark:bg-slate-600 text-violet-700 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                            : apiConfig.isManaged 
+                            : apiConfig.isManaged && !apiConfig.devMode
                               ? 'text-gray-300 dark:text-slate-600 cursor-not-allowed opacity-50 bg-transparent' 
                               : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-600/50'}
                         `}

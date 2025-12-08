@@ -1,3 +1,4 @@
+// UNUSED: 已弃用路由，当前前端不调用，保留作参考；需启用时请移回 app/api/flow/video/start-end/route.ts 并重新接入 tier-config。
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import {
