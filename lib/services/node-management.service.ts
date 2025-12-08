@@ -205,6 +205,7 @@ export function createEmptyAudioNode(
   options?: {
     text?: string;
     voiceId?: string;
+    emotion?: string;
   }
 ): AudioElement {
   const size = AUDIO_NODE_DEFAULT_SIZE;
@@ -216,6 +217,7 @@ export function createEmptyAudioNode(
     duration: 0,
     text: options?.text || '',
     voiceId: options?.voiceId || AUDIO_VOICES[0]?.id || 'hunyin_6',
+    emotion: (options?.emotion || 'calm') as any,  // 默认情绪：中性
     status: 'pending',
     position: getCenteredPosition(position, size),
     size,

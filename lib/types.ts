@@ -160,6 +160,9 @@ export const AUDIO_VOICES: AudioVoice[] = [
   { id: 'Arrogant_Miss', name: '傲娇小姐', description: '傲娇女声' },
 ];
 
+// 音频情绪类型
+export type AudioEmotion = 'happy' | 'sad' | 'angry' | 'fearful' | 'disgusted' | 'surprised' | 'calm' | 'fluent' | 'whisper';
+
 // 音频元素
 export interface AudioElement extends CanvasElement {
   type: 'audio';
@@ -167,6 +170,7 @@ export interface AudioElement extends CanvasElement {
   duration: number;             // 时长（毫秒）
   text: string;                 // 合成的文本内容
   voiceId: string;              // 音色 ID
+  emotion?: AudioEmotion;       // 情感
   status: 'pending' | 'generating' | 'ready' | 'error';
   progress?: number;            // 生成进度 0-100
   errorMessage?: string;        // 错误信息

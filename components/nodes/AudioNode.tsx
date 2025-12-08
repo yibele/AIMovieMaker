@@ -8,12 +8,25 @@ import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 // 行级注释：音频节点默认尺寸
-const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 160 };
+const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 200 };
 
 // 行级注释：预设的音色列表
 const VOICE_OPTIONS: AudioVoice[] = [
   { id: 'hunyin_6', name: '浑音6号', description: '成熟男声' },
   { id: 'Arrogant_Miss', name: '傲娇小姐', description: '傲娇女声' },
+];
+
+// 行级注释：情绪选项
+const EMOTION_OPTIONS: Array<{ id: string; name: string }> = [
+  { id: 'happy', name: '高兴' },
+  { id: 'sad', name: '悲伤' },
+  { id: 'angry', name: '愤怒' },
+  { id: 'fearful', name: '害怕' },
+  { id: 'disgusted', name: '厌恶' },
+  { id: 'surprised', name: '惊讶' },
+  { id: 'calm', name: '中性' },
+  { id: 'fluent', name: '生动' },
+  { id: 'whisper', name: '低语' },
 ];
 
 // 行级注释：音频节点组件
@@ -23,7 +36,9 @@ function AudioNode({ data, selected, id }: NodeProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [textInput, setTextInput] = useState(audioData.text || '');
   const [selectedVoice, setSelectedVoice] = useState(audioData.voiceId || VOICE_OPTIONS[0].id);
+  const [selectedEmotion, setSelectedEmotion] = useState<string>(audioData.emotion || 'calm');
   const [isVoiceMenuOpen, setIsVoiceMenuOpen] = useState(false);
+  const [isEmotionMenuOpen, setIsEmotionMenuOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   
@@ -36,6 +51,11 @@ function AudioNode({ data, selected, id }: NodeProps) {
   const currentVoice = useMemo(() => {
     return VOICE_OPTIONS.find(v => v.id === selectedVoice) || VOICE_OPTIONS[0];
   }, [selectedVoice]);
+
+  // 行级注释：获取当前选中的情绪信息
+  const currentEmotion = useMemo(() => {
+    return EMOTION_OPTIONS.find(e => e.id === selectedEmotion) || EMOTION_OPTIONS[6]; // default calm
+  }, [selectedEmotion]);
 
   // 行级注释：是否显示输入面板（未生成或出错时显示）
   const shouldShowInputPanel = audioData.status === 'pending' || audioData.status === 'error' || !audioData.src;
@@ -106,6 +126,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       status: 'generating',
       text,
       voiceId: selectedVoice,
+      emotion: selectedEmotion as any,
     } as Partial<AudioElement>);
 
     try {
@@ -119,6 +140,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
           speed: 1,
           vol: 1,
           pitch: 0,
+          emotion: selectedEmotion,
         },
         audio_setting: {
           sample_rate: 32000,
@@ -129,7 +151,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
         output_format: 'url',  // 行级注释：返回 URL，有效期 24 小时
       };
 
-      console.log('🎤 MiniMax TTS 请求:', { voiceId: selectedVoice, textLength: text.length });
+      console.log('🎤 MiniMax TTS 请求:', { voiceId: selectedVoice, emotion: selectedEmotion, textLength: text.length });
 
       const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
         method: 'POST',
@@ -187,7 +209,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, [textInput, selectedVoice, apiConfig.minimaxApiKey, id, updateElement]);
+  }, [textInput, selectedVoice, selectedEmotion, apiConfig.minimaxApiKey, id, updateElement]);
 
   // 行级注释：下载音频
   const handleDownload = useCallback((e: React.MouseEvent) => {
@@ -202,6 +224,24 @@ function AudioNode({ data, selected, id }: NodeProps) {
     document.body.removeChild(a);
     toast.success('音频下载中...');
   }, [audioData.src, id]);
+
+  // 行级注释：删除节点
+  const handleDelete = useCallback(() => {
+    deleteElement(id);
+    toast.success('音频节点已删除');
+  }, [id, deleteElement]);
+
+  // 行级注释：选择音色
+  const handleVoiceSelect = useCallback((voiceId: string) => {
+    setSelectedVoice(voiceId);
+    setIsVoiceMenuOpen(false);
+  }, []);
+
+  // 行级注释：选择情绪
+  const handleEmotionSelect = useCallback((emotionId: string) => {
+    setSelectedEmotion(emotionId);
+    setIsEmotionMenuOpen(false);
+  }, []);
 
   return (
     <div
@@ -256,7 +296,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
       <div className="relative w-full h-full flex flex-col bg-gradient-to-br from-slate-900 to-slate-800">
         
         {shouldShowInputPanel ? (
-          // 1. 生成前：文本输入 + 音色选择
+          // 1. 生成前：文本输入 + 音色选择 + 情绪选择
           <div className="flex-1 flex flex-col p-4">
             <div className="flex-1 relative">
               <textarea
@@ -269,21 +309,22 @@ function AudioNode({ data, selected, id }: NodeProps) {
               />
             </div>
             
-            <div className="mt-3 flex items-center gap-2">
+            {/* 音色 + 情绪选择器 */}
+            <div className="mt-2 flex items-center gap-2">
               {/* 音色选择 */}
               <div className="relative flex-1">
                 <button
-                  onClick={() => setIsVoiceMenuOpen(!isVoiceMenuOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs text-white/90 transition-colors border border-white/5"
+                  onClick={() => { setIsVoiceMenuOpen(!isVoiceMenuOpen); setIsEmotionMenuOpen(false); }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentVoice.name}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {isVoiceMenuOpen && (
                   <div
-                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto custom-scrollbar"
+                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     {VOICE_OPTIONS.map((voice) => (
@@ -304,17 +345,56 @@ function AudioNode({ data, selected, id }: NodeProps) {
                 )}
               </div>
 
-              {/* 生成按钮 */}
+              {/* 情绪选择 */}
+              <div className="relative flex-1">
+                <button
+                  onClick={() => { setIsEmotionMenuOpen(!isEmotionMenuOpen); setIsVoiceMenuOpen(false); }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <span className="truncate">{currentEmotion.name}</span>
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isEmotionMenuOpen && (
+                  <div
+                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {EMOTION_OPTIONS.map((emotion) => (
+                      <button
+                        key={emotion.id}
+                        onClick={() => handleEmotionSelect(emotion.id)}
+                        className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
+                          selectedEmotion === emotion.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+                        }`}
+                      >
+                        <div className="font-medium">{emotion.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 生成按钮 */}
+            <div className="mt-2">
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !textInput.trim()}
-                className="px-4 py-2 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all flex items-center justify-center"
+                className="w-full px-4 py-2 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all flex items-center justify-center gap-2 text-sm"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 {isGenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>生成中...</span>
+                  </>
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>合成语音</span>
+                  </>
                 )}
               </button>
             </div>
