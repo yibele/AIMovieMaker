@@ -126,6 +126,19 @@ export function useCanvasPersistence(
           setLastSaved(snapshot.updatedAt);
           hasLoadedRef.current = true;
 
+          // 行级注释：【修复】检查音频节点，如果 src 丢失或非 Data URL 但 base64 存在，则重建 src
+          // 这确保了音频数据从 IndexedDB 加载后可以立即播放
+          const { updateElement } = useCanvasStore.getState();
+          snapshot.elements.forEach((el) => {
+            if (el.type === 'audio') {
+              const audioNode = el as unknown as { base64?: string; src?: string };
+              if (audioNode.base64 && !audioNode.src?.startsWith('data:')) {
+                const dataUrl = `data:audio/mp3;base64,${audioNode.base64}`;
+                updateElement(el.id, { src: dataUrl } as any);
+              }
+            }
+          });
+
           // 行级注释：【关键】画布恢复后，异步刷新视频 URL（不阻塞画布加载）
           const videoNodes = snapshot.elements.filter(
             (el): el is VideoElement => el.type === 'video' && (el as VideoElement).status === 'ready'

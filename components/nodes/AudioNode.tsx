@@ -167,7 +167,10 @@ function AudioNode({ data, selected, id }: NodeProps) {
     // 行级注释：检查 API Key（保存在本地）
     const minimaxApiKey = apiConfig.minimaxApiKey;
     if (!minimaxApiKey?.trim()) {
-      toast.error('请先在设置中配置 MiniMax API Key');
+      toast.error('请先在设置中配置 MiniMax API Key', {
+        description: '点击右上角设置图标进行配置',
+        duration: 5000,
+      });
       return;
     }
 
