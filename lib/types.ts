@@ -166,7 +166,9 @@ export type AudioEmotion = 'happy' | 'sad' | 'angry' | 'fearful' | 'disgusted' |
 // 音频元素
 export interface AudioElement extends CanvasElement {
   type: 'audio';
-  src: string;                  // 音频 URL 或 base64 data URL
+  src: string;                  // 音频 URL 或 base64 data URL（优先使用 base64）
+  base64?: string;              // 音频 base64 数据（不含 data:audio/mp3;base64, 前缀）
+  audioUrl?: string;            // 原始音频 URL（有效期 24 小时）
   duration: number;             // 时长（毫秒）
   text: string;                 // 合成的文本内容
   voiceId: string;              // 音色 ID

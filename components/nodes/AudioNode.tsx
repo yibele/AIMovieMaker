@@ -6,6 +6,7 @@ import { Play, Pause, Volume2, Send, Trash2, ChevronDown, Loader2, Download, Mus
 import type { AudioElement, AudioVoice } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { createPortal } from 'react-dom';
 
 // 行级注释：音频节点默认尺寸
 const AUDIO_NODE_DEFAULT_SIZE = { width: 280, height: 200 };
@@ -42,7 +43,13 @@ function AudioNode({ data, selected, id }: NodeProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   
+  // 行级注释：下拉菜单位置状态（用于 Portal 渲染）
+  const [voiceMenuPosition, setVoiceMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [emotionMenuPosition, setEmotionMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  
   const audioRef = useRef<HTMLAudioElement>(null);
+  const voiceButtonRef = useRef<HTMLButtonElement>(null);
+  const emotionButtonRef = useRef<HTMLButtonElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
   const deleteElement = useCanvasStore((state) => state.deleteElement);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
@@ -130,7 +137,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
     } as Partial<AudioElement>);
 
     try {
-      // 行级注释：直接调用 MiniMax TTS API
+      // 行级注释：直接调用 MiniMax TTS API，使用 hex 格式获取音频数据
       const payload = {
         model: 'speech-2.6-turbo',  // 行级注释：使用稳定的模型版本
         text: text,
@@ -148,7 +155,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
           format: 'mp3',
           channel: 1,
         },
-        output_format: 'url',  // 行级注释：返回 URL，有效期 24 小时
+        output_format: 'hex',  // 行级注释：返回 hex 格式，可本地转 base64
       };
 
       console.log('🎤 MiniMax TTS 请求:', { voiceId: selectedVoice, emotion: selectedEmotion, textLength: text.length });
@@ -171,23 +178,31 @@ function AudioNode({ data, selected, id }: NodeProps) {
         throw new Error(errorMsg);
       }
 
-      // 行级注释：提取音频数据
-      const audioData = data.data;
+      // 行级注释：提取音频数据（hex 格式）
+      const audioResult = data.data;
       const extraInfo = data.extra_info || {};
 
-      if (!audioData?.audio) {
+      if (!audioResult?.audio) {
         throw new Error('未返回音频数据');
       }
+
+      // 行级注释：将 hex 转换为 base64
+      const hexString = audioResult.audio;
+      const bytes = new Uint8Array(hexString.match(/.{1,2}/g).map((byte: string) => parseInt(byte, 16)));
+      const base64String = btoa(String.fromCharCode(...bytes));
+      const dataUrl = `data:audio/mp3;base64,${base64String}`;
 
       console.log('✅ MiniMax TTS 成功:', {
         duration: extraInfo.audio_length,
         wordCount: extraInfo.word_count,
+        base64Length: base64String.length,
       });
 
-      // 行级注释：更新节点数据
+      // 行级注释：更新节点数据，优先使用 base64
       updateElement(id, {
         status: 'ready',
-        src: audioData.audio,  // output_format=url 时返回的是 URL
+        src: dataUrl,  // 使用 base64 data URL
+        base64: base64String,  // 保存原始 base64（不含前缀）
         duration: extraInfo.audio_length || 0,  // 毫秒
         audioInfo: {
           sampleRate: extraInfo.audio_sample_rate,
@@ -235,13 +250,78 @@ function AudioNode({ data, selected, id }: NodeProps) {
   const handleVoiceSelect = useCallback((voiceId: string) => {
     setSelectedVoice(voiceId);
     setIsVoiceMenuOpen(false);
+    setVoiceMenuPosition(null);
   }, []);
 
   // 行级注释：选择情绪
   const handleEmotionSelect = useCallback((emotionId: string) => {
     setSelectedEmotion(emotionId);
     setIsEmotionMenuOpen(false);
+    setEmotionMenuPosition(null);
   }, []);
+
+  // 行级注释：切换音色菜单（计算位置用于 Portal）
+  const toggleVoiceMenu = useCallback(() => {
+    if (isVoiceMenuOpen) {
+      setIsVoiceMenuOpen(false);
+      setVoiceMenuPosition(null);
+    } else {
+      if (voiceButtonRef.current) {
+        const rect = voiceButtonRef.current.getBoundingClientRect();
+        setVoiceMenuPosition({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+      setIsVoiceMenuOpen(true);
+      setIsEmotionMenuOpen(false);
+      setEmotionMenuPosition(null);
+    }
+  }, [isVoiceMenuOpen]);
+
+  // 行级注释：切换情绪菜单（计算位置用于 Portal）
+  const toggleEmotionMenu = useCallback(() => {
+    if (isEmotionMenuOpen) {
+      setIsEmotionMenuOpen(false);
+      setEmotionMenuPosition(null);
+    } else {
+      if (emotionButtonRef.current) {
+        const rect = emotionButtonRef.current.getBoundingClientRect();
+        setEmotionMenuPosition({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+      setIsEmotionMenuOpen(true);
+      setIsVoiceMenuOpen(false);
+      setVoiceMenuPosition(null);
+    }
+  }, [isEmotionMenuOpen]);
+
+  // 行级注释：点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // 检查点击是否在音色/情绪按钮或下拉菜单之外
+      const target = e.target as HTMLElement;
+      if (
+        voiceButtonRef.current && !voiceButtonRef.current.contains(target) &&
+        emotionButtonRef.current && !emotionButtonRef.current.contains(target) &&
+        !target.closest('[data-dropdown-menu]')
+      ) {
+        setIsVoiceMenuOpen(false);
+        setIsEmotionMenuOpen(false);
+        setVoiceMenuPosition(null);
+        setEmotionMenuPosition(null);
+      }
+    };
+
+    if (isVoiceMenuOpen || isEmotionMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isVoiceMenuOpen, isEmotionMenuOpen]);
 
   return (
     <div
@@ -314,66 +394,27 @@ function AudioNode({ data, selected, id }: NodeProps) {
               {/* 音色选择 */}
               <div className="relative flex-1">
                 <button
-                  onClick={() => { setIsVoiceMenuOpen(!isVoiceMenuOpen); setIsEmotionMenuOpen(false); }}
+                  ref={voiceButtonRef}
+                  onClick={toggleVoiceMenu}
                   className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentVoice.name}</span>
                   <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
-                
-                {isVoiceMenuOpen && (
-                  <div
-                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    {VOICE_OPTIONS.map((voice) => (
-                      <button
-                        key={voice.id}
-                        onClick={() => handleVoiceSelect(voice.id)}
-                        className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
-                          selectedVoice === voice.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
-                        }`}
-                      >
-                        <div className="font-medium">{voice.name}</div>
-                        {voice.description && (
-                          <div className="text-[10px] text-slate-500 mt-0.5">{voice.description}</div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* 情绪选择 */}
               <div className="relative flex-1">
                 <button
-                  onClick={() => { setIsEmotionMenuOpen(!isEmotionMenuOpen); setIsVoiceMenuOpen(false); }}
+                  ref={emotionButtonRef}
+                  onClick={toggleEmotionMenu}
                   className="w-full flex items-center justify-between px-2 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] text-white/90 transition-colors border border-white/5"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{currentEmotion.name}</span>
                   <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${isEmotionMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
-                
-                {isEmotionMenuOpen && (
-                  <div
-                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-40 overflow-y-auto custom-scrollbar"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    {EMOTION_OPTIONS.map((emotion) => (
-                      <button
-                        key={emotion.id}
-                        onClick={() => handleEmotionSelect(emotion.id)}
-                        className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
-                          selectedEmotion === emotion.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
-                        }`}
-                      >
-                        <div className="font-medium">{emotion.name}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -489,6 +530,67 @@ function AudioNode({ data, selected, id }: NodeProps) {
         style={{ right: '-6px', top: '50%', zIndex: 30 }}
         isConnectable={true}
       />
+
+      {/* 行级注释：音色下拉菜单（Portal 渲染到 body，避免被父容器裁剪） */}
+      {isVoiceMenuOpen && voiceMenuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          data-dropdown-menu="voice"
+          className="fixed bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
+          style={{
+            top: voiceMenuPosition.top - 4,
+            left: voiceMenuPosition.left,
+            width: voiceMenuPosition.width,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {VOICE_OPTIONS.map((voice) => (
+            <button
+              key={voice.id}
+              onClick={() => handleVoiceSelect(voice.id)}
+              className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
+                selectedVoice === voice.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+              }`}
+            >
+              <div className="font-medium">{voice.name}</div>
+              {voice.description && (
+                <div className="text-[10px] text-slate-500 mt-0.5">{voice.description}</div>
+              )}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+
+      {/* 行级注释：情绪下拉菜单（Portal 渲染到 body，避免被父容器裁剪） */}
+      {isEmotionMenuOpen && emotionMenuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          data-dropdown-menu="emotion"
+          className="fixed bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar"
+          style={{
+            top: emotionMenuPosition.top - 4,
+            left: emotionMenuPosition.left,
+            width: emotionMenuPosition.width,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {EMOTION_OPTIONS.map((emotion) => (
+            <button
+              key={emotion.id}
+              onClick={() => handleEmotionSelect(emotion.id)}
+              className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
+                selectedEmotion === emotion.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+              }`}
+            >
+              <div className="font-medium">{emotion.name}</div>
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
