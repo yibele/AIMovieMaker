@@ -6,6 +6,63 @@ import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { supabase, getCachedSession } from '@/lib/supabaseClient';
 
+// 行级注释：从云端加载用户的 API Key 配置
+async function loadApiKeysFromCloud(accessToken: string): Promise<{
+  dashScopeApiKey?: string;
+  hailuoApiKey?: string;
+  sora2ApiKey?: string;
+  falApiKey?: string;
+  accountTier?: 'pro' | 'ultra';
+} | null> {
+  try {
+    const response = await fetch('/api/user/apikey', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.apiKeys) {
+        return data.apiKeys;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('加载云端 API Key 失败:', error);
+    return null;
+  }
+}
+
+// 行级注释：保存用户的 API Key 配置到云端
+async function saveApiKeysToCloud(
+  accessToken: string,
+  apiKeys: {
+    dashScopeApiKey?: string;
+    hailuoApiKey?: string;
+    sora2ApiKey?: string;
+    falApiKey?: string;
+    accountTier?: string;
+  }
+): Promise<boolean> {
+  try {
+    const response = await fetch('/api/user/apikey', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(apiKeys),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('保存云端 API Key 失败:', error);
+    return false;
+  }
+}
+
 export default function SettingsPanel() {
   const isOpen = useCanvasStore((state) => state.isSettingsOpen);
   const setIsOpen = useCanvasStore((state) => state.setIsSettingsOpen);
@@ -32,6 +89,55 @@ export default function SettingsPanel() {
   const [sessionId, setSessionId] = useState(apiConfig.sessionId || '');
   const [accountTier, setAccountTier] = useState<'pro' | 'ultra'>(apiConfig.accountTier || 'pro');
   const [isSyncingCredentials, setIsSyncingCredentials] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // 行级注释：保存中状态
+  
+  // 行级注释：首次加载时从云端同步 API Key 配置（只执行一次）
+  const hasLoadedCloudKeysRef = useRef(false);
+  
+  useEffect(() => {
+    if (hasLoadedCloudKeysRef.current) return;
+    
+    const loadCloudKeys = async () => {
+      const session = await getCachedSession();
+      if (!session) return;
+      
+      hasLoadedCloudKeysRef.current = true;
+      
+      const cloudKeys = await loadApiKeysFromCloud(session.access_token);
+      if (cloudKeys) {
+        // 行级注释：用云端配置更新本地（只更新云端有值的字段）
+        const updates: Record<string, string> = {};
+        
+        if (cloudKeys.dashScopeApiKey && !apiConfig.dashScopeApiKey) {
+          updates.dashScopeApiKey = cloudKeys.dashScopeApiKey;
+          setDashScopeApiKey(cloudKeys.dashScopeApiKey);
+        }
+        if (cloudKeys.hailuoApiKey && !apiConfig.hailuoApiKey) {
+          updates.hailuoApiKey = cloudKeys.hailuoApiKey;
+          setHailuoApiKey(cloudKeys.hailuoApiKey);
+        }
+        if (cloudKeys.sora2ApiKey && !apiConfig.sora2ApiKey) {
+          updates.sora2ApiKey = cloudKeys.sora2ApiKey;
+          setSora2ApiKey(cloudKeys.sora2ApiKey);
+        }
+        if (cloudKeys.falApiKey && !apiConfig.falApiKey) {
+          updates.falApiKey = cloudKeys.falApiKey;
+          setFalApiKey(cloudKeys.falApiKey);
+        }
+        if (cloudKeys.accountTier) {
+          updates.accountTier = cloudKeys.accountTier;
+          setAccountTier(cloudKeys.accountTier);
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          setApiConfig(updates);
+          console.log('✅ 已从云端同步 API Key 配置');
+        }
+      }
+    };
+    
+    loadCloudKeys();
+  }, [apiConfig, setApiConfig]);
   
   // 行级注释：彩蛋触发器 - 点击 5 次切换开发者模式
   const handleEasterEggClick = (e: React.MouseEvent) => {
@@ -151,26 +257,54 @@ export default function SettingsPanel() {
 
   // 保存设置 - 只更新修改的字段，保留其他配置
   // 行级注释：projectId 不在这里设置，它从 URL 自动获取
-  const handleSave = () => {
-    setApiConfig({
-      apiKey: apiKey.trim(),
-      bearerToken: bearerToken.trim(),
-      cookie: cookie.trim(),
-      dashScopeApiKey: dashScopeApiKey.trim(),
-      hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
-      sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
-      falApiKey: falApiKey.trim(), // 保存 fal.ai API Key
-      proxy: proxy.trim(),
-      // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
-      workflowId: workflowId.trim(),
-      sessionId: sessionId.trim(),
-      accountTier,
-      credentialMode: 'cloud',  // 行级注释：始终使用云端模式
-      isManaged: true,  // 行级注释：始终为托管模式
-      videoModel: 'fast',  // 行级注释：邀请码用户只能使用 fast 模式
-    });
-    setIsOpen(false);
-    toast.success('Configuration saved successfully');
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    try {
+      // 1. 保存到本地 store
+      setApiConfig({
+        apiKey: apiKey.trim(),
+        bearerToken: bearerToken.trim(),
+        cookie: cookie.trim(),
+        dashScopeApiKey: dashScopeApiKey.trim(),
+        hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
+        sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
+        falApiKey: falApiKey.trim(), // 保存 fal.ai API Key
+        proxy: proxy.trim(),
+        // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
+        workflowId: workflowId.trim(),
+        sessionId: sessionId.trim(),
+        accountTier,
+        credentialMode: 'cloud',  // 行级注释：始终使用云端模式
+        isManaged: true,  // 行级注释：始终为托管模式
+        videoModel: 'fast',  // 行级注释：邀请码用户只能使用 fast 模式
+      });
+
+      // 2. 同步 API Key 到云端（后台执行，不阻塞）
+      const session = await getCachedSession();
+      if (session) {
+        // 行级注释：只同步用户自己配置的 API Key，不包含 bearerToken/cookie 等托管凭证
+        saveApiKeysToCloud(session.access_token, {
+          dashScopeApiKey: dashScopeApiKey.trim(),
+          hailuoApiKey: hailuoApiKey.trim(),
+          sora2ApiKey: sora2ApiKey.trim(),
+          falApiKey: falApiKey.trim(),
+          accountTier,
+        }).then((success) => {
+          if (success) {
+            console.log('✅ API Key 已同步到云端');
+          }
+        });
+      }
+
+      setIsOpen(false);
+      toast.success('Configuration saved successfully');
+    } catch (error) {
+      console.error('保存设置失败:', error);
+      toast.error('保存失败，请重试');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -449,10 +583,15 @@ export default function SettingsPanel() {
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center gap-2 px-8 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-8 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                <Save className="w-4 h-4" />
-                Save Changes
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
