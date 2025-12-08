@@ -2,7 +2,7 @@
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Play, Pause, Volume2, Send, Trash2, ChevronDown, Loader2 } from 'lucide-react';
+import { Play, Pause, Volume2, Send, Trash2, ChevronDown, Loader2, Download, Music } from 'lucide-react';
 import type { AudioElement, AudioVoice } from '@/lib/types';
 import { useCanvasStore } from '@/lib/store';
 import { toast } from 'sonner';
@@ -29,7 +29,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const updateElement = useCanvasStore((state) => state.updateElement);
-  const removeElement = useCanvasStore((state) => state.removeElement);
+  const deleteElement = useCanvasStore((state) => state.deleteElement);
   const apiConfig = useCanvasStore((state) => state.apiConfig);
 
   // 行级注释：获取当前选中的音色信息
@@ -111,7 +111,7 @@ function AudioNode({ data, selected, id }: NodeProps) {
     try {
       // 行级注释：直接调用 MiniMax TTS API
       const payload = {
-        model: 'speech-02-hd',  // 行级注释：使用稳定的模型版本
+        model: 'speech-2.6-turbo',  // 行级注释：使用稳定的模型版本
         text: text,
         stream: false,
         voice_setting: {
@@ -189,28 +189,30 @@ function AudioNode({ data, selected, id }: NodeProps) {
     }
   }, [textInput, selectedVoice, apiConfig.minimaxApiKey, id, updateElement]);
 
-  // 行级注释：删除节点
-  const handleDelete = useCallback(() => {
-    removeElement(id);
-    toast.success('音频节点已删除');
-  }, [id, removeElement]);
+  // 行级注释：下载音频
+  const handleDownload = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!audioData.src) return;
 
-  // 行级注释：选择音色
-  const handleVoiceSelect = (voiceId: string) => {
-    setSelectedVoice(voiceId);
-    setIsVoiceMenuOpen(false);
-  };
+    const a = document.createElement('a');
+    a.href = audioData.src;
+    a.download = `audio-${id}-${Date.now()}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('音频下载中...');
+  }, [audioData.src, id]);
 
   return (
     <div
       className={`
-        relative rounded-2xl overflow-visible
-        transition-all duration-300 ease-out
-        ${selected ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-white' : ''}
+        group relative rounded-[20px] overflow-hidden bg-white shadow-xl
+        transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+        ${selected ? 'ring-4 ring-violet-500/30 scale-[1.02]' : 'hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1'}
       `}
       style={{
         width: audioData.size?.width || AUDIO_NODE_DEFAULT_SIZE.width,
-        minHeight: audioData.size?.height || AUDIO_NODE_DEFAULT_SIZE.height,
+        height: audioData.size?.height || AUDIO_NODE_DEFAULT_SIZE.height,
       }}
     >
       {/* 输入连接点（左侧） */}
@@ -222,127 +224,153 @@ function AudioNode({ data, selected, id }: NodeProps) {
         isConnectable={true}
       />
 
-      {/* 主容器 */}
-      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-200 shadow-lg overflow-hidden">
-        
-        {/* 头部 - 音色选择器 */}
-        <div className="px-4 py-3 border-b border-violet-100 bg-white/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-violet-500" />
-              <span className="text-sm font-semibold text-slate-700">语音合成</span>
-            </div>
-            
-            {/* 音色选择器 */}
-            <div className="relative">
-              <button
-                onClick={() => setIsVoiceMenuOpen(!isVoiceMenuOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 hover:bg-violet-200 rounded-lg text-xs font-medium text-violet-700 transition-colors"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                {currentVoice.name}
-                <ChevronDown className={`w-3 h-3 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              
-              {isVoiceMenuOpen && (
-                <div
-                  className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  {VOICE_OPTIONS.map((voice) => (
-                    <button
-                      key={voice.id}
-                      onClick={() => handleVoiceSelect(voice.id)}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors ${
-                        selectedVoice === voice.id ? 'bg-violet-100 text-violet-700' : 'text-slate-600'
-                      }`}
-                    >
-                      <div className="font-medium">{voice.name}</div>
-                      {voice.description && (
-                        <div className="text-xs text-slate-400">{voice.description}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+      {/* 顶部工具栏 */}
+      <div className="absolute top-0 left-0 right-0 p-3 flex items-center justify-between z-20 bg-gradient-to-b from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="flex items-center gap-2">
+          <div className="px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium text-white flex items-center gap-1">
+            <Music className="w-3 h-3" />
+            <span>TTS</span>
           </div>
         </div>
-
-        {/* 内容区 */}
-        {shouldShowInputPanel ? (
-          // 输入面板
-          <div className="p-4 space-y-3">
-            <textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="输入要合成的文本..."
-              className="w-full h-20 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-transparent"
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-            
+        <div className="flex items-center gap-1">
+          {audioData.status === 'ready' && (
             <button
-              onClick={handleGenerate}
-              disabled={isGenerating || !textInput.trim()}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              onMouseDown={(e) => e.stopPropagation()}
+              onClick={handleDownload}
+              className="p-1.5 bg-black/40 backdrop-blur-md hover:bg-black/60 rounded-lg text-white transition-colors"
+              title="下载音频"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  合成中...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  合成语音
-                </>
-              )}
+              <Download className="w-3.5 h-3.5" />
             </button>
+          )}
+          <button
+            onClick={handleDelete}
+            className="p-1.5 bg-black/40 backdrop-blur-md hover:bg-red-500/80 rounded-lg text-white transition-colors"
+            title="删除节点"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
 
-            {audioData.status === 'error' && audioData.errorMessage && (
-              <div className="text-xs text-red-500 text-center">
-                {audioData.errorMessage}
+      {/* 主内容区 */}
+      <div className="relative w-full h-full flex flex-col bg-gradient-to-br from-slate-900 to-slate-800">
+        
+        {shouldShowInputPanel ? (
+          // 1. 生成前：文本输入 + 音色选择
+          <div className="flex-1 flex flex-col p-4">
+            <div className="flex-1 relative">
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="输入要合成的文本..."
+                className="w-full h-full bg-transparent text-white/90 placeholder:text-white/30 text-sm resize-none focus:outline-none custom-scrollbar"
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            
+            <div className="mt-3 flex items-center gap-2">
+              {/* 音色选择 */}
+              <div className="relative flex-1">
+                <button
+                  onClick={() => setIsVoiceMenuOpen(!isVoiceMenuOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs text-white/90 transition-colors border border-white/5"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <span className="truncate">{currentVoice.name}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isVoiceMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isVoiceMenuOpen && (
+                  <div
+                    className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto custom-scrollbar"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {VOICE_OPTIONS.map((voice) => (
+                      <button
+                        key={voice.id}
+                        onClick={() => handleVoiceSelect(voice.id)}
+                        className={`w-full px-3 py-2 text-left text-xs hover:bg-white/10 transition-colors border-b border-white/5 last:border-0 ${
+                          selectedVoice === voice.id ? 'bg-violet-500/20 text-violet-300' : 'text-slate-300'
+                        }`}
+                      >
+                        <div className="font-medium">{voice.name}</div>
+                        {voice.description && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">{voice.description}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* 生成按钮 */}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !textInput.trim()}
+                className="px-4 py-2 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-violet-500/20 transition-all flex items-center justify-center"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
         ) : (
-          // 播放器面板
-          <div className="p-4 space-y-3">
+          // 2. 生成后：播放器视图
+          <div className="flex-1 flex flex-col relative">
+            {/* 音频可视化背景（模拟） */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+              <div className="flex gap-1 items-end h-16">
+                {[...Array(12)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-3 bg-violet-400 rounded-t-sm transition-all duration-300 ${
+                      isPlaying ? 'animate-pulse' : ''
+                    }`}
+                    style={{
+                      height: `${30 + Math.random() * 70}%`,
+                      animationDelay: `${i * 0.1}s`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* 文本预览 */}
-            <div className="text-sm text-slate-600 line-clamp-2 bg-white/50 rounded-lg px-3 py-2">
-              {audioData.text}
+            <div className="relative z-10 p-4 pb-0">
+              <p className="text-xs text-white/70 line-clamp-2 font-medium leading-relaxed">
+                {audioData.text}
+              </p>
             </div>
 
             {/* 播放控制 */}
-            <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center justify-center relative z-10">
               <button
                 onClick={handlePlayPause}
-                className="w-12 h-12 flex items-center justify-center bg-gradient-to-br from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 rounded-full text-white shadow-lg hover:shadow-xl transition-all"
+                className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all group/btn border border-white/10"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 {isPlaying ? (
-                  <Pause className="w-5 h-5" />
+                  <Pause className="w-6 h-6 fill-current" />
                 ) : (
-                  <Play className="w-5 h-5 ml-0.5" />
+                  <Play className="w-6 h-6 ml-1 fill-current" />
                 )}
               </button>
+            </div>
 
-              {/* 进度条 */}
-              <div className="flex-1">
-                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all"
-                    style={{
-                      width: `${audioData.duration ? (currentTime / audioData.duration) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between mt-1 text-xs text-slate-400">
-                  <span>{formatDuration(currentTime)}</span>
-                  <span>{formatDuration(audioData.duration || 0)}</span>
-                </div>
+            {/* 进度条 */}
+            <div className="relative h-1 bg-white/10 w-full">
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-violet-500 transition-all duration-100"
+                style={{ width: `${audioData.duration ? (currentTime / audioData.duration) * 100 : 0}%` }}
+              />
+              {/* 时间提示 */}
+              <div className="absolute bottom-2 left-3 text-[10px] font-mono text-white/50">
+                {formatDuration(currentTime)} / {formatDuration(audioData.duration || 0)}
               </div>
             </div>
 
@@ -351,20 +379,24 @@ function AudioNode({ data, selected, id }: NodeProps) {
               ref={audioRef}
               src={audioData.src}
               preload="metadata"
+              onEnded={() => setIsPlaying(false)}
             />
           </div>
         )}
 
-        {/* 底部工具栏 */}
-        {selected && !shouldShowInputPanel && (
-          <div className="px-4 py-2 border-t border-violet-100 bg-white/50 flex justify-end">
-            <button
-              onClick={handleDelete}
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+        {/* 错误提示 */}
+        {audioData.status === 'error' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-40 p-4 text-center">
+            <div className="space-y-2">
+              <div className="text-red-400 text-xs font-medium">生成失败</div>
+              <div className="text-white/70 text-xs">{audioData.errorMessage}</div>
+              <button
+                onClick={() => updateElement(id, { status: 'pending' } as Partial<AudioElement>)}
+                className="mt-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition-colors"
+              >
+                重试
+              </button>
+            </div>
           </div>
         )}
       </div>
