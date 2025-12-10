@@ -807,6 +807,8 @@ function VideoNode({ data, selected, id }: NodeProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSora2Duration(dur);
+                              // 行级注释：同时同步到 store，避免重渲染导致状态丢失
+                              updateElement(id, { sora2Duration: dur } as any);
                             }}
                             onMouseDown={(e) => e.stopPropagation()}
                             onPointerDown={(e) => e.stopPropagation()}
