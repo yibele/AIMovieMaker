@@ -409,101 +409,29 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             generationType = 'reference-images';
           }
         } else if (isSora2Model) {
-          // 行级注释：Sora2 模型视频生成（支持文生视频和图生视频）
+          // 行级注释：Sora2 视频生成
           const sora2Duration = videoElement.sora2Duration || 10;
-          console.log('🎬 使用 Sora2 模型生成视频, 时长:', sora2Duration, '秒');
-          
-          // 行级注释：获取宽高比
           const aspectRatio = videoElement.size?.width && videoElement.size?.height
             ? detectAspectRatio(videoElement.size.width, videoElement.size.height) as '16:9' | '9:16' | '1:1'
             : '16:9';
           
-          // 行级注释：辅助函数 - 获取图片的有效 URL（http/https）
-          const getImageUrl = (image: ImageElement | undefined): string | undefined => {
-            if (!image) return undefined;
-            // 行级注释：优先使用 src（如果是 http/https URL）
-            if (image.src && (image.src.startsWith('http://') || image.src.startsWith('https://'))) {
-              return image.src;
-            }
-            return undefined;
-          };
+          // 行级注释：获取连接的图片 URL（从 startImageUrl 直接取）
+          const imageUrl = (videoElement as any).startImageUrl as string | undefined;
+          const imageUrls = imageUrl?.startsWith('http') ? [imageUrl] : undefined;
           
-          // 行级注释：获取连接到视频节点的图片
-          // 方式1：从 startImageId/endImageId 获取
-          // 方式2：从 generatedFrom.sourceIds 获取
-          // 方式3：从 startImageUrl 获取（直接存储的 URL）
-          let imageUrls: string[] = [];
-          
-          // 行级注释：尝试从 startImageId 获取
-          if (startImageId) {
-            const startImage = storeElements.find(el => el.id === startImageId) as ImageElement | undefined;
-            const url = getImageUrl(startImage);
-            if (url) {
-              imageUrls.push(url);
-              combinedSourceIds.add(startImageId);
-            }
-          }
-          
-          // 行级注释：尝试从 endImageId 获取
-          if (endImageId) {
-            const endImage = storeElements.find(el => el.id === endImageId) as ImageElement | undefined;
-            const url = getImageUrl(endImage);
-            if (url && !imageUrls.includes(url)) {
-              imageUrls.push(url);
-              combinedSourceIds.add(endImageId);
-            }
-          }
-          
-          // 行级注释：尝试从 generatedFrom.sourceIds 获取（连线创建的视频节点）
-          if (imageUrls.length === 0 && videoElement.generatedFrom?.sourceIds) {
-            for (const sourceId of videoElement.generatedFrom.sourceIds) {
-              const sourceImage = storeElements.find(el => el.id === sourceId && el.type === 'image') as ImageElement | undefined;
-              const url = getImageUrl(sourceImage);
-              if (url && !imageUrls.includes(url)) {
-                imageUrls.push(url);
-                combinedSourceIds.add(sourceId);
-              }
-            }
-          }
-          
-          // 行级注释：尝试从 startImageUrl 直接获取（createVideoFromImage 设置的）
-          if (imageUrls.length === 0 && (videoElement as any).startImageUrl) {
-            const url = (videoElement as any).startImageUrl;
-            if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-              imageUrls.push(url);
-            }
-          }
-          
-          console.log('📷 Sora2 图片来源:', {
-            startImageId,
-            endImageId,
-            sourceIds: videoElement.generatedFrom?.sourceIds,
-            startImageUrl: (videoElement as any).startImageUrl,
-            finalUrls: imageUrls.length > 0 ? imageUrls.map(u => u.substring(0, 50) + '...') : 'none',
-          });
-          
-          // 行级注释：调用 Sora2 视频服务
           const sora2Result = await generateSora2Video(
-            {
-              prompt: promptText || '',
-              duration: sora2Duration,
-              aspectRatio,
-              imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-            },
-            (stage, progress) => {
-              // 行级注释：更新进度
-              updateElement(videoId, { progress } as Partial<VideoElement>);
-            }
+            { prompt: promptText || '', duration: sora2Duration, aspectRatio, imageUrls },
+            (stage, progress) => updateElement(videoId, { progress } as Partial<VideoElement>)
           );
           
           result = {
             videoUrl: sora2Result.videoUrl,
             thumbnail: sora2Result.thumbnailUrl || sora2Result.videoUrl,
             duration: sora2Result.duration,
-            mediaGenerationId: sora2Result.taskId, // 使用 taskId 作为标识
+            mediaGenerationId: sora2Result.taskId,
           };
           
-          generationType = imageUrls.length > 0 ? 'image-to-image' : 'text-to-video';
+          generationType = imageUrls ? 'image-to-image' : 'text-to-video';
           
         } else if (isHailuoModel) {
           // 行级注释：海螺模型视频生成
