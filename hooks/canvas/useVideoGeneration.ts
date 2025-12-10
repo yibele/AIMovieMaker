@@ -331,32 +331,83 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
             throw new Error('多图参考视频需要至少 1 张参考图片');
           }
           
-          // 行级注释：获取参考图片的 mediaId
-          const referenceImages: Array<{ mediaId?: string; mediaGenerationId?: string }> = [];
-          
-          for (const refId of referenceImageIds) {
-            if (!refId) continue;
-            const imageElement = storeElements.find(el => el.id === refId) as ImageElement | undefined;
-            if (imageElement) {
-              referenceImages.push({
-                mediaId: imageElement.mediaId,
-                mediaGenerationId: imageElement.mediaGenerationId,
-              });
+          // 行级注释：Sora2 多图参考视频 - 使用图片 URL
+          if (isSora2Model) {
+            const sora2Duration = videoElement.sora2Duration || 10;
+            console.log('🎬 Sora2 多图参考视频, 时长:', sora2Duration, '秒, 参考图:', referenceImageIds.length, '张');
+            
+            // 行级注释：获取宽高比
+            const aspectRatio = videoElement.size?.width && videoElement.size?.height
+              ? detectAspectRatio(videoElement.size.width, videoElement.size.height) as '16:9' | '9:16' | '1:1'
+              : '16:9';
+            
+            // 行级注释：获取所有参考图片的 URL
+            const imageUrls: string[] = [];
+            for (const refId of referenceImageIds) {
+              if (!refId) continue;
+              const imageElement = storeElements.find(el => el.id === refId) as ImageElement | undefined;
+              if (imageElement?.src && (imageElement.src.startsWith('http') || imageElement.src.startsWith('https'))) {
+                imageUrls.push(imageElement.src);
+                combinedSourceIds.add(refId);
+              }
             }
+            
+            if (imageUrls.length === 0) {
+              throw new Error('Sora2 多图参考需要有效的图片 URL（http/https）');
+            }
+            
+            console.log('📷 Sora2 多图参考模式，图片数量:', imageUrls.length);
+            
+            // 行级注释：调用 Sora2 视频服务
+            const sora2Result = await generateSora2Video(
+              {
+                prompt: promptText || '',
+                duration: sora2Duration,
+                aspectRatio,
+                imageUrls,
+              },
+              (stage, progress) => {
+                updateElement(videoId, { progress } as Partial<VideoElement>);
+              }
+            );
+            
+            result = {
+              videoUrl: sora2Result.videoUrl,
+              thumbnail: sora2Result.thumbnailUrl || sora2Result.videoUrl,
+              duration: sora2Result.duration,
+              mediaGenerationId: sora2Result.taskId,
+            };
+            
+            generationType = 'reference-images';
+          } else {
+            // 行级注释：Flow API 多图参考视频
+            // 行级注释：获取参考图片的 mediaId
+            const referenceImages: Array<{ mediaId?: string; mediaGenerationId?: string }> = [];
+            
+            for (const refId of referenceImageIds) {
+              if (!refId) continue;
+              const imageElement = storeElements.find(el => el.id === refId) as ImageElement | undefined;
+              if (imageElement) {
+                referenceImages.push({
+                  mediaId: imageElement.mediaId,
+                  mediaGenerationId: imageElement.mediaGenerationId,
+                });
+              }
+            }
+            
+            if (referenceImages.length === 0) {
+              throw new Error('参考图片缺少 mediaId，请确保图片已同步');
+            }
+            
+            result = await generateVideoFromReferenceImages(
+              promptText || '',
+              referenceImages
+            );
+            
+            // 行级注释：更新 sourceIds
+            referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
+            generationType = 'reference-images';
           }
-          
-          if (referenceImages.length === 0) {
-            throw new Error('参考图片缺少 mediaId，请确保图片已同步');
-          }
-          
-          result = await generateVideoFromReferenceImages(
-            promptText || '',
-            referenceImages
-          );
-          
-          // 行级注释：更新 sourceIds
-          referenceImageIds.forEach(id => id && combinedSourceIds.add(id));
-          generationType = 'reference-images'; // 行级注释：多图参考视频类型
         } else if (isSora2Model) {
           // 行级注释：Sora2 模型视频生成（支持文生视频和图生视频）
           const sora2Duration = videoElement.sora2Duration || 10;
