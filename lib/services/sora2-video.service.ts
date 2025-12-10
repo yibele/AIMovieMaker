@@ -91,6 +91,13 @@ export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<
   const { prompt, duration = 10, aspectRatio = '16:9', imageUrls } = options;
   const apiKey = getSora2ApiKey();
 
+  console.log('🚀 Sora2 submitSora2VideoTask 参数:', {
+    prompt: prompt?.substring(0, 30) + '...',
+    duration,
+    aspectRatio,
+    imageUrls: imageUrls?.length ? imageUrls.map(u => u.substring(0, 50) + '...') : 'undefined/empty',
+  });
+
   // 行级注释：构建请求体
   const requestBody: Record<string, any> = {
     model: 'sora-2',
@@ -103,6 +110,8 @@ export async function submitSora2VideoTask(options: Sora2VideoOptions): Promise<
   if (imageUrls && imageUrls.length > 0) {
     requestBody.image_urls = imageUrls;
   }
+
+  console.log('📤 Sora2 请求体:', JSON.stringify(requestBody, null, 2));
 
   // 行级注释：调用 Sora2 API
   const response = await fetch(`${SORA2_API_BASE}/v1/videos/generations`, {

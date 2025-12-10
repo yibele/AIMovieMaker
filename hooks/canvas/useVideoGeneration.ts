@@ -412,33 +412,52 @@ export function useVideoGeneration(options: UseVideoGenerationOptions): UseVideo
           // 行级注释：Sora2 模型视频生成（支持文生视频和图生视频）
           const sora2Duration = videoElement.sora2Duration || 10;
           console.log('🎬 使用 Sora2 模型生成视频, 时长:', sora2Duration, '秒');
+          console.log('🔍 Sora2 调试: startImageId=', startImageId, 'endImageId=', endImageId);
           
           // 行级注释：获取宽高比
           const aspectRatio = videoElement.size?.width && videoElement.size?.height
             ? detectAspectRatio(videoElement.size.width, videoElement.size.height) as '16:9' | '9:16' | '1:1'
             : '16:9';
           
+          // 行级注释：辅助函数 - 获取图片的有效 URL（http/https）
+          const getImageUrl = (image: ImageElement | undefined): string | undefined => {
+            if (!image) return undefined;
+            // 行级注释：优先使用 src（如果是 http/https URL）
+            if (image.src && (image.src.startsWith('http://') || image.src.startsWith('https://'))) {
+              return image.src;
+            }
+            // 行级注释：Sora2 只支持 http/https URL，不支持 base64
+            console.warn('⚠️ Sora2 图片 src 不是有效的 http/https URL:', image.src?.substring(0, 50));
+            return undefined;
+          };
+          
           // 行级注释：获取首帧图片 URL（Sora2 图生视频模式）
           let imageUrls: string[] | undefined;
           
           if (startImageId) {
             const startImage = storeElements.find(el => el.id === startImageId) as ImageElement | undefined;
-            if (startImage?.src && (startImage.src.startsWith('http') || startImage.src.startsWith('https'))) {
-              imageUrls = [startImage.src];
+            console.log('🔍 Sora2 首帧图片:', startImage?.id, 'src:', startImage?.src?.substring(0, 80));
+            const url = getImageUrl(startImage);
+            if (url) {
+              imageUrls = [url];
               combinedSourceIds.add(startImageId);
-              console.log('📷 Sora2 图生视频模式，首帧图片:', startImage.src.substring(0, 50) + '...');
+              console.log('📷 Sora2 图生视频模式，首帧图片:', url.substring(0, 50) + '...');
             }
           }
           
           // 行级注释：如果没有首帧但有尾帧连接，把尾帧当首帧用
           if (!imageUrls && endImageId) {
             const endImage = storeElements.find(el => el.id === endImageId) as ImageElement | undefined;
-            if (endImage?.src && (endImage.src.startsWith('http') || endImage.src.startsWith('https'))) {
-              imageUrls = [endImage.src];
+            console.log('🔍 Sora2 尾帧图片:', endImage?.id, 'src:', endImage?.src?.substring(0, 80));
+            const url = getImageUrl(endImage);
+            if (url) {
+              imageUrls = [url];
               combinedSourceIds.add(endImageId);
-              console.log('📷 Sora2 使用尾帧作为首帧:', endImage.src.substring(0, 50) + '...');
+              console.log('📷 Sora2 使用尾帧作为首帧:', url.substring(0, 50) + '...');
             }
           }
+          
+          console.log('🔍 Sora2 最终 imageUrls:', imageUrls);
           
           // 行级注释：调用 Sora2 视频服务
           const sora2Result = await generateSora2Video(
