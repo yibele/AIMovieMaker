@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // 启用静态导出（可选）
+  
+  // 【部署推荐】独立输出模式 - 生成完整的独立应用
+  // output: 'standalone',  // 取消注释以启用
+  
+  // 【静态导出】如果只需要静态 HTML（不支持 API Routes）
   // output: 'export',
   // trailingSlash: true,
   // images: {
