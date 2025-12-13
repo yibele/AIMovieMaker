@@ -252,24 +252,24 @@ export default function SettingsPanel() {
     
     try {
       // 1. 保存到本地 store
-      setApiConfig({
-        apiKey: apiKey.trim(),
-        bearerToken: bearerToken.trim(),
-        cookie: cookie.trim(),
-        dashScopeApiKey: dashScopeApiKey.trim(),
-        hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
-        sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
-        falApiKey: falApiKey.trim(), // 保存 fal.ai API Key
+    setApiConfig({
+      apiKey: apiKey.trim(),
+      bearerToken: bearerToken.trim(),
+      cookie: cookie.trim(),
+      dashScopeApiKey: dashScopeApiKey.trim(),
+      hailuoApiKey: hailuoApiKey.trim(), // 保存海螺 API Key
+      sora2ApiKey: sora2ApiKey.trim(), // 保存 Sora2 API Key
+      falApiKey: falApiKey.trim(), // 保存 fal.ai API Key
         minimaxApiKey: minimaxApiKey.trim(), // 保存 MiniMax API Key
-        proxy: proxy.trim(),
-        // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
-        workflowId: workflowId.trim(),
-        sessionId: sessionId.trim(),
-        accountTier,
-        credentialMode: 'cloud',  // 行级注释：始终使用云端模式
-        isManaged: true,  // 行级注释：始终为托管模式
-        videoModel: 'fast',  // 行级注释：邀请码用户只能使用 fast 模式
-      });
+      proxy: proxy.trim(),
+      // 行级注释：不设置 projectId，它从 URL 自动获取，避免覆盖
+      workflowId: workflowId.trim(),
+      sessionId: sessionId.trim(),
+      accountTier,
+      credentialMode: 'cloud',  // 行级注释：始终使用云端模式
+      isManaged: true,  // 行级注释：始终为托管模式
+      videoModel: 'fast',  // 行级注释：邀请码用户只能使用 fast 模式
+    });
 
       // 2. 同步 API Key 到云端（后台执行，不阻塞）
       const session = await getCachedSession();
@@ -286,8 +286,8 @@ export default function SettingsPanel() {
         });
       }
 
-      setIsOpen(false);
-      toast.success('Configuration saved successfully');
+    setIsOpen(false);
+    toast.success('Configuration saved successfully');
     } catch (error) {
       console.error('保存设置失败:', error);
       toast.error('保存失败，请重试');
@@ -604,7 +604,7 @@ export default function SettingsPanel() {
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Save className="w-4 h-4" />
+                <Save className="w-4 h-4" />
                 )}
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
